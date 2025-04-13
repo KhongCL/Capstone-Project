@@ -13,7 +13,7 @@ use Twig\Sandbox\SecurityNotAllowedFunctionError;
 use Twig\Source;
 use Twig\Template;
 
-/* @Morpheus/layout.twig */
+/* layout.twig */
 class __TwigTemplate_51458a6f0a3a265b1c213f34c5f1f90c extends Template
 {
     private $source;
@@ -81,7 +81,7 @@ class __TwigTemplate_51458a6f0a3a265b1c213f34c5f1f90c extends Template
 
         ";
         // line 53
-        yield from         $this->loadTemplate("@CoreHome/_adblockDetect.twig", "@Morpheus/layout.twig", 53)->unwrap()->yield($context);
+        yield from         $this->loadTemplate("@CoreHome/_adblockDetect.twig", "layout.twig", 53)->unwrap()->yield($context);
         // line 54
         yield "
         ";
@@ -121,20 +121,20 @@ class __TwigTemplate_51458a6f0a3a265b1c213f34c5f1f90c extends Template
         yield "
             ";
         // line 23
-        yield from         $this->loadTemplate("@CoreHome/_favicon.twig", "@Morpheus/layout.twig", 23)->unwrap()->yield($context);
+        yield from         $this->loadTemplate("@CoreHome/_favicon.twig", "layout.twig", 23)->unwrap()->yield($context);
         // line 24
         yield "            ";
-        yield from         $this->loadTemplate("@CoreHome/_applePinnedTabIcon.twig", "@Morpheus/layout.twig", 24)->unwrap()->yield($context);
+        yield from         $this->loadTemplate("@CoreHome/_applePinnedTabIcon.twig", "layout.twig", 24)->unwrap()->yield($context);
         // line 25
         yield "            <meta name=\"theme-color\" content=\"";
         yield \Piwik\piwik_escape_filter($this->env, CoreExtension::getAttribute($this->env, $this->source, (isset($context["themeStyles"]) || array_key_exists("themeStyles", $context) ? $context["themeStyles"] : (function () { throw new RuntimeError('Variable "themeStyles" does not exist.', 25, $this->source); })()), "colorHeaderBackground", [], "any", false, false, false, 25), "html", null, true);
         yield "\">
             ";
         // line 26
-        yield from         $this->loadTemplate("_jsGlobalVariables.twig", "@Morpheus/layout.twig", 26)->unwrap()->yield($context);
+        yield from         $this->loadTemplate("_jsGlobalVariables.twig", "layout.twig", 26)->unwrap()->yield($context);
         // line 27
         yield "            ";
-        yield from         $this->loadTemplate("_jsCssIncludes.twig", "@Morpheus/layout.twig", 27)->unwrap()->yield($context);
+        yield from         $this->loadTemplate("_jsCssIncludes.twig", "layout.twig", 27)->unwrap()->yield($context);
         // line 29
         if ( !(isset($context["isCustomLogo"]) || array_key_exists("isCustomLogo", $context) ? $context["isCustomLogo"] : (function () { throw new RuntimeError('Variable "isCustomLogo" does not exist.', 29, $this->source); })())) {
             yield "<link rel=\"manifest\" href=\"plugins/CoreHome/javascripts/manifest.json\" crossorigin=\"use-credentials\">";
@@ -186,10 +186,10 @@ class __TwigTemplate_51458a6f0a3a265b1c213f34c5f1f90c extends Template
         $macros = $this->macros;
         // line 37
         yield "        ";
-        yield from         $this->loadTemplate("_iframeBuster.twig", "@Morpheus/layout.twig", 37)->unwrap()->yield($context);
+        yield from         $this->loadTemplate("_iframeBuster.twig", "layout.twig", 37)->unwrap()->yield($context);
         // line 38
         yield "        ";
-        yield from         $this->loadTemplate("@CoreHome/_javaScriptDisabled.twig", "@Morpheus/layout.twig", 38)->unwrap()->yield($context);
+        yield from         $this->loadTemplate("@CoreHome/_javaScriptDisabled.twig", "layout.twig", 38)->unwrap()->yield($context);
         // line 39
         yield "
         <div id=\"root\">
@@ -201,7 +201,7 @@ class __TwigTemplate_51458a6f0a3a265b1c213f34c5f1f90c extends Template
 
         ";
         // line 45
-        yield from         $this->loadTemplate("@CoreHome/_shortcuts.twig", "@Morpheus/layout.twig", 45)->unwrap()->yield($context);
+        yield from         $this->loadTemplate("@CoreHome/_shortcuts.twig", "layout.twig", 45)->unwrap()->yield($context);
         // line 46
         yield "
     ";
@@ -221,7 +221,7 @@ class __TwigTemplate_51458a6f0a3a265b1c213f34c5f1f90c extends Template
      */
     public function getTemplateName()
     {
-        return "@Morpheus/layout.twig";
+        return "layout.twig";
     }
 
     /**
@@ -299,6 +299,6 @@ class __TwigTemplate_51458a6f0a3a265b1c213f34c5f1f90c extends Template
         {{ postEvent('Template.bodyBottom' ) }}
     </body>
 </html>
-", "@Morpheus/layout.twig", "C:\\xampp\\htdocs\\webTrafficAnalysis\\analytics\\plugins\\Morpheus\\templates\\layout.twig");
+", "layout.twig", "C:\\xampp\\htdocs\\webTrafficAnalysis\\analytics\\plugins\\Morpheus\\templates\\layout.twig");
     }
 }
