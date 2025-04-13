@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ExploreKL - Travel & Tourism System</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    :root {
+      --primary-color: #2c3e50;
+      --accent-color: #3498db;
+      --background-color: #f8f9fa;
+      --text-color: #333;
+      --card-radius: 16px;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--background-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      line-height: 1.6;
+    }
+
+    header {
+      background: var(--primary-color);
+      color: #fff;
+      padding: 2rem 1rem;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+
+    nav {
+      background: #fff;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 1rem;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    nav a {
+      text-decoration: none;
+      color: var(--primary-color);
+      padding: 0.5rem 1rem;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      transition: 0.3s;
+    }
+
+    nav a:hover {
+      background: var(--accent-color);
+      color: #fff;
+      border-color: var(--accent-color);
+    }
+
+    .container {
+      padding: 2rem;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: var(--card-radius);
+      padding: 2rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 2rem;
+    }
+
+    footer {
+      background: var(--primary-color);
+      color: #fff;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    .place {
+      padding-left: 1rem;
+      border-left: 4px solid var(--accent-color);
+      margin-bottom: 1rem;
+    }
+
+    .place h3 {
+      margin: 0.5rem 0;
+    }
+
+    #searchBar {
+      width: 100%;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      font-size: 1rem;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    #mapContainer {
+      height: 400px;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+    }
+
+    form label {
+      font-weight: bold;
+    }
+
+    form select {
+      width: 100%;
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      background: var(--accent-color);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #2980b9;
+    }
+
+    @media screen and (max-width: 768px) {
+      nav {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ExploreKL - Your Kuala Lumpur Travel Guide</h1>
+  </header>
+
+  <nav>
+    <a href="#locations">Locations</a>
+    <a href="#map">Map</a>
+    <a href="#restaurants">Restaurants</a>
+    <a href="#hotels">Hotels</a>
+    <a href="#planner">Trip Planner</a>
+    <a href="#itinerary">Itinerary</a>
+    <a href="#dashboard">Dashboard</a>
+    <a href="#contact">Contact</a>
+  </nav>
+
+  <div class="container">
+    <input type="text" id="searchBar" placeholder="Search places in Kuala Lumpur..." onkeyup="filterPlaces()" />
+
+    <section class="card" id="locations">
+      <h2>Top Tourist Attractions in KL</h2>
+      <div class="place">
+        <h3>Petronas Twin Towers</h3>
+        <p>Iconic skyscrapers offering skybridge views, shopping, and fine dining.</p>
+      </div>
+      <div class="place">
+        <h3>Batu Caves</h3>
+        <p>Famous Hindu temple set in limestone caves with a giant golden statue.</p>
+      </div>
+      <div class="place">
+        <h3>Merdeka Square</h3>
+        <p>Historic site where Malaysia declared independence, surrounded by colonial buildings.</p>
+      </div>
+    </section>
+
+
+    <section class="card" id="map">
+      <input type="text" id="mapSearchInput" placeholder="Search for a location..." style="width: 100%; padding: 0.75rem; margin-bottom: 1rem; border-radius: 10px; border: 1px solid #ccc;" />
+      <button onclick="searchMapLocation()" style="margin-bottom: 1rem;">Search Location</button>
+      <h2>Interactive Map of KL</h2>
+      <p>Explore major tourist spots with the map below:</p>
+      <div id="mapContainer"></div>
+    </section>
+
+    <section class="card" id="restaurants">
+      <h2>Popular Food Spots</h2>
+      <div class="place">
+        <h3>Jalan Alor Night Market</h3>
+        <p>Vibrant street food destination offering Malaysian, Thai, and Chinese delights.</p>
+      </div>
+      <div class="place">
+        <h3>Village Park Restaurant</h3>
+        <p>Legendary spot for the best nasi lemak in town.</p>
+      </div>
+      <div class="place">
+        <h3>Lot 10 Hutong</h3>
+        <p>Upscale food court featuring heritage hawker stalls under one roof.</p>
+      </div>
+    </section>
+
+    <section class="card" id="hotels">
+      <h2>Recommended Hotels</h2>
+      <div class="place">
+        <h3>Mandarin Oriental KL</h3>
+        <p>Luxury hotel right next to KLCC Park and the Petronas Towers.</p>
+      </div>
+      <div class="place">
+        <h3>Traders Hotel</h3>
+        <p>Well-known for its rooftop SkyBar and direct views of the Twin Towers.</p>
+      </div>
+      <div class="place">
+        <h3>The Majestic Hotel</h3>
+        <p>Colonial-style luxury stay with a history dating back to the 1930s.</p>
+      </div>
+    </section>
+
+    <section class="card" id="planner">
+      <h2>Personalize Your KL Trip</h2>
+      <form id="tripForm">
+        <label for="food">Favorite Food:</label>
+        <select id="food">
+          <option value="nasi lemak">Nasi Lemak</option>
+          <option value="street food">Street Food</option>
+          <option value="hawker">Heritage Hawker</option>
+        </select><br><br>
+
+        <label for="location">Preferred Location:</label><br>
+        <input type="text" id="location" readonly placeholder="Click on the map to select" style="width: 100%; padding: 0.75rem; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #ccc;" />
+        <button type="button" onclick="scrollToMap()">Choose on Map</button><br><br>
+
+
+        <label for="stars">Hotel Star Rating:</label>
+        <select id="stars">
+          <option value="5">5-Star</option>
+          <option value="4">4-Star</option>
+          <option value="3">3-Star</option>
+        </select><br><br>
+
+        <button type="button" onclick="generateIdeas()">Generate Ideas</button>
+      </form>
+      <div id="suggestions" style="margin-top:1.5rem;"></div>
+    </section>
+
+    <section class="card" id="itinerary">
+      <h2>Suggested 3-Day Itinerary</h2>
+      <ol>
+        <li><strong>Day 1:</strong> Petronas Twin Towers → KLCC Park → Jalan Alor</li>
+        <li><strong>Day 2:</strong> Batu Caves → Central Market → Lot 10 Hutong</li>
+        <li><strong>Day 3:</strong> Merdeka Square → KL Tower → Nightlife in Bukit Bintang</li>
+      </ol>
+    </section>
+
+    <section class="card" id="dashboard">
+      <h2>Tourist Interest Dashboard</h2>
+      <canvas id="tourismChart" width="400" height="200"></canvas>
+    </section>
+
+    <section class="card" id="contact">
+      <h2>Contact Us</h2>
+      <p>Have questions or suggestions? Reach out to our project group via email: <strong>explorekl.team@email.com</strong></p>
+    </section>
+  </div>
+
+  <footer>
+    &copy; 2025 ExploreKL Capstone Project | Asia Pacific University
+  </footer>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    // Filter Places
+    function filterPlaces() {
+      const search = document.getElementById('searchBar').value.toLowerCase();
+      const places = document.querySelectorAll('.place');
+      places.forEach(place => {
+        const text = place.innerText.toLowerCase();
+        place.style.display = text.includes(search) ? 'block' : 'none';
+      });
+    }
+
+    // Map
+    const map = L.map('mapContainer').setView([3.139, 101.6869], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    L.marker([3.1579, 101.7114]).addTo(map)
+      .bindPopup('Petronas Twin Towers');
+
+    L.marker([3.2379, 101.6831]).addTo(map)
+      .bindPopup('Batu Caves');
+
+    L.marker([3.1491, 101.6920]).addTo(map)
+      .bindPopup('Merdeka Square');
+
+    // Area Locator Feature - Allow user to click and locate an area
+      map.on('click', function(e) {
+        const { lat, lng } = e.latlng;
+        L.popup()
+          .setLatLng([lat, lng])
+          .setContent(`You clicked at:<br><strong>Latitude:</strong> ${lat.toFixed(5)}<br><strong>Longitude:</strong> ${lng.toFixed(5)}`)
+          .openOn(map);
+      });
+
+      // Optional: Highlight area with circle on click
+      let areaCircle;
+      let areaPopup;
+      
+      map.on('click', function(e) {
+        const { lat, lng } = e.latlng;
+      
+        // Remove existing circle if it exists
+        if (areaCircle) {
+          map.removeLayer(areaCircle);
+        }
+      
+        // Draw new circle at the clicked location
+        areaCircle = L.circle([lat, lng], {
+          radius: 500,
+          color: '#3498db',
+          fillColor: '#3498db',
+          fillOpacity: 0.3
+        }).addTo(map);
+      
+        // Create a popup asking the user to confirm area
+        const popupContent = `
+          <div>
+            <p>Is this your preferred area?</p>
+            <button onclick="confirmArea(${lat}, ${lng})">Yes, generate itinerary</button>
+          </div>
+        `;
+      
+        // Remove any existing popup
+        if (areaPopup) {
+          map.removeLayer(areaPopup);
+        }
+      
+        areaPopup = L.popup()
+          .setLatLng([lat, lng])
+          .setContent(popupContent)
+          .openOn(map);
+      });
+    // Chart
+    const ctx = document.getElementById('tourismChart');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Landmarks', 'Food', 'Hotels'],
+        datasets: [{
+          label: 'User Searches',
+          data: [120, 180, 90],
+          backgroundColor: ['#3498db', '#2ecc71', '#f39c12'],
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: true }
+        },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // Trip Planner Suggestions
+    function generateIdeas() {
+      const food = document.getElementById('food').value;
+      const location = document.getElementById('location').value;
+      const stars = document.getElementById('stars').value;
+      let ideas = `<h3>Suggested Places Based on Your Preferences</h3><ul>`;
+      
+      ideas += `<li>Explore top attractions near <strong>${location}</strong>.</li>`;
+
+
+      if (food === 'nasi lemak') {
+        ideas += `<li>Try <strong>Village Park Restaurant</strong> for nasi lemak!</li>`;
+      } else if (food === 'street food') {
+        ideas += `<li>Check out <strong>Jalan Alor Night Market</strong>.</li>`;
+      } else if (food === 'hawker') {
+        ideas += `<li>Don't miss <strong>Lot 10 Hutong</strong>.</li>`;
+      }
+
+      if (location === 'KLCC') {
+        ideas += `<li>Visit <strong>Petronas Twin Towers</strong> and <strong>KLCC Park</strong>.</li>`;
+      } else if (location === 'Bukit Bintang') {
+        ideas += `<li>Explore <strong>shopping and nightlife</strong> in Bukit Bintang.</li>`;
+      } else {
+        ideas += `<li>Explore <strong>Batu Caves</strong> or hidden gems in suburbs.</li>`;
+      }
+
+      if (stars === '5') {
+        ideas += `<li>Stay at <strong>Mandarin Oriental KL</strong>.</li>`;
+      } else if (stars === '4') {
+        ideas += `<li>Consider <strong>Traders Hotel</strong>.</li>`;
+      } else {
+        ideas += `<li>Budget hotels in <strong>Chow Kit</strong> or <strong>Brickfields</strong>.</li>`;
+      }
+
+      ideas += `</ul>`;
+      document.getElementById('suggestions').innerHTML = ideas;
+    }
+
+    function confirmArea(lat, lng) {
+      map.closePopup();
+
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+        .then(res => res.json())
+        .then(data => {
+          const displayName = data.display_name || `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
+          document.getElementById('location').value = displayName;
+        })
+        .catch(err => {
+          console.error('Error fetching location:', err);
+          document.getElementById('location').value = `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
+        });
+    }
+
+
+
+    // Scroll to map section
+    function scrollToMap() {
+      const mapSection = document.getElementById('map');
+      mapSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Map search using location name
+    function searchMapLocation() {
+    const query = document.getElementById('mapSearchInput').value;
+  
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)} Kuala Lumpur`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.length > 0) {
+          const { lat, lon, display_name } = data[0];
+          const coords = [parseFloat(lat), parseFloat(lon)];
+          map.setView(coords, 15);
+          L.popup()
+            .setLatLng(coords)
+            .setContent(`<strong>${display_name}</strong>`)
+            .openOn(map);
+        } else {
+          alert("Location not found. Please enter a location within Kuala Lumpur.");
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Something went wrong while searching. Try again.");
+      });
+  }
+
+  </script>
+</body>
+</html>
