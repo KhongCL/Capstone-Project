@@ -1,58 +1,60 @@
 <?php
 // Handle CSV file upload and import data to database
+require_once 'classes/CsvProcessor.php';
+
 function handleCsvUpload($conn, $file) {
-    // Check if the file is a CSV
-    $fileType = pathinfo($file['name'], PATHINFO_EXTENSION);
-    if ($fileType != 'csv') {
-        return "Error: Please upload a CSV file.";
+    // Basic file validation
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        return "Error uploading file: " . getUploadErrorMessage($file['error']);
     }
     
-    // Open the uploaded file
-    if (($handle = fopen($file['tmp_name'], "r")) !== FALSE) {
-        // Skip the header row
-        $header = fgetcsv($handle, 1000, ",");
+    // Check file type
+    $fileType = mime_content_type($file['tmp_name']);
+    if ($fileType !== 'text/csv' && $fileType !== 'application/vnd.ms-excel') {
+        return "Invalid file type. Please upload a CSV file.";
+    }
+    
+    // Move uploaded file to a temporary location
+    $uploadDir = 'uploads/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    $fileName = uniqid() . '_' . basename($file['name']);
+    $filePath = $uploadDir . $fileName;
+    
+    if (!move_uploaded_file($file['tmp_name'], $filePath)) {
+        return "Failed to save uploaded file.";
+    }
+    
+    try {
+        // Process the CSV file
+        $processor = new CsvProcessor();
+        $result = $processor->processFile($filePath);
         
-        // Check if the CSV has the required columns
-        $requiredColumns = ['timestamp', 'page_url', 'user_id', 'traffic_source', 'session_id', 'event_type'];
-        $headerColumns = array_map('strtolower', $header);
-        
-        // Ensure all required columns are present
-        foreach ($requiredColumns as $column) {
-            if (!in_array($column, $headerColumns)) {
-                return "Error: CSV file must contain the following columns: " . implode(", ", $requiredColumns);
-            }
-        }
-        
-        // Get column indexes
-        $columnIndexes = [];
-        foreach ($requiredColumns as $column) {
-            $columnIndexes[$column] = array_search($column, $headerColumns);
-        }
-        
-        // Prepare SQL statement
-        $stmt = $conn->prepare("INSERT INTO web_traffic_data (timestamp, page_url, user_id, traffic_source, session_id, event_type) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssssss", $timestamp, $page_url, $user_id, $traffic_source, $session_id, $event_type);
-        
-        // Process each row
-        $rowCount = 0;
-        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-            $timestamp = $data[$columnIndexes['timestamp']];
-            $page_url = $data[$columnIndexes['page_url']];
-            $user_id = $data[$columnIndexes['user_id']];
-            $traffic_source = $data[$columnIndexes['traffic_source']];
-            $session_id = $data[$columnIndexes['session_id']];
-            $event_type = $data[$columnIndexes['event_type']];
+        if ($result['status'] === 'success') {
+            // If format was detected, transform and import the data
+            $transformedData = $processor->transformData($filePath, $result['mapping']);
             
-            $stmt->execute();
-            $rowCount++;
+            if (saveTransformedData($conn, $transformedData)) {
+                return "CSV data successfully imported and processed.";
+            } else {
+                return "Error saving data to database.";
+            }
+        } else if ($result['status'] === 'needs_mapping') {
+            // Store file path and mapping info in session for the mapping page
+            session_start();
+            $_SESSION['uploaded_csv'] = $filePath;
+            $_SESSION['mapping_result'] = $result;
+            
+            // Redirect to mapping page
+            header('Location: map_columns.php');
+            exit;
+        } else {
+            return "Error processing CSV: " . ($result['message'] ?? 'Unknown error');
         }
-        
-        fclose($handle);
-        $stmt->close();
-        
-        return "Success: Imported $rowCount records from the CSV file.";
-    } else {
-        return "Error: Unable to read the CSV file.";
+    } catch (Exception $e) {
+        return "Error: " . $e->getMessage();
     }
 }
 
@@ -197,5 +199,74 @@ function getTopVisitedPages($conn, $limit = 10) {
     }
     
     return $data;
+}
+
+// Helper function to get upload error message
+function getUploadErrorMessage($errorCode) {
+    switch ($errorCode) {
+        case UPLOAD_ERR_INI_SIZE:
+            return "The uploaded file exceeds the upload_max_filesize directive in php.ini";
+        case UPLOAD_ERR_FORM_SIZE:
+            return "The uploaded file exceeds the MAX_FILE_SIZE directive in the HTML form";
+        case UPLOAD_ERR_PARTIAL:
+            return "The uploaded file was only partially uploaded";
+        case UPLOAD_ERR_NO_FILE:
+            return "No file was uploaded";
+        case UPLOAD_ERR_NO_TMP_DIR:
+            return "Missing a temporary folder";
+        case UPLOAD_ERR_CANT_WRITE:
+            return "Failed to write file to disk";
+        case UPLOAD_ERR_EXTENSION:
+            return "File upload stopped by extension";
+        default:
+            return "Unknown upload error";
+    }
+}
+
+// Save transformed data to database
+function saveTransformedData($conn, $data) {
+    if (empty($data)) {
+        return false;
+    }
+    
+    try {
+        // Begin transaction
+        $conn->begin_transaction();
+        
+        // Get import batch ID
+        $stmt = $conn->prepare("INSERT INTO import_batches (import_date) VALUES (NOW())");
+        $stmt->execute();
+        $batchId = $conn->insert_id;
+        
+        // Prepare insert statement
+        $stmt = $conn->prepare("INSERT INTO traffic_data 
+            (batch_id, traffic_source, traffic_medium, visits, visitors, page_views, 
+             bounce_rate, avg_session_duration, import_date) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        
+        // Insert each row
+        foreach ($data as $row) {
+            $stmt->bind_param("issiiidi", 
+                $batchId,
+                $row['traffic_source'] ?? '',
+                $row['traffic_medium'] ?? '',
+                $row['visits'] ?? 0,
+                $row['visitors'] ?? 0,
+                $row['page_views'] ?? 0,
+                $row['bounce_rate'] ?? 0,
+                $row['avg_session_duration'] ?? 0
+            );
+            $stmt->execute();
+        }
+        
+        // Commit transaction
+        $conn->commit();
+        return true;
+    } catch (Exception $e) {
+        // Rollback on error
+        $conn->rollback();
+        error_log("Database error: " . $e->getMessage());
+        return false;
+    }
 }
 ?>
