@@ -261,23 +261,25 @@ select {
     display: none;
 }
 
-.message:not(:empty) {
+/* Success message styling */
+.message.success {
     background-color: #d4edda;
     border: 1px solid #c3e6cb;
     color: #155724;
 }
 
-.message:not(:empty):before {
+.message.success:before {
     content: "✓ ";
 }
 
-.message:not(:empty)[class*="Error"] {
+/* Error message styling */
+.message.error {
     background-color: #f8d7da;
     border: 1px solid #f5c6cb;
     color: #721c24;
 }
 
-.message:not(:empty)[class*="Error"]:before {
+.message.error:before {
     content: "⚠️ ";
 }
 
