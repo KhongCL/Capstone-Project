@@ -3,7 +3,7 @@
 $host = "localhost";
 $username = "root";
 $password = "";
-$database = "web_traffic_analysis";
+$database = "trafanalyz";
 
 
 $conn = new mysqli($host, $username, $password, $database);
