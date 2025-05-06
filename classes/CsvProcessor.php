@@ -14,48 +14,137 @@ class CsvProcessor {
     }
     
     /**
-     * Process the uploaded CSV file
+     * Process the uploaded CSV file and detect its format
+     * @param string $filePath Path to the uploaded CSV file
+     * @return array Processing result with status and mapping information
      */
     public function processFile($filePath) {
-        // Read CSV header and sample data
+        // First check if this is a Google Analytics format CSV (has metadata lines with #)
+        $handle = fopen($filePath, "r");
+        if ($handle) {
+            $firstLine = fgets($handle);
+            fclose($handle);
+            
+            if (substr(trim($firstLine), 0, 1) === '#') {
+                // This looks like a Google Analytics export format
+                return $this->processGoogleAnalyticsFormat($filePath);
+            }
+        }
+        
+        // Standard CSV format processing
         if (($handle = fopen($filePath, "r")) !== FALSE) {
+            // Read header and first few rows
             $header = fgetcsv($handle);
-            $sampleData = [];
-            for ($i = 0; $i < 5 && ($data = fgetcsv($handle)) !== FALSE; $i++) {
-                $sampleData[] = $data;
+            $data = [];
+            $i = 0;
+            while (($row = fgetcsv($handle)) !== FALSE && $i < 5) {
+                if (!empty(array_filter($row))) { // Skip empty rows
+                    $data[] = $row;
+                    $i++;
+                }
             }
             fclose($handle);
             
-            // Detect format based on headers
+            // Try to detect format based on headers
             $this->detectedFormat = $this->detectFormat($header);
             
             if ($this->detectedFormat) {
-                // Use the predefined mapping
-                $this->columnMap = $this->mappings[$this->detectedFormat]['column_mappings'];
+                $format = $this->detectedFormat;
                 return [
                     'status' => 'success',
-                    'format' => $this->detectedFormat,
-                    'mapping' => $this->columnMap,
+                    'format' => $format,
                     'header' => $header,
-                    'sample' => $sampleData
+                    'mapping' => $this->mappings[$format]['column_mappings'],
+                    'data_types' => $this->mappings[$format]['data_types'],
+                    'sample' => $data
                 ];
             } else {
-                // Try fuzzy matching
-                $suggestedMap = $this->suggestColumnMapping($header);
+                // Couldn't detect format automatically, need mapping
                 return [
                     'status' => 'needs_mapping',
-                    'format' => 'unknown',
-                    'suggestions' => $suggestedMap,
                     'header' => $header,
-                    'sample' => $sampleData
+                    'sample' => $data,
+                    'suggestions' => $this->suggestColumnMapping($header)
                 ];
             }
-        } else {
-            return [
-                'status' => 'error',
-                'message' => 'Could not open file'
-            ];
         }
+        
+        return [
+            'status' => 'error',
+            'message' => 'Failed to open or process the CSV file'
+        ];
+    }
+    
+    /**
+     * Process the uploaded CSV file with Google Analytics format
+     */
+    private function processGoogleAnalyticsFormat($filePath) {
+        $headerLine = null;
+        $dataLines = [];
+        $metadataLines = [];
+        
+        if (($handle = fopen($filePath, "r")) !== FALSE) {
+            // Process the file line by line
+            while (($line = fgets($handle)) !== FALSE) {
+                // Skip metadata lines (lines starting with #)
+                if (substr(trim($line), 0, 1) === '#') {
+                    $metadataLines[] = $line;
+                    continue;
+                }
+                
+                // First non-metadata line is the header
+                if ($headerLine === null) {
+                    $headerLine = $line;
+                    continue;
+                }
+                
+                // All other non-metadata lines are data
+                $dataLines[] = $line;
+            }
+            fclose($handle);
+        }
+        
+        // Now process header and data
+        $header = str_getcsv($headerLine);
+        $data = [];
+        foreach ($dataLines as $line) {
+            if (trim($line) !== '') {
+                $data[] = str_getcsv($line);
+            }
+        }
+        
+        // Try to detect format
+        if (count($header) > 0) {
+            // Check if this matches any known format
+            foreach ($this->mappings as $formatKey => $format) {
+                $matched = true;
+                foreach ($format['format_detection'] as $column) {
+                    if (!in_array($column, $header)) {
+                        $matched = false;
+                        break;
+                    }
+                }
+                
+                if ($matched) {
+                    return [
+                        'status' => 'success',
+                        'format' => $formatKey,
+                        'header' => $header,
+                        'mapping' => $format['column_mappings'],
+                        'data_types' => $format['data_types'],
+                        'sample' => array_slice($data, 0, 5)
+                    ];
+                }
+            }
+        }
+        
+        // If we got here, format not recognized
+        return [
+            'status' => 'needs_mapping',
+            'header' => $header,
+            'sample' => array_slice($data, 0, 5),
+            'suggestions' => $this->suggestColumnMapping($header)
+        ];
     }
     
     /**

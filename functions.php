@@ -5,13 +5,52 @@ require_once 'classes/CsvProcessor.php';
 function handleCsvUpload($conn, $file) {
     // Basic file validation
     if ($file['error'] !== UPLOAD_ERR_OK) {
-        return "Error uploading file: " . getUploadErrorMessage($file['error']);
+        return [
+            'type' => 'error',
+            'message' => "Error uploading file: " . getUploadErrorMessage($file['error'])
+        ];
     }
     
-    // Check file type
-    $fileType = mime_content_type($file['tmp_name']);
-    if ($fileType !== 'text/csv' && $fileType !== 'application/vnd.ms-excel') {
-        return "Invalid file type. Please upload a CSV file.";
+    // Check file extension first (most reliable for CSVs)
+    $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if ($fileExtension !== 'csv') {
+        return [
+            'type' => 'error',
+            'message' => "Invalid file type. Please upload a CSV file."
+        ];
+    }
+    
+    // Ensure config directory and mappings file exist
+    if (!file_exists('config/csv_mappings.json')) {
+        // Create config directory if needed
+        if (!is_dir('config')) {
+            mkdir('config', 0755, true);
+        }
+        
+        // Create a basic mappings file
+        $defaultMappings = [
+            "ga4_traffic_acquisition" => [
+                "format_detection" => ["Sessions", "Engaged sessions", "Engagement rate", "Session primary channel group (Default channel group)"],
+                "column_mappings" => [
+                    "Session primary channel group (Default channel group)" => "traffic_source",
+                    "Sessions" => "visits", 
+                    "Engaged sessions" => "engaged_sessions",
+                    "Engagement rate" => "bounce_rate",
+                    "Average engagement time per session" => "avg_session_duration",
+                    "Events per session" => "events_per_session",
+                    "Event count" => "event_count"
+                ],
+                "data_types" => [
+                    "Sessions" => "integer",
+                    "Engaged sessions" => "integer",
+                    "Engagement rate" => "float",
+                    "Average engagement time per session" => "float",
+                    "Events per session" => "float",
+                    "Event count" => "integer"
+                ]
+            ]
+        ];
+        file_put_contents('config/csv_mappings.json', json_encode($defaultMappings, JSON_PRETTY_PRINT));
     }
     
     // Move uploaded file to a temporary location
@@ -24,7 +63,10 @@ function handleCsvUpload($conn, $file) {
     $filePath = $uploadDir . $fileName;
     
     if (!move_uploaded_file($file['tmp_name'], $filePath)) {
-        return "Failed to save uploaded file.";
+        return [
+            'type' => 'error',
+            'message' => "Failed to save uploaded file."
+        ];
     }
     
     try {
@@ -37,9 +79,15 @@ function handleCsvUpload($conn, $file) {
             $transformedData = $processor->transformData($filePath, $result['mapping']);
             
             if (saveTransformedData($conn, $transformedData)) {
-                return "CSV data successfully imported and processed.";
+                return [
+                    'type' => 'success',
+                    'message' => "CSV data successfully imported and processed."
+                ];
             } else {
-                return "Error saving data to database.";
+                return [
+                    'type' => 'error',
+                    'message' => "Error saving data to database."
+                ];
             }
         } else if ($result['status'] === 'needs_mapping') {
             // Store file path and mapping info in session for the mapping page
@@ -51,10 +99,16 @@ function handleCsvUpload($conn, $file) {
             header('Location: map_columns.php');
             exit;
         } else {
-            return "Error processing CSV: " . ($result['message'] ?? 'Unknown error');
+            return [
+                'type' => 'error',
+                'message' => "Error processing CSV: " . ($result['message'] ?? 'Unknown error')
+            ];
         }
     } catch (Exception $e) {
-        return "Error: " . $e->getMessage();
+        return [
+            'type' => 'error',
+            'message' => "Error: " . $e->getMessage()
+        ];
     }
 }
 
@@ -217,7 +271,7 @@ function getUploadErrorMessage($errorCode) {
         case UPLOAD_ERR_CANT_WRITE:
             return "Failed to write file to disk";
         case UPLOAD_ERR_EXTENSION:
-            return "File upload stopped by extension";
+            return "A PHP extension stopped the file upload";
         default:
             return "Unknown upload error";
     }
@@ -238,25 +292,36 @@ function saveTransformedData($conn, $data) {
         $stmt->execute();
         $batchId = $conn->insert_id;
         
-        // Prepare insert statement
+        // Prepare insert statement with all GA4 columns
         $stmt = $conn->prepare("INSERT INTO traffic_data 
-            (batch_id, traffic_source, traffic_medium, visits, visitors, page_views, 
-             bounce_rate, avg_session_duration, import_date) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            (batch_id, traffic_source, traffic_medium, visits, visitors, 
+             bounce_rate, avg_session_duration, engaged_sessions, 
+             engagement_rate, events_per_session, event_count, 
+             key_events, session_key_event_rate, total_revenue, import_date) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
         // Insert each row
         foreach ($data as $row) {
-            $stmt->bind_param("issiiidi", 
+            $stmt->bind_param("issiiddiiddidi", 
                 $batchId,
                 $row['traffic_source'] ?? '',
                 $row['traffic_medium'] ?? '',
                 $row['visits'] ?? 0,
                 $row['visitors'] ?? 0,
-                $row['page_views'] ?? 0,
                 $row['bounce_rate'] ?? 0,
-                $row['avg_session_duration'] ?? 0
+                $row['avg_session_duration'] ?? 0,
+                $row['engaged_sessions'] ?? 0,
+                $row['engagement_rate'] ?? 0,
+                $row['events_per_session'] ?? 0,
+                $row['event_count'] ?? 0,
+                $row['key_events'] ?? 0,
+                $row['session_key_event_rate'] ?? 0,
+                $row['total_revenue'] ?? 0
             );
-            $stmt->execute();
+            
+            if (!$stmt->execute()) {
+                throw new Exception("Error inserting row: " . $stmt->error);
+            }
         }
         
         // Commit transaction
@@ -265,7 +330,7 @@ function saveTransformedData($conn, $data) {
     } catch (Exception $e) {
         // Rollback on error
         $conn->rollback();
-        error_log("Database error: " . $e->getMessage());
+        error_log("Error saving data: " . $e->getMessage());
         return false;
     }
 }

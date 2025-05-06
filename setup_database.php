@@ -18,7 +18,14 @@ $createTables = [
         visitors INT DEFAULT 0,
         page_views INT DEFAULT 0,
         bounce_rate DECIMAL(5,2) DEFAULT 0,
-        avg_session_duration INT DEFAULT 0,
+        avg_session_duration FLOAT DEFAULT 0,
+        engaged_sessions INT DEFAULT 0,
+        engagement_rate FLOAT DEFAULT 0,
+        events_per_session FLOAT DEFAULT 0,
+        event_count INT DEFAULT 0,
+        key_events INT DEFAULT 0,
+        session_key_event_rate FLOAT DEFAULT 0,
+        total_revenue DECIMAL(10,2) DEFAULT 0,
         import_date DATETIME NOT NULL,
         FOREIGN KEY (batch_id) REFERENCES import_batches(id)
     )",
@@ -34,6 +41,9 @@ $createTables = [
         status VARCHAR(50)
     )"
 ];
+
+// Drop the existing table if it already exists
+$conn->query("DROP TABLE IF EXISTS traffic_data");
 
 $success = true;
 $messages = [];

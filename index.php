@@ -78,7 +78,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             <section class="upload-section">
                 <h2>Upload Traffic Data</h2>
                 <?php if (!empty($uploadMessage)): ?>
-                    <div class="message"><?php echo $uploadMessage; ?></div>
+                    <div class="message <?php echo isset($uploadMessage['type']) ? $uploadMessage['type'] : ''; ?>">
+                        <?php echo isset($uploadMessage['message']) ? $uploadMessage['message'] : $uploadMessage; ?>
+                    </div>
                 <?php endif; ?>
                 <p>Upload your CSV file containing web traffic data.</p>
                 <form action="" method="post" enctype="multipart/form-data">
