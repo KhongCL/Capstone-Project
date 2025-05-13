@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'classes/CsvProcessor.php';
+include 'functions.php';
 
 session_start();
 
@@ -18,6 +19,18 @@ if (!isset($_SESSION['mapping_result'])) {
 }
 
 $mappingResult = $_SESSION['mapping_result'];
+$systemFields = [];
+$query = "SELECT DISTINCT SystemFieldName, CSVColumnName FROM COLUMN_MAPPING ORDER BY SystemFieldName";
+$result = $conn->query($query);
+if ($result) {
+    while ($row = $result->fetch_assoc()) {
+        $systemFields[] = [
+            'value' => $row['SystemFieldName'],
+            'label' => ucwords(str_replace('_', ' ', $row['SystemFieldName'])),
+            'default_column' => $row['CSVColumnName']
+        ];
+    }
+}
 
 // Handle form submission for manual mapping
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
@@ -28,18 +41,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         }
     }
     
-    // Transform data using the mapping
-    $transformedData = $processor->transformData($_SESSION['uploaded_csv'], $columnMapping);
-    
-    // Save transformed data to database
-    if (saveTransformedData($conn, $transformedData)) {
-        $_SESSION['message'] = 'Data successfully imported and mapped.';
-        unset($_SESSION['mapping_result']);
-        unset($_SESSION['uploaded_csv']);
-        header('Location: overview.php');
-        exit;
+    // Check if at least one column is mapped
+    if (empty($columnMapping)) {
+        $error_message = "Please map at least one column before proceeding.";
     } else {
-        $_SESSION['error'] = 'Error saving data to database.';
+        // Transform data using the mapping
+        $transformedData = $processor->transformData($_SESSION['uploaded_csv'], $columnMapping);
+        
+        // Save transformed data to database
+        if (saveTransformedData($conn, $transformedData)) {
+            $_SESSION['message'] = 'Data successfully imported and mapped.';
+            unset($_SESSION['mapping_result']);
+            unset($_SESSION['uploaded_csv']);
+            header('Location: overview.php');
+            exit;
+        } else {
+            // Check if we have a specific message from saveTransformedData
+            if (isset($_SESSION['upload_message'])) {
+                $error_message = $_SESSION['upload_message']['message'];
+                unset($_SESSION['upload_message']);
+            } else {
+                $error_message = 'Error saving data to database.';
+            }
+        }
     }
 }
 ?>
@@ -67,6 +91,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         <main>
             <section class="mapping-section">
                 <h2>Map CSV Columns</h2>
+                <?php if (isset($error_message)): ?>
+                    <div class="alert">
+                        <?php echo $error_message; ?>
+                    </div>
+                <?php endif; ?>
                 
                 <?php if ($mappingResult['status'] === 'needs_mapping'): ?>
                     <div class="alert">
@@ -116,16 +145,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                                 <td><?php echo htmlspecialchars($column); ?></td>
                                 <td><?php echo htmlspecialchars($sampleValue); ?></td>
                                 <td>
-                                    <select name="mapping[<?php echo htmlspecialchars($column); ?>]">
-                                        <option value="">-- Ignore this column --</option>
-                                        <option value="traffic_source" <?php echo $targetField === 'traffic_source' ? 'selected' : ''; ?>>Traffic Source</option>
-                                        <option value="traffic_medium" <?php echo $targetField === 'traffic_medium' ? 'selected' : ''; ?>>Traffic Medium</option>
-                                        <option value="visits" <?php echo $targetField === 'visits' ? 'selected' : ''; ?>>Visits/Sessions</option>
-                                        <option value="visitors" <?php echo $targetField === 'visitors' ? 'selected' : ''; ?>>Unique Visitors</option>
-                                        <option value="page_views" <?php echo $targetField === 'page_views' ? 'selected' : ''; ?>>Page Views</option>
-                                        <option value="bounce_rate" <?php echo $targetField === 'bounce_rate' ? 'selected' : ''; ?>>Bounce Rate</option>
-                                        <option value="avg_session_duration" <?php echo $targetField === 'avg_session_duration' ? 'selected' : ''; ?>>Avg. Session Duration</option>
-                                    </select>
+                                <select name="mapping[<?php echo htmlspecialchars($column); ?>]" class="field-select">
+                                    <option value="">-- Ignore this column --</option>
+                                    <?php foreach ($systemFields as $field): ?>
+                                        <?php 
+                                        $selected = '';
+                                        if ($targetField === $field['value']) {
+                                            $selected = 'selected'; 
+                                        } elseif (empty($targetField) && $column === $field['default_column']) {
+                                            $selected = 'selected';
+                                        }
+                                        ?>
+                                        <option value="<?php echo $field['value']; ?>" <?php echo $selected; ?> data-field="<?php echo $field['value']; ?>">
+                                            <?php echo $field['label']; ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                                 </td>
                                 <td>
                                     <?php if ($confidence !== null): ?>
@@ -176,5 +211,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             <p>&copy; <?php echo date('Y'); ?> Web Traffic Analysis Dashboard</p>
         </footer>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fieldSelects = document.querySelectorAll('.field-select');
+            
+            // Function to update available options
+            function updateAvailableOptions() {
+                // Get all currently selected values
+                const selectedValues = Array.from(fieldSelects).map(select => select.value).filter(Boolean);
+                
+                // For each select element
+                fieldSelects.forEach(select => {
+                    const currentValue = select.value;
+                    
+                    // Check each option
+                    Array.from(select.options).forEach(option => {
+                        const optionValue = option.value;
+                        
+                        // Skip the empty option
+                        if (!optionValue) return;
+                        
+                        // If this option is selected in this select, keep it enabled
+                        if (optionValue === currentValue) {
+                            option.disabled = false;
+                            return;
+                        }
+                        
+                        // If this option is selected in another select, disable it
+                        option.disabled = selectedValues.includes(optionValue);
+                    });
+                });
+            }
+            
+            // Add change event listeners to all selects
+            fieldSelects.forEach(select => {
+                select.addEventListener('change', updateAvailableOptions);
+            });
+            
+            // Initial update
+            updateAvailableOptions();
+        });
+        </script>
 </body>
 </html>

@@ -19,6 +19,14 @@ class CsvProcessor {
      * @return array Processing result with status and mapping information
      */
     public function processFile($filePath) {
+        // Check if file is empty
+        if (filesize($filePath) === 0) {
+            return [
+                'status' => 'error',
+                'message' => 'The CSV file is empty. Please upload a file with data.'
+            ];
+        }
+
         // First check if this is a Google Analytics format CSV (has metadata lines with #)
         $handle = fopen($filePath, "r");
         if ($handle) {
@@ -35,6 +43,16 @@ class CsvProcessor {
         if (($handle = fopen($filePath, "r")) !== FALSE) {
             // Read header and first few rows
             $header = fgetcsv($handle);
+            
+            // Check if header is valid
+            if ($header === false || empty($header)) {
+                fclose($handle);
+                return [
+                    'status' => 'error',
+                    'message' => 'Invalid CSV file: No headers found or file is empty.'
+                ];
+            }
+            
             $data = [];
             $i = 0;
             while (($row = fgetcsv($handle)) !== FALSE && $i < 5) {
@@ -46,25 +64,32 @@ class CsvProcessor {
             fclose($handle);
             
             // Try to detect format based on headers
-            $this->detectedFormat = $this->detectFormat($header);
-            
-            if ($this->detectedFormat) {
-                $format = $this->detectedFormat;
+            try {
+                $this->detectedFormat = $this->detectFormat($header);
+                
+                if ($this->detectedFormat) {
+                    $format = $this->detectedFormat;
+                    return [
+                        'status' => 'success',
+                        'format' => $format,
+                        'header' => $header,
+                        'mapping' => $this->mappings[$format]['column_mappings'],
+                        'data_types' => $this->mappings[$format]['data_types'],
+                        'sample' => $data
+                    ];
+                } else {
+                    // Couldn't detect format automatically, need mapping
+                    return [
+                        'status' => 'needs_mapping',
+                        'header' => $header,
+                        'sample' => $data,
+                        'suggestions' => $this->suggestColumnMapping($header)
+                    ];
+                }
+            } catch (Exception $e) {
                 return [
-                    'status' => 'success',
-                    'format' => $format,
-                    'header' => $header,
-                    'mapping' => $this->mappings[$format]['column_mappings'],
-                    'data_types' => $this->mappings[$format]['data_types'],
-                    'sample' => $data
-                ];
-            } else {
-                // Couldn't detect format automatically, need mapping
-                return [
-                    'status' => 'needs_mapping',
-                    'header' => $header,
-                    'sample' => $data,
-                    'suggestions' => $this->suggestColumnMapping($header)
+                    'status' => 'error',
+                    'message' => $e->getMessage()
                 ];
             }
         }
@@ -82,13 +107,33 @@ class CsvProcessor {
         $headerLine = null;
         $dataLines = [];
         $metadataLines = [];
+        $requiredMetadataKeywords = [
+            'Traffic acquisition',
+            'Account:',
+            'Property:',
+            'Start date:',
+            'End date:'
+        ];
         
         if (($handle = fopen($filePath, "r")) !== FALSE) {
             // Process the file line by line
-            while (($line = fgets($handle)) !== FALSE) {
+            $foundMetadataCount = 0;
+            $lineNum = 0;
+            
+            // Check first 15 lines for required GA4 metadata patterns
+            while (($line = fgets($handle)) !== FALSE && $lineNum < 50) {
+                $lineNum++;
                 $line = trim($line);
                 // Skip empty lines
                 if (empty($line)) continue;
+                
+                // Check for metadata keywords
+                foreach ($requiredMetadataKeywords as $keyword) {
+                    if (strpos($line, $keyword) !== false) {
+                        $foundMetadataCount++;
+                        break;
+                    }
+                }
                 
                 // Collect metadata lines (lines starting with #)
                 if (substr($line, 0, 1) === '#') {
@@ -107,6 +152,14 @@ class CsvProcessor {
                 $dataLines[] = $line;
             }
             fclose($handle);
+            
+            // If we don't find at least 3 of the required metadata patterns, reject the file
+            if ($foundMetadataCount < 3) {
+                return [
+                    'status' => 'error',
+                    'message' => 'This does not appear to be a Google Analytics export. Please upload a valid traffic data file.'
+                ];
+            }
         }
         
         error_log("Found " . count($dataLines) . " data lines");
@@ -120,6 +173,31 @@ class CsvProcessor {
             }
         }
         
+        // Header validation with relevance score
+        $gaKeywords = [
+            'Session', 'Sessions', 'Engagement', 'Traffic', 'Source', 
+            'Medium', 'Channel', 'Events', 'Users', 'Revenue', 'Visit'
+        ];
+        
+        // Calculate how many GA-related headers we find
+        $gaRelevanceScore = 0;
+        foreach ($header as $headerColumn) {
+            foreach ($gaKeywords as $keyword) {
+                if (stripos($headerColumn, $keyword) !== false) {
+                    $gaRelevanceScore++;
+                    break;
+                }
+            }
+        }
+        
+        // If the file doesn't look like analytics data at all, reject it
+        if (count($header) > 3 && $gaRelevanceScore < 2) {
+            return [
+                'status' => 'error',
+                'message' => 'This file does not appear to contain web analytics data.'
+            ];
+        }
+        
         // Try to detect format
         if (count($header) > 0) {
             error_log("Checking format for header: " . implode(", ", $header));
@@ -127,14 +205,19 @@ class CsvProcessor {
             // Check if this matches any known format
             foreach ($this->mappings as $formatKey => $format) {
                 $matched = true;
-                foreach ($format['format_detection'] as $column) {
-                    if (!in_array($column, $header)) {
+                $matchCount = 0;
+                $requiredColumns = $format['format_detection'];
+                
+                foreach ($requiredColumns as $column) {
+                    if (in_array($column, $header)) {
+                        $matchCount++;
+                    } else {
                         $matched = false;
-                        break;
                     }
                 }
                 
-                if ($matched) {
+                // If we find an exact match or at least 70% of the expected columns
+                if ($matched || ($matchCount >= count($requiredColumns) * 0.7)) {
                     error_log("Matched format: " . $formatKey);
                     return [
                         'status' => 'success',
@@ -148,7 +231,7 @@ class CsvProcessor {
             }
         }
         
-        // If we got here, format not recognized
+        // If we got here, format not recognized but file appears to be valid analytics data
         error_log("No format matched");
         return [
             'status' => 'needs_mapping',
@@ -163,6 +246,34 @@ class CsvProcessor {
      * Detect the CSV format based on headers
      */
     private function detectFormat($headers) {
+        // Validate headers input
+        if (!is_array($headers) || empty($headers)) {
+            throw new Exception('Invalid CSV headers: Headers must be a non-empty array.');
+        }
+        
+        // First do analytics relevance check
+        $gaKeywords = [
+            'Session', 'Sessions', 'Engagement', 'Traffic', 'Source', 
+            'Medium', 'Channel', 'Events', 'Users', 'Revenue', 'Visit'
+        ];
+        
+        // Calculate how many GA-related headers we find
+        $gaRelevanceScore = 0;
+        foreach ($headers as $header) {
+            foreach ($gaKeywords as $keyword) {
+                if (stripos($header, $keyword) !== false) {
+                    $gaRelevanceScore++;
+                    break;
+                }
+            }
+        }
+        
+        // If the file doesn't look like analytics data at all, reject it
+        if (count($headers) > 3 && $gaRelevanceScore < 2) {
+            throw new Exception('This file does not appear to contain web analytics data.');
+        }
+        
+        // Continue with existing format detection
         foreach ($this->mappings as $format => $config) {
             $requiredColumns = $config['format_detection'];
             $matchCount = 0;
@@ -339,6 +450,13 @@ class CsvProcessor {
         }
         
         error_log("Transformed " . count($transformed) . " rows");
+        
+        // ADD THIS: Better empty file detection
+        if (count($transformed) === 0) {
+            error_log("No data rows found after transformation");
+            return [];
+        }
+        
         if (count($transformed) > 0) {
             error_log("First transformed row: " . json_encode($transformed[0]));
         }
@@ -405,18 +523,24 @@ public function extractGa4Metadata($filePath) {
         while (($line = fgets($handle)) !== FALSE && $lineNum < 15) {
             // Extract account and property info
             if (strpos($line, 'Account:') !== false) {
-                $metadata['account_name'] = trim(str_replace('# Account:', '', $line));
+                $rawValue = trim(str_replace('# Account:', '', $line));
+                // Remove trailing commas
+                $metadata['account_name'] = preg_replace('/,+$/', '', $rawValue);
                 error_log("Found account name: " . $metadata['account_name']);
             }
             
             if (strpos($line, 'Property:') !== false) {
-                $metadata['property_name'] = trim(str_replace('# Property:', '', $line));
+                $rawValue = trim(str_replace('# Property:', '', $line));
+                // Remove trailing commas
+                $metadata['property_name'] = preg_replace('/,+$/', '', $rawValue);
                 error_log("Found property name: " . $metadata['property_name']);
             }
             
             // Extract report type
             if (strpos($line, 'Traffic acquisition:') !== false) {
-                $metadata['report_type'] = trim(str_replace('# Traffic acquisition:', '', $line));
+                $rawValue = trim(str_replace('# Traffic acquisition:', '', $line));
+                // Remove trailing commas
+                $metadata['report_type'] = preg_replace('/,+$/', '', $rawValue);
                 error_log("Found report type: " . $metadata['report_type']);
             }
             

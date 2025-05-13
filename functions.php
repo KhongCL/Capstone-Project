@@ -87,11 +87,12 @@ function handleCsvUpload($conn, $file) {
             error_log("Transformed data count: " . count($transformedData));
             
             // Store metadata in session for later use during saving
-            // Only start session if one doesn't exist
             if (session_status() == PHP_SESSION_NONE) {
                 session_start();
             }
             $_SESSION['csv_metadata'] = $metadata;
+            // Store the file path in session for cleanup if needed
+            $_SESSION['uploaded_csv'] = $filePath;
             
             if (saveTransformedData($conn, $transformedData)) {
                 return [
@@ -99,10 +100,24 @@ function handleCsvUpload($conn, $file) {
                     'message' => "CSV data successfully imported and processed."
                 ];
             } else {
-                return [
-                    'type' => 'error',
-                    'message' => "Error saving data to database."
-                ];
+                // Check if we have a specific message from saveTransformedData
+                if (isset($_SESSION['upload_message'])) {
+                    // Clean up file if not already done in saveTransformedData
+                    if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
+                        unlink($_SESSION['uploaded_csv']);
+                        unset($_SESSION['uploaded_csv']);
+                    }
+                    return $_SESSION['upload_message'];
+                } else {
+                    // Clean up file since there was an error
+                    if (file_exists($filePath)) {
+                        unlink($filePath);
+                    }
+                    return [
+                        'type' => 'error',
+                        'message' => "Error saving data to database."
+                    ];
+                }
             }
         } else if ($result['status'] === 'needs_mapping') {
             // Store file path and mapping info in session for the mapping page
@@ -117,12 +132,21 @@ function handleCsvUpload($conn, $file) {
             header('Location: map_columns.php');
             exit;
         } else {
+            // Clean up file since there was an error
+            if (file_exists($filePath)) {
+                unlink($filePath);
+            }
             return [
                 'type' => 'error',
                 'message' => "Error processing CSV: " . ($result['message'] ?? 'Unknown error')
             ];
         }
     } catch (Exception $e) {
+        // Clean up file on exception
+        if (file_exists($filePath)) {
+            unlink($filePath);
+        }
+        
         // Enhanced error logging
         error_log("CSV Processing Error: " . $e->getMessage());
         error_log("Stack trace: " . $e->getTraceAsString());
@@ -144,39 +168,52 @@ function getKeyMetrics($conn) {
     ];
     
     try {
-        // Get Sessions count (page views equivalent)
+        // Get the most recent upload ID
+        $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
+        $result = $conn->query($query);
+        $latestUpload = 0;
+        if ($result && $row = $result->fetch_assoc()) {
+            $latestUpload = $row['latest_upload'];
+        }
+        
+        // Get Sessions count only from latest upload
         $query = "SELECT SUM(pdp.Value) as total_views 
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                 WHERE mt.MetricName = 'Sessions'";
+                 WHERE mt.MetricName = 'Sessions'
+                 AND pdp.UploadID = $latestUpload";
         $result = $conn->query($query);
         if ($result && $row = $result->fetch_assoc()) {
             $metrics['total_page_views'] = $row['total_views'] ?: 0;
         }
         
-        // Unique Visitors - using count of uploads as a placeholder
-        $query = "SELECT COUNT(DISTINCT UploadID) as unique_visitors FROM PROCESSED_DATA_POINT";
+        // Count distinct source types as unique visitors
+        $query = "SELECT COUNT(DISTINCT SourceTypeID) as unique_visitors 
+                 FROM PROCESSED_DATA_POINT 
+                 WHERE UploadID = $latestUpload";
         $result = $conn->query($query);
         if ($result && $row = $result->fetch_assoc()) {
             $metrics['unique_visitors'] = $row['unique_visitors'] ?: 0;
         }
         
-        // Average Session Duration - using Average engagement time per session
+        // Average Session Duration - from latest upload only
         $query = "SELECT AVG(pdp.Value) as avg_duration
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                 WHERE mt.MetricName = 'Average engagement time per session'";
+                 WHERE mt.MetricName = 'Average engagement time per session'
+                 AND pdp.UploadID = $latestUpload";
         $result = $conn->query($query);
         if ($result && $row = $result->fetch_assoc()) {
             $avgSeconds = $row['avg_duration'] ?: 0;
             $metrics['avg_session_duration'] = gmdate("H:i:s", $avgSeconds);
         }
         
-        // Bounce Rate (approximation using Engagement rate)
+        // Bounce Rate (latest upload only)
         $query = "SELECT AVG(pdp.Value) as avg_engagement_rate
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                 WHERE mt.MetricName = 'Engagement rate'";
+                 WHERE mt.MetricName = 'Engagement rate'
+                 AND pdp.UploadID = $latestUpload";
         $result = $conn->query($query);
         if ($result && $row = $result->fetch_assoc()) {
             $engagementRate = $row['avg_engagement_rate'] ?: 0;
@@ -197,14 +234,23 @@ function getTrafficOverTime($conn, $interval = 'day') {
     $data = [];
     
     try {
-        // Get sessions data by date
+        // Get the most recent upload ID
+        $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
+        $result = $conn->query($query);
+        $latestUpload = 0;
+        if ($result && $row = $result->fetch_assoc()) {
+            $latestUpload = $row['latest_upload'];
+        }
+        
+        // Get sessions data by date - only from latest upload
         $query = "SELECT 
                     pdp.DataDate as time_period,
                     SUM(pdp.Value) as page_views,
-                    COUNT(DISTINCT pdp.UploadID) as unique_visitors
+                    COUNT(DISTINCT pdp.SourceTypeID) as unique_visitors
                   FROM PROCESSED_DATA_POINT pdp
                   JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
                   WHERE mt.MetricName = 'Sessions'
+                  AND pdp.UploadID = $latestUpload
                   GROUP BY pdp.DataDate
                   ORDER BY pdp.DataDate";
                   
@@ -222,11 +268,20 @@ function getTrafficOverTime($conn, $interval = 'day') {
     return $data;
 }
 
+
 // Get traffic sources distribution data
 function getTrafficSourcesDistribution($conn) {
     $data = [];
     
     try {
+        // Get the most recent upload ID
+        $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
+        $result = $conn->query($query);
+        $latestUpload = 0;
+        if ($result && $row = $result->fetch_assoc()) {
+            $latestUpload = $row['latest_upload'];
+        }
+        
         $query = "SELECT 
                     st.SourceName as traffic_source,
                     SUM(pdp.Value) as visit_count
@@ -234,6 +289,7 @@ function getTrafficSourcesDistribution($conn) {
                   JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
                   JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
                   WHERE mt.MetricName = 'Sessions'
+                  AND pdp.UploadID = $latestUpload
                   GROUP BY st.SourceName
                   ORDER BY visit_count DESC";
                   
@@ -275,14 +331,24 @@ function getTopVisitedPages($conn, $limit = 10) {
     // Since your current schema doesn't track individual pages
     // This is a placeholder that returns source data instead
     try {
+        // Get the most recent upload ID
+        $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
+        $result = $conn->query($query);
+        $latestUpload = 0;
+        if ($result && $row = $result->fetch_assoc()) {
+            $latestUpload = $row['latest_upload'];
+        }
+        
+        // Modified query to only include data from latest upload
         $query = "SELECT 
                     st.SourceName as page_url,
                     SUM(pdp.Value) as page_views,
-                    COUNT(DISTINCT pdp.UploadID) as unique_visitors
+                    COUNT(DISTINCT pdp.SourceTypeID) as unique_visitors
                   FROM PROCESSED_DATA_POINT pdp
                   JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
                   JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
                   WHERE mt.MetricName = 'Sessions'
+                  AND pdp.UploadID = $latestUpload
                   GROUP BY st.SourceName
                   ORDER BY page_views DESC
                   LIMIT $limit";
@@ -331,7 +397,22 @@ function saveTransformedData($conn, $data) {
     error_log("SaveTransformedData received data: " . (is_array($data) ? count($data) : "not an array") . " items");
     
     if (empty($data)) {
-        error_log("Error: No data to save");
+        error_log("Error: No data rows to save in CSV file");
+        
+        // Delete the temporary file
+        if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
+            unlink($_SESSION['uploaded_csv']);
+            unset($_SESSION['uploaded_csv']);
+        }
+        
+        // Create a session message for the user
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['upload_message'] = [
+            'type' => 'warning',
+            'message' => "CSV file has correct format but contains no data rows to import."
+        ];
         return false;
     }
     
