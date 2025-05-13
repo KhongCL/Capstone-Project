@@ -622,4 +622,97 @@ function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $
         return false;
     }
 }
+
+
+// User Management Functions
+
+/**
+ * Get all users from the database
+ * @param object $conn - Database connection
+ * @return array - Array of users
+ */
+function getAllUsers($conn) {
+    $users = [];
+    
+    try {
+        $query = "SELECT UserID, Username, FullName, Email, Role, AccountStatus, CreatedAt 
+                 FROM user 
+                 ORDER BY UserID";
+        
+        $result = $conn->query($query);
+        
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $users[] = $row;
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Error fetching users: " . $e->getMessage());
+    }
+    
+    return $users;
+}
+
+/**
+ * Update user account status
+ * @param object $conn - Database connection
+ * @param int $userId - User ID to update
+ * @param string $status - New status ('Active' or 'Suspended')
+ * @return bool - True if successful, false otherwise
+ */
+function updateUserStatus($conn, $userId, $status) {
+    try {
+        // Validate status
+        if (!in_array($status, ['Active', 'Suspended'])) {
+            return false;
+        }
+        
+        $stmt = $conn->prepare("UPDATE user SET AccountStatus = ? WHERE UserID = ?");
+        $stmt->bind_param("si", $status, $userId);
+        
+        return $stmt->execute();
+    } catch (Exception $e) {
+        error_log("Error updating user status: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Delete a user account
+ * @param object $conn - Database connection
+ * @param int $userId - User ID to delete
+ * @return bool - True if successful, false otherwise
+ */
+function deleteUser($conn, $userId) {
+    try {
+        // Start transaction to handle related records
+        $conn->begin_transaction();
+        
+        // Note: In a production system, you might want to:
+        // 1. Archive the user data instead of deleting
+        // 2. Handle related data (uploads, data points) by reassigning or deleting
+        
+        // Delete user
+        $stmt = $conn->prepare("DELETE FROM user WHERE UserID = ?");
+        $stmt->bind_param("i", $userId);
+        $result = $stmt->execute();
+        
+        if ($result) {
+            // Commit transaction
+            $conn->commit();
+            return true;
+        } else {
+            // Rollback on failure
+            $conn->rollback();
+            return false;
+        }
+    } catch (Exception $e) {
+        // Rollback on error
+        $conn->rollback();
+        error_log("Error deleting user: " . $e->getMessage());
+        return false;
+    }
+}
+
+
 ?>
