@@ -36,22 +36,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
         </header>
         
         <main>
-            <section class="upload-section">
-                <h2>Upload Traffic Data</h2>
-                <?php if (!empty($uploadMessage)): ?>
-                    <div class="message <?php echo isset($uploadMessage['type']) ? $uploadMessage['type'] : ''; ?>">
-                        <?php echo isset($uploadMessage['message']) ? $uploadMessage['message'] : $uploadMessage; ?>
-                    </div>
-                <?php endif; ?>
-                <p>Upload your CSV file containing web traffic data.</p>
-                <form action="" method="post" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="csvFile">Select CSV File:</label>
-                        <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
-                    </div>
-                    <button type="submit" class="btn">Upload Data</button>
-                </form>
-            </section>
+        <section class="upload-section">
+            <h2>Upload Traffic Data</h2>
+            <?php if (!empty($uploadMessage)): ?>
+                <div class="message <?php echo isset($uploadMessage['type']) ? $uploadMessage['type'] : ''; ?>">
+                    <?php echo isset($uploadMessage['message']) ? $uploadMessage['message'] : $uploadMessage; ?>
+                </div>
+            <?php endif; ?>
+            <p>Upload your CSV file containing web traffic data. 
+                <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
+            </p>
+            <form action="" method="post" enctype="multipart/form-data" id="uploadForm">
+                <div class="form-group">
+                    <label for="csvFile">Select CSV File:</label>
+                    <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
+                </div>
+                <div class="upload-progress" style="display: none;">
+                    <div class="progress-bar"></div>
+                    <span class="progress-text">Uploading... 0%</span>
+                </div>
+                <button type="submit" class="btn" id="uploadBtn">Upload Data</button>
+            </form>
+            <div class="sample-data">
+                <p>New to TrafAnalyz? Try with our sample data:</p>
+                <a href="?load_sample=1" class="btn btn-secondary">Load Sample Data</a>
+            </div>
+        </section>
             
             <section class="dashboard-links">
                 <h2>Dashboard Navigation</h2>

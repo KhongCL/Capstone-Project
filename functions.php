@@ -72,11 +72,26 @@ function handleCsvUpload($conn, $file) {
     try {
         // Process the CSV file
         $processor = new CsvProcessor();
+        
+        // Extract metadata for database storage
+        $metadata = $processor->extractGa4Metadata($filePath);
+        error_log("Extracted metadata: " . json_encode($metadata));
+        
         $result = $processor->processFile($filePath);
+        error_log("processFile result status: " . $result['status']);
         
         if ($result['status'] === 'success') {
             // If format was detected, transform and import the data
+            error_log("Format detected: " . $result['format']);
             $transformedData = $processor->transformData($filePath, $result['mapping']);
+            error_log("Transformed data count: " . count($transformedData));
+            
+            // Store metadata in session for later use during saving
+            // Only start session if one doesn't exist
+            if (session_status() == PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['csv_metadata'] = $metadata;
             
             if (saveTransformedData($conn, $transformedData)) {
                 return [
@@ -91,9 +106,12 @@ function handleCsvUpload($conn, $file) {
             }
         } else if ($result['status'] === 'needs_mapping') {
             // Store file path and mapping info in session for the mapping page
-            session_start();
+            if (session_status() == PHP_SESSION_NONE) {
+                session_start();
+            }
             $_SESSION['uploaded_csv'] = $filePath;
             $_SESSION['mapping_result'] = $result;
+            $_SESSION['csv_metadata'] = $metadata;
             
             // Redirect to mapping page
             header('Location: map_columns.php');
@@ -105,6 +123,10 @@ function handleCsvUpload($conn, $file) {
             ];
         }
     } catch (Exception $e) {
+        // Enhanced error logging
+        error_log("CSV Processing Error: " . $e->getMessage());
+        error_log("Stack trace: " . $e->getTraceAsString());
+        
         return [
             'type' => 'error',
             'message' => "Error: " . $e->getMessage()
@@ -114,99 +136,87 @@ function handleCsvUpload($conn, $file) {
 
 // Get key metrics for the dashboard
 function getKeyMetrics($conn) {
-    $metrics = [];
+    $metrics = [
+        'total_page_views' => 0,
+        'unique_visitors' => 0,
+        'avg_session_duration' => '00:00:00',
+        'bounce_rate' => '0%'
+    ];
     
-    // Total Page Views
-    $query = "SELECT COUNT(*) as total_page_views FROM web_traffic_data WHERE event_type = 'page_view'";
-    $result = $conn->query($query);
-    $row = $result->fetch_assoc();
-    $metrics['total_page_views'] = $row['total_page_views'];
-    
-    // Unique Visitors
-    $query = "SELECT COUNT(DISTINCT user_id) as unique_visitors FROM web_traffic_data";
-    $result = $conn->query($query);
-    $row = $result->fetch_assoc();
-    $metrics['unique_visitors'] = $row['unique_visitors'];
-    
-    // Average Session Duration (simplified approach)
-    $query = "SELECT 
-                session_id, 
-                MAX(timestamp) as end_time, 
-                MIN(timestamp) as start_time
-              FROM web_traffic_data
-              GROUP BY session_id";
-    $result = $conn->query($query);
-    $totalSessions = 0;
-    $totalDuration = 0;
-    
-    while($row = $result->fetch_assoc()) {
-        $start = strtotime($row['start_time']);
-        $end = strtotime($row['end_time']);
-        $duration = $end - $start;
-        $totalDuration += $duration;
-        $totalSessions++;
+    try {
+        // Get Sessions count (page views equivalent)
+        $query = "SELECT SUM(pdp.Value) as total_views 
+                 FROM PROCESSED_DATA_POINT pdp
+                 JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                 WHERE mt.MetricName = 'Sessions'";
+        $result = $conn->query($query);
+        if ($result && $row = $result->fetch_assoc()) {
+            $metrics['total_page_views'] = $row['total_views'] ?: 0;
+        }
+        
+        // Unique Visitors - using count of uploads as a placeholder
+        $query = "SELECT COUNT(DISTINCT UploadID) as unique_visitors FROM PROCESSED_DATA_POINT";
+        $result = $conn->query($query);
+        if ($result && $row = $result->fetch_assoc()) {
+            $metrics['unique_visitors'] = $row['unique_visitors'] ?: 0;
+        }
+        
+        // Average Session Duration - using Average engagement time per session
+        $query = "SELECT AVG(pdp.Value) as avg_duration
+                 FROM PROCESSED_DATA_POINT pdp
+                 JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                 WHERE mt.MetricName = 'Average engagement time per session'";
+        $result = $conn->query($query);
+        if ($result && $row = $result->fetch_assoc()) {
+            $avgSeconds = $row['avg_duration'] ?: 0;
+            $metrics['avg_session_duration'] = gmdate("H:i:s", $avgSeconds);
+        }
+        
+        // Bounce Rate (approximation using Engagement rate)
+        $query = "SELECT AVG(pdp.Value) as avg_engagement_rate
+                 FROM PROCESSED_DATA_POINT pdp
+                 JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                 WHERE mt.MetricName = 'Engagement rate'";
+        $result = $conn->query($query);
+        if ($result && $row = $result->fetch_assoc()) {
+            $engagementRate = $row['avg_engagement_rate'] ?: 0;
+            // Bounce rate is roughly inverse of engagement rate
+            $bounceRate = (1 - $engagementRate) * 100;
+            $metrics['bounce_rate'] = round($bounceRate, 2) . '%';
+        }
+    } catch (Exception $e) {
+        error_log("Error getting metrics: " . $e->getMessage());
     }
-    
-    $metrics['avg_session_duration'] = $totalSessions > 0 ? 
-        gmdate("H:i:s", $totalDuration / $totalSessions) : "00:00:00";
-    
-    // Bounce Rate (sessions with only one page view)
-    $query = "SELECT 
-                COUNT(*) as single_page_sessions
-              FROM (
-                SELECT session_id, COUNT(*) as views
-                FROM web_traffic_data
-                WHERE event_type = 'page_view'
-                GROUP BY session_id
-                HAVING views = 1
-              ) as bounce_sessions";
-    $result = $conn->query($query);
-    $row = $result->fetch_assoc();
-    $singlePageSessions = $row['single_page_sessions'];
-    
-    $query = "SELECT COUNT(DISTINCT session_id) as total_sessions 
-              FROM web_traffic_data 
-              WHERE event_type = 'page_view'";
-    $result = $conn->query($query);
-    $row = $result->fetch_assoc();
-    $totalPageViewSessions = $row['total_sessions'];
-    
-    $metrics['bounce_rate'] = $totalPageViewSessions > 0 ? 
-        round(($singlePageSessions / $totalPageViewSessions) * 100, 2) . '%' : '0%';
     
     return $metrics;
 }
 
+
 // Get traffic over time data for charts
 function getTrafficOverTime($conn, $interval = 'day') {
-    switch ($interval) {
-        case 'hour':
-            $format = '%Y-%m-%d %H:00:00';
-            break;
-        case 'day':
-            $format = '%Y-%m-%d';
-            break;
-        case 'month':
-            $format = '%Y-%m';
-            break;
-        default:
-            $format = '%Y-%m-%d';
-    }
-    
-    $query = "SELECT 
-                DATE_FORMAT(timestamp, '$format') as time_period,
-                COUNT(*) as page_views,
-                COUNT(DISTINCT user_id) as unique_visitors
-              FROM web_traffic_data 
-              WHERE event_type = 'page_view'
-              GROUP BY time_period
-              ORDER BY MIN(timestamp)";
-    
-    $result = $conn->query($query);
     $data = [];
     
-    while($row = $result->fetch_assoc()) {
-        $data[] = $row;
+    try {
+        // Get sessions data by date
+        $query = "SELECT 
+                    pdp.DataDate as time_period,
+                    SUM(pdp.Value) as page_views,
+                    COUNT(DISTINCT pdp.UploadID) as unique_visitors
+                  FROM PROCESSED_DATA_POINT pdp
+                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                  WHERE mt.MetricName = 'Sessions'
+                  GROUP BY pdp.DataDate
+                  ORDER BY pdp.DataDate";
+                  
+        $result = $conn->query($query);
+        
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $data[] = $row;
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Error getting traffic data: " . $e->getMessage());
     }
     
     return $data;
@@ -214,42 +224,82 @@ function getTrafficOverTime($conn, $interval = 'day') {
 
 // Get traffic sources distribution data
 function getTrafficSourcesDistribution($conn) {
-    $query = "SELECT 
-                traffic_source,
-                COUNT(*) as visit_count,
-                ROUND((COUNT(*) / (SELECT COUNT(*) FROM web_traffic_data WHERE event_type = 'page_view')) * 100, 2) as percentage
-              FROM web_traffic_data 
-              WHERE event_type = 'page_view'
-              GROUP BY traffic_source
-              ORDER BY visit_count DESC";
-    
-    $result = $conn->query($query);
     $data = [];
     
-    while($row = $result->fetch_assoc()) {
-        $data[] = $row;
+    try {
+        $query = "SELECT 
+                    st.SourceName as traffic_source,
+                    SUM(pdp.Value) as visit_count
+                  FROM PROCESSED_DATA_POINT pdp
+                  JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
+                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                  WHERE mt.MetricName = 'Sessions'
+                  GROUP BY st.SourceName
+                  ORDER BY visit_count DESC";
+                  
+        $result = $conn->query($query);
+        
+        if ($result) {
+            // Calculate total visits
+            $totalVisits = 0;
+            $tempData = [];
+            
+            while ($row = $result->fetch_assoc()) {
+                $tempData[] = $row;
+                $totalVisits += $row['visit_count'];
+            }
+            
+            // Calculate percentage for each source
+            foreach ($tempData as $row) {
+                $percentage = ($totalVisits > 0) ? 
+                    round(($row['visit_count'] / $totalVisits) * 100, 2) : 0;
+                    
+                $data[] = [
+                    'traffic_source' => $row['traffic_source'],
+                    'visit_count' => $row['visit_count'],
+                    'percentage' => $percentage
+                ];
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Error getting traffic sources: " . $e->getMessage());
     }
     
     return $data;
 }
 
-// Get top visited pages data
+// Get top visited pages data (since you don't have page data, this is a placeholder)
 function getTopVisitedPages($conn, $limit = 10) {
-    $query = "SELECT 
-                page_url,
-                COUNT(*) as page_views,
-                COUNT(DISTINCT user_id) as unique_visitors
-              FROM web_traffic_data 
-              WHERE event_type = 'page_view'
-              GROUP BY page_url
-              ORDER BY page_views DESC
-              LIMIT $limit";
-    
-    $result = $conn->query($query);
     $data = [];
     
-    while($row = $result->fetch_assoc()) {
-        $data[] = $row;
+    // Since your current schema doesn't track individual pages
+    // This is a placeholder that returns source data instead
+    try {
+        $query = "SELECT 
+                    st.SourceName as page_url,
+                    SUM(pdp.Value) as page_views,
+                    COUNT(DISTINCT pdp.UploadID) as unique_visitors
+                  FROM PROCESSED_DATA_POINT pdp
+                  JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
+                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                  WHERE mt.MetricName = 'Sessions'
+                  GROUP BY st.SourceName
+                  ORDER BY page_views DESC
+                  LIMIT $limit";
+                  
+        $result = $conn->query($query);
+        
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                // Make sure we have at least 1 visitor to avoid division by zero
+                if ($row['unique_visitors'] < 1) {
+                    $row['unique_visitors'] = 1;
+                }
+                $data[] = $row;
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Error getting page data: " . $e->getMessage());
     }
     
     return $data;
@@ -277,60 +327,217 @@ function getUploadErrorMessage($errorCode) {
     }
 }
 
-// Save transformed data to database
 function saveTransformedData($conn, $data) {
+    error_log("SaveTransformedData received data: " . (is_array($data) ? count($data) : "not an array") . " items");
+    
     if (empty($data)) {
+        error_log("Error: No data to save");
         return false;
+    }
+    
+    if (isset($data[0])) {
+        error_log("First data row: " . json_encode($data[0]));
     }
     
     try {
         // Begin transaction
         $conn->begin_transaction();
         
-        // Get import batch ID
-        $stmt = $conn->prepare("INSERT INTO import_batches (import_date) VALUES (NOW())");
-        $stmt->execute();
-        $batchId = $conn->insert_id;
+        // For testing/debugging, use a default user ID (1 for admin)
+        $userId = 1;
         
-        // Prepare insert statement with all GA4 columns
-        $stmt = $conn->prepare("INSERT INTO traffic_data 
-            (batch_id, traffic_source, traffic_medium, visits, visitors, 
-             bounce_rate, avg_session_duration, engaged_sessions, 
-             engagement_rate, events_per_session, event_count, 
-             key_events, session_key_event_rate, total_revenue, import_date) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        // Get CSV metadata from session if available
+        // Only start session if one doesn't exist
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        $metadata = $_SESSION['csv_metadata'] ?? [];
+        error_log("Using metadata: " . json_encode($metadata));
         
-        // Insert each row
+        // First, create an entry in CSV_UPLOAD table
+        $fileName = basename($_FILES['csvFile']['name'] ?? 'manual_upload.csv');
+        $fileSize = $_FILES['csvFile']['size'] ?? 0;
+        
+        // Extract date information from metadata if available
+        $startDate = isset($metadata['start_date']) && !empty($metadata['start_date']) 
+            ? $metadata['start_date'] : date('Y-m-d');
+        $endDate = isset($metadata['end_date']) && !empty($metadata['end_date'])
+            ? $metadata['end_date'] : date('Y-m-d');
+        $accountName = $metadata['account_name'] ?? '';
+        $propertyName = $metadata['property_name'] ?? '';
+        $reportType = $metadata['report_type'] ?? 'GA4 Traffic Acquisition';
+        
+        error_log("Creating CSV_UPLOAD record with dates: $startDate to $endDate, account: $accountName, property: $propertyName");
+        
+        // Log the CSV upload - FIXED parameter binding (8 parameters)
+        $stmt = $conn->prepare("INSERT INTO CSV_UPLOAD 
+            (UserID, FileName, FileSize, IsValidated, ReportType, 
+             DataDateStart, DataDateEnd, AccountName, PropertyName, IsSampleData) 
+            VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, 0)");
+        
+        if (!$stmt) {
+            error_log("Prepare statement error: " . $conn->error);
+            throw new Exception("Failed to prepare CSV_UPLOAD statement: " . $conn->error);
+        }
+        
+        // FIXED: Changed type string from 'isissss' to 'isisssss' to match 8 parameters
+        $stmt->bind_param("isisssss", 
+            $userId,
+            $fileName,
+            $fileSize,
+            $reportType,
+            $startDate,
+            $endDate,
+            $accountName,
+            $propertyName
+        );
+        
+        if (!$stmt->execute()) {
+            error_log("Error creating CSV_UPLOAD record: " . $stmt->error);
+            throw new Exception("Error creating upload record: " . $stmt->error);
+        }
+        
+        $uploadId = $conn->insert_id;
+        error_log("CSV Upload record created with ID: $uploadId");
+        
+        // Now process each data point
         foreach ($data as $row) {
-            $stmt->bind_param("issiiddiiddidi", 
-                $batchId,
-                $row['traffic_source'] ?? '',
-                $row['traffic_medium'] ?? '',
-                $row['visits'] ?? 0,
-                $row['visitors'] ?? 0,
-                $row['bounce_rate'] ?? 0,
-                $row['avg_session_duration'] ?? 0,
-                $row['engaged_sessions'] ?? 0,
-                $row['engagement_rate'] ?? 0,
-                $row['events_per_session'] ?? 0,
-                $row['event_count'] ?? 0,
-                $row['key_events'] ?? 0,
-                $row['session_key_event_rate'] ?? 0,
-                $row['total_revenue'] ?? 0
-            );
+            // Get source type ID
+            $sourceType = $row['traffic_source'] ?? 'Unknown';
+            $sourceTypeId = getSourceTypeId($conn, $sourceType);
+            error_log("Processing source: $sourceType (ID: $sourceTypeId)");
             
-            if (!$stmt->execute()) {
-                throw new Exception("Error inserting row: " . $stmt->error);
+            // Process each metric for this source
+            if (isset($row['visits']) && $row['visits'] > 0) {
+                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Sessions', $row['visits'], $startDate);
+            }
+            
+            if (isset($row['engaged_sessions']) && $row['engaged_sessions'] > 0) {
+                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Engaged sessions', $row['engaged_sessions'], $startDate);
+            }
+            
+            if (isset($row['bounce_rate'])) {
+                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Engagement rate', $row['bounce_rate'], $startDate);
+            }
+            
+            if (isset($row['avg_session_duration'])) {
+                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Average engagement time per session', $row['avg_session_duration'], $startDate);
+            }
+            
+            if (isset($row['events_per_session'])) {
+                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Events per session', $row['events_per_session'], $startDate);
+            }
+            
+            if (isset($row['event_count']) && $row['event_count'] > 0) {
+                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Event count', $row['event_count'], $startDate);
+            }
+            
+            if (isset($row['key_events'])) {
+                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Key events', $row['key_events'], $startDate);
+            }
+            
+            if (isset($row['session_key_event_rate'])) {
+                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Session key event rate', $row['session_key_event_rate'], $startDate);
+            }
+            
+            if (isset($row['total_revenue'])) {
+                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Total revenue', $row['total_revenue'], $startDate);
             }
         }
         
         // Commit transaction
         $conn->commit();
+        error_log("Transaction committed successfully");
         return true;
     } catch (Exception $e) {
         // Rollback on error
         $conn->rollback();
+        // Enhanced error logging
         error_log("Error saving data: " . $e->getMessage());
+        error_log("Stack trace: " . $e->getTraceAsString());
+        return false;
+    }
+}
+
+// Helper function to get or create source type ID
+function getSourceTypeId($conn, $sourceName) {
+    // Try to get existing source type
+    $stmt = $conn->prepare("SELECT SourceTypeID FROM SOURCE_TYPE WHERE SourceName = ?");
+    $stmt->bind_param("s", $sourceName);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        return $row['SourceTypeID'];
+    }
+    
+    // If not exists, create new source type
+    $stmt = $conn->prepare("INSERT INTO SOURCE_TYPE (SourceName) VALUES (?)");
+    $stmt->bind_param("s", $sourceName);
+    $stmt->execute();
+    
+    return $conn->insert_id;
+}
+
+// Helper function to get metric type ID
+function getMetricTypeId($conn, $metricName) {
+    $stmt = $conn->prepare("SELECT MetricTypeID FROM METRIC_TYPE WHERE MetricName = ?");
+    $stmt->bind_param("s", $metricName);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    if ($row = $result->fetch_assoc()) {
+        return $row['MetricTypeID'];
+    }
+    
+    // For safety, return null if no match (should be handled by caller)
+    return null;
+}
+
+// Helper function to insert a data point
+function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $dataDate = null) {
+    // Get metric type ID
+    $metricTypeId = getMetricTypeId($conn, $metricName);
+    
+    if (!$metricTypeId) {
+        error_log("Metric type not found: $metricName");
+        return false;
+    }
+    
+    // Use provided date or current date
+    $dataDate = $dataDate ?? date('Y-m-d');
+    
+    // Default period type (can be customized if needed)
+    $periodType = 'Daily';
+    
+    error_log("Inserting data point: Upload=$uploadId, Source=$sourceTypeId, Metric=$metricTypeId, Value=$value, Date=$dataDate");
+    
+    try {
+        $stmt = $conn->prepare("INSERT INTO PROCESSED_DATA_POINT 
+            (UploadID, SourceTypeID, MetricTypeID, DataDate, Value, PeriodType) 
+            VALUES (?, ?, ?, ?, ?, ?)");
+        
+        if (!$stmt) {
+            error_log("Prepare error: " . $conn->error);
+            return false;
+        }
+        
+        $stmt->bind_param("iiisss", 
+            $uploadId,
+            $sourceTypeId,
+            $metricTypeId,
+            $dataDate,
+            $value,
+            $periodType
+        );
+        
+        $result = $stmt->execute();
+        if (!$result) {
+            error_log("Execute error: " . $stmt->error);
+        }
+        return $result;
+    } catch (Exception $e) {
+        error_log("Exception in insertDataPoint: " . $e->getMessage());
         return false;
     }
 }
