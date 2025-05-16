@@ -2,10 +2,7 @@
 require_once 'config.php';
 include 'functions.php';
 
-// Get key metrics
 $metrics = getKeyMetrics($conn);
-
-// Get traffic over time data
 $trafficData = getTrafficOverTime($conn, 'day');
 ?>
 
@@ -16,11 +13,56 @@ $trafficData = getTrafficOverTime($conn, 'day');
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Overview - Web Traffic Analysis Dashboard</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    .export-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .export-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .export-btn.csv {
+      background-color: #4CAF50;
+      color: white;
+    }
+    
+    .export-btn.pdf {
+      background-color: #f44336;
+      color: white;
+    }
+    
+    .export-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .export-btn:active {
+      transform: translateY(0);
+    }
+    
+    .export-btn .icon {
+      font-size: 1.2rem;
+    }
+  </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-  <div class="container">
+  <div class="container" id="dashboard">
     <header>
       <h1>Web Traffic Analysis Dashboard</h1>
       <nav>
@@ -35,8 +77,18 @@ $trafficData = getTrafficOverTime($conn, 'day');
 
     <main>
       <h2>Overview Dashboard</h2>
+      <div class="export-controls">
+        <button class="export-btn csv" onclick="exportToCSV()">
+          <span class="icon">📊</span>
+          <span class="text">Export to CSV</span>
+        </button>
+        <button class="export-btn pdf" onclick="exportToPDF()">
+          <span class="icon">📄</span>
+          <span class="text">Export to PDF</span>
+        </button>
+      </div>
 
-      <section class="metrics-grid">
+      <section class="metrics-grid" id="metricsSection">
         <div class="metric-card">
           <h3>Total Page Views</h3>
           <p class="metric-value"><?php echo number_format($metrics['total_page_views']); ?></p>
@@ -55,7 +107,7 @@ $trafficData = getTrafficOverTime($conn, 'day');
         </div>
       </section>
 
-      <section class="chart-section">
+      <section class="chart-section" id="chartSection">
         <h3>Website Traffic Over Time</h3>
         <div class="chart-container">
           <canvas id="trafficChart"></canvas>
@@ -86,7 +138,6 @@ $trafficData = getTrafficOverTime($conn, 'day');
 
   <script>
     const trafficData = <?php echo json_encode($trafficData); ?>;
-
     const labels = trafficData.map(item => item.time_period);
     const pageViewsData = trafficData.map(item => parseInt(item.page_views));
     const uniqueVisitorsData = trafficData.map(item => parseInt(item.unique_visitors));
@@ -143,7 +194,7 @@ $trafficData = getTrafficOverTime($conn, 'day');
             trafficChart.data.datasets[0].data = data.map(item => parseInt(item.page_views));
             trafficChart.data.datasets[1].data = data.map(item => parseInt(item.unique_visitors));
             trafficChart.update();
-            renderAnnotationsList(); // refresh annotations
+            renderAnnotationsList();
           });
 
         document.querySelectorAll('.chart-controls .btn').forEach(btn => btn.classList.remove('active'));
@@ -151,7 +202,7 @@ $trafficData = getTrafficOverTime($conn, 'day');
       });
     });
 
-    // ========== Annotations Logic ========== //
+    // ========== Annotations Logic ==========
     function getAnnotations() {
       return JSON.parse(localStorage.getItem('annotations') || '[]');
     }
@@ -178,7 +229,6 @@ $trafficData = getTrafficOverTime($conn, 'day');
         list.appendChild(div);
       });
 
-      // Add annotations to the chart
       trafficChart.options.plugins.annotation.annotations = {};
       annotations.forEach((item, i) => {
         trafficChart.options.plugins.annotation.annotations['line' + i] = {
@@ -231,8 +281,38 @@ $trafficData = getTrafficOverTime($conn, 'day');
       resetForm();
     });
 
-    // Initialize annotations on load
     renderAnnotationsList();
+
+    // ========== Export Functions ==========
+
+    function exportToCSV() {
+      let csv = 'Time Period,Page Views,Unique Visitors\n';
+      trafficData.forEach(row => {
+        csv += `${row.time_period},${row.page_views},${row.unique_visitors}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('hidden', '');
+      a.setAttribute('href', url);
+      a.setAttribute('download', 'traffic_data.csv');
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function exportToPDF() {
+      html2canvas(document.getElementById('dashboard')).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save('dashboard.pdf');
+      });
+    }
   </script>
 </body>
 </html>
