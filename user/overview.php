@@ -1,6 +1,6 @@
 <?php
-require_once 'config.php';
-include 'functions.php';
+require_once '../config.php';
+include '../functions.php';
 
 $metrics = getKeyMetrics($conn);
 $trafficData = getTrafficOverTime($conn, 'day');
@@ -12,7 +12,7 @@ $trafficData = getTrafficOverTime($conn, 'day');
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Overview - Web Traffic Analysis Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="../styles.css" />
   <style>
     .export-controls {
       display: flex;

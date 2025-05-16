@@ -1,6 +1,6 @@
 <?php
-require_once 'config.php';
-include 'functions.php';
+require_once '../config.php';
+include '../functions.php';
 
 // Set header to return JSON response
 header('Content-Type: application/json');

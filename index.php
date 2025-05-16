@@ -1,12 +1,6 @@
 <?php
-require_once 'config.php';
-include 'functions.php';
-
-// Handle CSV upload
-$uploadMessage = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
-    $uploadMessage = handleCsvUpload($conn, $_FILES['csvFile']);
-}
+// filepath: c:\xampp\htdocs\trafanalyz\index.php
+session_start();
 ?>
 
 <!DOCTYPE html>
@@ -14,121 +8,288 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web Traffic Analysis Dashboard</title>
+    <title>TrafAnalyz - Web Traffic Analysis Dashboard</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="scripts.js"></script>
-
+    <style>
+        /* Hero Section Styles */
+        .hero {
+            background: linear-gradient(135deg, #4a6baf 0%, #1e3c72 100%);
+            color: white;
+            padding: 5rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url('images/loginbg.png');
+            background-size: cover;
+            background-position: center;
+            opacity: 0.15;
+            z-index: 0;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .cta-button {
+            padding: 0.8rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 30px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .login-btn {
+            background-color: white;
+            color: #1e3c72;
+            border: 2px solid white;
+        }
+        
+        .login-btn:hover {
+            background-color: transparent;
+            color: white;
+        }
+        
+        .register-btn {
+            background-color: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+        
+        .register-btn:hover {
+            background-color: white;
+            color: #1e3c72;
+        }
+        
+        /* Features Section */
+        .features {
+            padding: 4rem 2rem;
+            background-color: #f8f9fa;
+        }
+        
+        .features h2 {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: #333;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-card h3 {
+            color: #1e3c72;
+            margin-bottom: 1rem;
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #4a6baf;
+        }
+        
+        /* Navigation */
+        header {
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: #1e3c72;
+            text-decoration: none;
+        }
+        
+        .logo-icon {
+            width: 30px;
+            height: 30px;
+            background-color: #4a6baf;
+            border-radius: 6px;
+            margin-right: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        nav ul {
+            display: flex;
+            gap: 1.5rem;
+            list-style: none;
+        }
+        
+        nav a {
+            color: #333;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        nav a:hover {
+            color: #4a6baf;
+        }
+        
+        /* Footer */
+        footer {
+            background-color: #1e3c72;
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        
+        .footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .cta-button {
+                width: 100%;
+                max-width: 300px;
+                text-align: center;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Web Traffic Analysis Dashboard</h1>
-            <nav>
-                <ul>
-                    <li><a href="index.php" class="active">Home</a></li>
-                    <li><a href="overview.php">Overview</a></li>
-                    <li><a href="traffic_sources.php">Traffic Sources</a></li>
-                    <li><a href="pages.php">Pages</a></li>
-                </ul>
-            </nav>
-        </header>
-        
-        <main>
-        <section class="welcome-section">
-            <h2>Welcome to TrafAnalyz</h2>
-            <p>Your one-stop solution for analyzing web traffic data. Upload your data and start exploring!</p>
-        <section class="upload-section">
-            <h2>Upload Traffic Data</h2>
-            <?php if (isset($uploadMessage['type']) && $uploadMessage['type'] === 'error' && 
-                strpos($uploadMessage['message'], 'Data validation errors') !== false): ?>
-                <h3>Data Validation Errors Found</h3>
-                
-                <?php 
-                // Extract the actual error details
-                $errorMessage = $uploadMessage['message'];
-                
-                // Remove the prefix "Data validation errors found: " if it exists
-                $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
-                
-                // Remove the "Please correct these issues and upload again" part
-                $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
-                
-                // Split by semicolons
-                $errorList = explode(';', $errorMessage);
-                ?>
-                
-                <div class="error-container">
-                    <p class="error-summary">Found <?php echo count($errorList); ?> validation errors in your CSV file:</p>
-                    <ul class="error-list">
-                        <?php foreach($errorList as $error): ?>
-                            <?php $error = trim($error); ?>
-                            <?php if(!empty($error)): ?>
-                                <li><?php echo $error; ?></li>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-                
-                <div class="validation-help">
-                    <h4>Common Validation Issues:</h4>
-                    <ul>
-                        <li>Integer fields: Use only whole numbers (e.g., "123" not "123a")</li>
-                        <li>Float fields: Use decimal numbers (e.g., "12.34" not "12:34" or "12.34.5")</li>
-                        <li>Time fields: Use proper time format (e.g., "12:34" or "1:23:45")</li>
-                        <li>Percentage fields: Use decimal numbers (e.g., "0.25" or "25%")</li>
-                    </ul>
-                </div>
-                <p>Please correct these issues and upload again.</p>
-            <?php else: ?>
-                <?php echo isset($uploadMessage['message']) ? $uploadMessage['message'] : $uploadMessage; ?>
-            <?php endif; ?>
-            <p>Upload your CSV file containing web traffic data. 
-                <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
-            </p>
-            <form action="" method="post" enctype="multipart/form-data" id="uploadForm">
-                <div class="form-group">
-                    <label for="csvFile">Select CSV File:</label>
-                    <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
-                </div>
-                <div class="upload-progress" style="display: none;">
-                    <div class="progress-bar"></div>
-                    <span class="progress-text">Uploading... 0%</span>
-                </div>
-                <button type="submit" class="btn" id="uploadBtn">Upload Data</button>
-            </form>
-            <div class="sample-data">
-                <p>New to TrafAnalyz? Try with our sample data:</p>
-                <a href="?load_sample=1" class="btn btn-secondary">Load Sample Data</a>
+    <header>
+        <a href="index.php" class="logo">
+            <div class="logo-icon">T</div>
+            TrafAnalyz
+        </a>
+        <nav>
+            <ul>
+                <li><a href="login.php">Login</a></li>
+                <li><a href="register.php">Register</a></li>
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <?php if ($_SESSION['role'] === 'Admin'): ?>
+                        <li><a href="admin/index.php">Admin Dashboard</a></li>
+                    <?php else: ?>
+                        <li><a href="user/index.php">Dashboard</a></li>
+                    <?php endif; ?>
+                    <li><a href="logout.php">Logout</a></li>
+                <?php endif; ?>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Analyze Your Web Traffic with Ease</h1>
+            <p>TrafAnalyz provides powerful web analytics tools to help you understand your visitors, their behavior, and optimize your website performance.</p>
+            <div class="cta-buttons">
+                <a href="login.php" class="cta-button login-btn">Login</a>
+                <a href="register.php" class="cta-button register-btn">Create Account</a>
             </div>
-        </section>
-            
-            <section class="dashboard-links">
-                <h2>Dashboard Navigation</h2>
-                <div class="dashboard-cards">
-                    <div class="card">
-                        <h3>Overview</h3>
-                        <p>View key metrics and website traffic over time.</p>
-                        <a href="overview.php" class="btn">Go to Overview</a>
-                    </div>
-                    <div class="card">
-                        <h3>Traffic Sources</h3>
-                        <p>Analyze where your website traffic is coming from.</p>
-                        <a href="traffic_sources.php" class="btn">Go to Traffic Sources</a>
-                    </div>
-                    <div class="card">
-                        <h3>Pages</h3>
-                        <p>Discover your most visited webpages.</p>
-                        <a href="pages.php" class="btn">Go to Pages</a>
-                    </div>
-                </div>
-            </section>
-        </main>
-        
-        <footer>
-            <p>&copy; <?php echo date('Y'); ?> Web Traffic Analysis Dashboard</p>
-        </footer>
-    </div>
+        </div>
+    </section>
+
+    <section class="features">
+        <h2>Why Choose TrafAnalyz?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Interactive Charts</h3>
+                <p>Visualize your traffic data with beautiful, interactive charts that help you identify trends and patterns.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔄</div>
+                <h3>Comparative Analysis</h3>
+                <p>Compare traffic data from different time periods to better understand your website's growth and performance.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3>Source Tracking</h3>
+                <p>Discover where your visitors are coming from and which marketing channels are most effective.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📝</div>
+                <h3>Annotation Feature</h3>
+                <p>Add annotations to your traffic charts to mark important events and track their impact on your metrics.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💾</div>
+                <h3>CSV Integration</h3>
+                <p>Easily import your Google Analytics data via CSV files for quick and seamless analysis.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⬇️</div>
+                <h3>Export Tools</h3>
+                <p>Export your analytics data and visualizations in various formats for reporting and presentation.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <p>&copy; <?php echo date('Y'); ?> TrafAnalyz. All rights reserved.</p>
+            <p>A complementary web traffic analysis dashboard for modern websites.</p>
+        </div>
+    </footer>
 </body>
 </html>

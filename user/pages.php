@@ -1,6 +1,6 @@
 <?php
-require_once 'config.php';
-include 'functions.php';
+require_once '../config.php';
+include '../functions.php';
 
 // Get top pages data
 $pagesData = getTopVisitedPages($conn, 10);
@@ -12,7 +12,7 @@ $pagesData = getTopVisitedPages($conn, 10);
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Top Pages - Web Traffic Analysis Dashboard</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="../styles.css" />
   <style>
     .export-controls {
       display: flex;

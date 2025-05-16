@@ -1,6 +1,6 @@
 <?php
-require_once 'config.php';
-include 'functions.php';
+require_once '../config.php';
+include '../functions.php';
 
 // Check if user is logged in and has admin privileges
 session_start();
@@ -16,7 +16,7 @@ $pageTitle = "User Management";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $pageTitle; ?> - TrafAnalyz Admin</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../styles.css">
     <style>
         .user-management-container {
             margin: 20px 0;

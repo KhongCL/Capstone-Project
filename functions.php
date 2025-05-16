@@ -441,7 +441,7 @@ function saveTransformedData($conn, $data) {
         $conn->begin_transaction();
         
         // For testing/debugging, use a default user ID (1 for admin)
-        $userId = 1;
+        $userId = $_SESSION['user_id'] ?? 1;
         
         // Get CSV metadata from session if available
         // Only start session if one doesn't exist

@@ -1,7 +1,7 @@
 <?php
-require_once 'config.php';
-require_once 'classes/CsvProcessor.php';
-include 'functions.php';
+require_once '../config.php';
+require_once '../classes/CsvProcessor.php';
+include '../functions.php';
 
 session_start();
 
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Map CSV Columns - Web Traffic Analysis Dashboard</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../styles.css">
 </head>
 <body>
     <div class="container">

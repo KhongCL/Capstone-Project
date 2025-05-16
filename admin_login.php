@@ -1,6 +1,13 @@
 <?php
+// filepath: c:\xampp\htdocs\trafanalyz\admin_login.php
 session_start();
 require_once 'config.php';
+
+// Verify admin key for secure access
+$admin_key = "trafanalyz";
+if (!isset($_GET['key']) || $_GET['key'] !== $admin_key) {
+    die("Access denied. Admin area requires proper authorization.");
+}
 
 $errors = [];
 
@@ -17,8 +24,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     if (empty($errors)) {
-        // Check user credentials
-        $sql = "SELECT UserID, Username, PasswordHash, Role FROM USER WHERE Username = ?";
+        // Check user credentials - ONLY for Admin role
+        $sql = "SELECT UserID, Username, PasswordHash, Role FROM USER WHERE Username = ? AND Role = 'Admin'";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("s", $username);
         $stmt->execute();
@@ -34,23 +41,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 
                 // Set a flag to show success popup
                 $_SESSION['login_success'] = true;
-
-                // Choose redirect URL based on user role
-                if ($user['Role'] === 'Admin') {
-                    $redirectUrl = "admin/index.php";
-                } else {
-                    $redirectUrl = "user/index.php";
-                }
-
-                // Redirect after showing popup
-                header("refresh:2;url=" . $redirectUrl);
                 
-                // Don't exit here - let the page render
+                // Redirect to admin dashboard
+                header("refresh:2;url=admin/index.php");
             } else {
-                $errors[] = "Invalid username or password.";
+                $errors[] = "Invalid admin credentials.";
             }
         } else {
-            $errors[] = "Invalid username or password.";
+            $errors[] = "Invalid admin credentials or you don't have admin privileges.";
         }
     }
 }
@@ -61,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrafAnalyz Login</title>
+    <title>TrafAnalyz Admin Login</title>
 
     <script>
         // Define functions first
@@ -92,7 +90,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
 
-        // Wait for DOM to be ready
         document.addEventListener('DOMContentLoaded', function() {
             // Remove error when user starts typing
             document.querySelectorAll('input').forEach(input => {
@@ -104,8 +101,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     }
                 });
             });
-            
         });
+        
         <?php if (isset($_SESSION['login_success']) && $_SESSION['login_success']): ?>
         document.addEventListener('DOMContentLoaded', function() {
             const overlay = document.getElementById('overlay');
@@ -130,7 +127,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         body {
-            background-color: #f0f0f0;
+            background-color: #1e293b;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -171,7 +168,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .logo-icon {
             width: 20px;
             height: 20px;
-            background-color: #007bff;
+            background-color: #9333ea;
             border-radius: 4px;
             margin-right: 10px;
         }
@@ -179,6 +176,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .logo-text {
             color: #333;
             font-weight: 600;
+        }
+
+        .admin-badge {
+            display: inline-block;
+            background-color: #9333ea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-left: 10px;
         }
 
         h1 {
@@ -211,7 +218,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         input[type="text"]:focus,
         input[type="password"]:focus {
-            border-color: #007bff;
+            border-color: #9333ea;
         }
 
         .remember-forgot {
@@ -228,7 +235,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         .remember input {
             margin-right: 8px;
-            accent-color: #007bff;
+            accent-color: #9333ea;
         }
 
         .password-toggle {
@@ -242,7 +249,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .sign-in-btn {
-            background-color: #007bff;
+            background-color: #9333ea;
             color: white;
             border: none;
             border-radius: 8px;
@@ -255,7 +262,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .sign-in-btn:hover {
-            background-color: #0056b3;
+            background-color: #7e22ce;
         }
 
         .sign-up {
@@ -264,7 +271,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .sign-up a {
-            color: #007bff;
+            color: #9333ea;
             text-decoration: none;
             font-weight: 600;
         }
@@ -389,22 +396,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <div class="login-form">
             <div class="logo">
                 <div class="logo-icon"></div>
-                <div class="logo-text">TrafAnalyz</div>
+                <div class="logo-text">TrafAnalyz <span class="admin-badge">Admin</span></div>
             </div>
 
-            <h1>Hey!<br>Welcome Back</h1>
-            <p class="welcome-text">Welcome back to TrafAnalyz the Complementary Web Analytics Dashboard</p>
+            <h1>Admin Login</h1>
+            <p class="welcome-text">Access the administrative dashboard to manage users and system settings</p>
 
-            <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
-
+            <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>?key=<?php echo $admin_key; ?>">
                 <?php if (!empty($errors)): ?>
                     <script>
                         // Store error data to be processed after DOM is loaded
                         var serverErrors = <?php echo json_encode($errors); ?>;
                         
                         document.addEventListener('DOMContentLoaded', function() {
-                            console.log("Processing login errors:", serverErrors);
-                            
                             // Process each error and show the error bubbles
                             serverErrors.forEach(function(error) {
                                 if (error.indexOf("Username") !== -1) {
@@ -420,7 +424,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </script>
                 <?php endif; ?>
                 <div class="form-group">
-                    <input type="text" id="username" name="username" placeholder="Username" required>
+                    <input type="text" id="username" name="username" placeholder="Admin Username" required>
                 </div>
                 <div class="form-group">
                     <input type="password" id="passwordInput" name="password" placeholder="Password" required>
@@ -434,21 +438,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </label>
                 </div>
 
-                <button type="submit" class="sign-in-btn">Sign In</button>
+                <button type="submit" class="sign-in-btn">Administrator Sign In</button>
             </form>
 
             <div class="sign-up">
-                Don't have an account? <a href="register.php">Sign Up</a>
+                Need an admin account? <a href="admin_register.php?key=<?php echo $admin_key; ?>">Register Here</a>
+            </div>
+            <div class="sign-up" style="margin-top: 10px;">
+                <a href="login.php">Go to User Login</a>
             </div>
         </div>
         <div class="login-image"></div>
     </div>
 
     <div class="overlay" id="overlay"></div>
-        <div class="success-popup" id="successPopup">
-            <img src="images/success.png" alt="Success">
-            <h2>Login Successful!</h2>
+    <div class="success-popup" id="successPopup">
+        <img src="images/success.png" alt="Success">
+        <h2>Admin Login Successful!</h2>
     </div>
-
 </body>
 </html>
