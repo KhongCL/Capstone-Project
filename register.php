@@ -400,26 +400,45 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <h1>Create an Account</h1>
             <p class="subtitle">Join now to analyse your web traffic data 📊</p>
 
+            
+
             <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
-            <?php
-            if (!empty($errors)) {
-                echo '<script>';
-                foreach ($errors as $error) {
-                    if (strpos($error, "Username") !== false) {
-                        echo 'showError("username", "' . addslashes($error) . '");';
-                    } else if (strpos($error, "Email") !== false) {
-                        echo 'showError("email", "' . addslashes($error) . '");';
-                    } else if (strpos($error, "Password") !== false) {
-                        if (strpos($error, "match") !== false) {
-                            echo 'showError("confirm-password", "' . addslashes($error) . '");';
-                        } else {
-                            echo 'showError("password", "' . addslashes($error) . '");';
-                        }
-                    }
-                }
-                echo '</script>';
-            }
-            ?>
+
+            <?php if (!empty($errors)): ?>
+                <script>
+                    // Store error data to be processed after DOM is loaded
+                    var serverErrors = <?php echo json_encode($errors); ?>;
+                    
+                    document.addEventListener('DOMContentLoaded', function() {
+                        console.log("Processing server-side errors:", serverErrors);
+                        
+                        // Now process each error and show the error bubbles
+                        serverErrors.forEach(function(error) {
+                            // Check for username errors (both format and already exists)
+                            if (error.indexOf("Username") !== -1) {
+                                showError("username", error);
+                            } 
+                            // Check for email errors (both format and already exists)
+                            else if (error.indexOf("Email") !== -1) {
+                                showError("email", error);
+                            } 
+                            // Check for password errors with special handling for match errors
+                            else if (error.indexOf("Password") !== -1) {
+                                if (error.indexOf("match") !== -1) {
+                                    showError("confirm-password", error);
+                                } else {
+                                    showError("password", error);
+                                }
+                            }
+                            // Handle any other errors - display on username field as fallback
+                            else {
+                                showError("username", error);
+                                console.warn("Unhandled error:", error);
+                            }
+                        });
+                    });
+                </script>
+            <?php endif; ?>
                 <div class="form-group">
                     <label for="username">Username</label>
                     <input type="text" id="username" name="username" placeholder="Enter your username" required>
@@ -444,6 +463,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <input type="password" id="confirm-password" name="confirm-password" placeholder="Confirm your password" required>
                         <button type="button" class="toggle-password">👁️</button>
                     </div>
+                </div>
+
+                <div class="form-group terms-checkbox">
+                    <label>
+                        <input type="checkbox" id="terms" name="terms" required>
+                        I agree to the <a href="#" target="_blank">Terms and Conditions</a>
+                    </label>
                 </div>
 
                 <button type="submit" class="register-btn">Register</button>
@@ -471,6 +497,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         // Show error bubble for a specific input
         function showError(inputId, message) {
             const input = document.getElementById(inputId);
+            if (!input) {
+                console.error("Cannot find element with ID:", inputId);
+                return;
+            }
+            
             const errorBubble = document.createElement('div');
             errorBubble.className = 'error-bubble';
             errorBubble.textContent = message;
@@ -548,6 +579,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <?php if (isset($_SESSION['register_success']) && $_SESSION['register_success']): ?>
             document.addEventListener('DOMContentLoaded', function() {
+                console.log("DOM loaded, ready to display errors");
                 const overlay = document.getElementById('overlay');
                 const popup = document.getElementById('successPopup');
                 
@@ -568,6 +600,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <br>Redirecting to login page...</h2>
             </h2>
         </div>
-</body>
 </body>
 </html>

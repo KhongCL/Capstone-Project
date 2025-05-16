@@ -98,20 +98,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 });
             });
             
-            <?php
-            if (!empty($errors)) {
-                foreach ($errors as $error) {
-                    if (strpos($error, "Username") !== false) {
-                        echo 'showError("username", "' . addslashes($error) . '");';
-                    } else if (strpos($error, "Password") !== false && strpos($error, "required") !== false) {
-                        echo 'showError("passwordInput", "' . addslashes($error) . '");';
-                    } else {
-                        // For invalid credentials message
-                        echo 'showError("username", "' . addslashes($error) . '");';
-                    }
-                }
-            }
-            ?>
         });
         <?php if (isset($_SESSION['login_success']) && $_SESSION['login_success']): ?>
         document.addEventListener('DOMContentLoaded', function() {
@@ -403,22 +389,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <p class="welcome-text">Welcome back to TrafAnalyz the Complementary Web Analytics Dashboard</p>
 
             <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
-                <?php
-                if (!empty($errors)) {
-                    echo '<script>';
-                    foreach ($errors as $error) {
-                        if (strpos($error, "Username") !== false) {
-                            echo 'showError("username", "' . addslashes($error) . '");';
-                        } else if (strpos($error, "Password") !== false && strpos($error, "required") !== false) {
-                            echo 'showError("passwordInput", "' . addslashes($error) . '");';
-                        } else {
-                            // For invalid credentials message
-                            echo 'showError("username", "' . addslashes($error) . '");';
-                        }
-                    }
-                    echo '</script>';
-                }
-                ?>
+
+                <?php if (!empty($errors)): ?>
+                    <script>
+                        // Store error data to be processed after DOM is loaded
+                        var serverErrors = <?php echo json_encode($errors); ?>;
+                        
+                        document.addEventListener('DOMContentLoaded', function() {
+                            console.log("Processing login errors:", serverErrors);
+                            
+                            // Process each error and show the error bubbles
+                            serverErrors.forEach(function(error) {
+                                if (error.indexOf("Username") !== -1) {
+                                    showError("username", error);
+                                } else if (error.indexOf("Password") !== -1 && error.indexOf("required") !== -1) {
+                                    showError("passwordInput", error);
+                                } else {
+                                    // For invalid credentials message
+                                    showError("username", error);
+                                }
+                            });
+                        });
+                    </script>
+                <?php endif; ?>
                 <div class="form-group">
                     <input type="text" id="username" name="username" placeholder="Username" required>
                 </div>
@@ -429,7 +422,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 <div class="remember-forgot">
                     <label class="remember">
-                        <input type="checkbox">
+                        <input type="checkbox" name="remember">
                         Remember me
                     </label>
                 </div>
