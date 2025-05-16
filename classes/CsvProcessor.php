@@ -362,10 +362,15 @@ class CsvProcessor {
     /**
      * Transform data based on mapping
      */
-    // Update transformData method
-    public function transformData($filePath, $columnMapping) {
+    public function transformData($filePath, $columnMapping, $format = null) {
         $this->columnMap = $columnMapping;
+        if ($format) {
+            $this->detectedFormat = $format;
+        }
+    
+        error_log("Transform data using format: " . ($this->detectedFormat ?? "No format detected"));
         $transformed = [];
+        $validationErrors = [];
         error_log("Starting transformData with mapping: " . json_encode($columnMapping));
         
         $isGa4Format = false;
@@ -404,23 +409,46 @@ class CsvProcessor {
                 $header = str_getcsv($headerLine);
                 $headerIndexes = array_flip($header);
                 error_log("Header indexes: " . json_encode($headerIndexes));
+
+                $validRows = 0;
+                $rowNumber = 1;
                 
                 // Process data rows
                 while (($data = fgetcsv($handle)) !== FALSE) {
-                    if (count($data) < count($header)) continue; // Skip invalid rows
+                    $rowNumber++;
+                    
+                    if (count($data) < count($header)) {
+                        error_log("Row $rowNumber has fewer columns than the header. Skipping.");
+                        $validationErrors[] = "Row $rowNumber has fewer columns than expected - please check for missing values";
+                        continue; // Skip invalid rows
+                    }
                     
                     $row = [];
+                    $rowHasError = false;
                     
                     // Map each column according to our defined structure
                     foreach ($this->columnMap as $sourceCol => $targetCol) {
                         if (isset($headerIndexes[$sourceCol]) && isset($data[$headerIndexes[$sourceCol]])) {
-                            $value = $data[$headerIndexes[$sourceCol]];
-                            $row[$targetCol] = $this->formatValue($value, $sourceCol);
+                            try {
+                                $value = $data[$headerIndexes[$sourceCol]];
+                                $row[$targetCol] = $this->formatValue($value, $sourceCol);
+                            } catch (Exception $e) {
+                                // Log the error with more context about which row had the issue
+                                error_log("Data validation error at row $rowNumber: " . $e->getMessage());
+                                
+                                // Create a more user-friendly error message with row information
+                                $errorWithRow = "Row " . $rowNumber . " (" . $data[$headerIndexes['Session primary channel group (Default channel group)']] . "): " . $e->getMessage();
+                                $validationErrors[] = $errorWithRow;
+                                
+                                $rowHasError = true;
+                            }
                         }
                     }
                     
-                    if (!empty($row)) {
+                    // Only add row if it has no validation errors
+                    if (!$rowHasError && !empty($row)) {
                         $transformed[] = $row;
+                        $validRows++;
                     }
                 }
                 fclose($handle);
@@ -434,12 +462,19 @@ class CsvProcessor {
                 while (($data = fgetcsv($handle)) !== FALSE) {
                     $row = [];
                     
-                    foreach ($this->columnMap as $sourceCol => $targetCol) {
-                        if (isset($headerIndexes[$sourceCol]) && isset($data[$headerIndexes[$sourceCol]])) {
+                foreach ($this->columnMap as $sourceCol => $targetCol) {
+                    if (isset($headerIndexes[$sourceCol]) && isset($data[$headerIndexes[$sourceCol]])) {
+                        try {
                             $value = $data[$headerIndexes[$sourceCol]];
                             $row[$targetCol] = $this->formatValue($value, $sourceCol);
+                        } catch (Exception $e) {
+                            // Log the error with more context
+                            error_log("Data validation error: " . $e->getMessage() . " (Row: " . json_encode($data) . ")");
+                            // Add to validation errors collection
+                            $validationErrors[] = $e->getMessage();
                         }
                     }
+                }
                     
                     if (!empty($row)) {
                         $transformed[] = $row;
@@ -460,49 +495,132 @@ class CsvProcessor {
         if (count($transformed) > 0) {
             error_log("First transformed row: " . json_encode($transformed[0]));
         }
+
+        error_log("Validated $rowNumber rows, found " . count($validationErrors) . " errors, $validRows rows valid");
+
+        if (!empty($validationErrors)) {
+        error_log("Validation errors found: " . implode("; ", $validationErrors));
         
-        return $transformed;
+        // Store error message in session with all errors, not just first 3
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        $_SESSION['upload_message'] = [
+            'type' => 'error',
+            'message' => "Data validation errors found: " . implode("; ", $validationErrors) . ". Please correct these issues and upload again."
+        ];
+        
+        // Clean up the file when there are validation errors
+        if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
+            unlink($_SESSION['uploaded_csv']);
+            unset($_SESSION['uploaded_csv']);
+        }
+        
+        // Return empty array to indicate no valid data
+        return [];
+    } else {
+            return $transformed;
+        }
+
     }
     
     /**
      * Format value based on data type
      */
     private function formatValue($value, $column) {
-        if (!$this->detectedFormat || !isset($this->mappings[$this->detectedFormat]['data_types'][$column])) {
-            return $value; // Return as is if type unknown
+        error_log("Validating value: '$value' for column: '$column'");
+            
+        if (!$this->detectedFormat) {
+            error_log("No detected format set for validation");
+            return $value;
+        }
+        
+        if (!isset($this->mappings[$this->detectedFormat]['data_types'][$column])) {
+            error_log("No data type defined for column '$column' in format: " . $this->detectedFormat);
+            return $value;
         }
         
         $type = $this->mappings[$this->detectedFormat]['data_types'][$column];
+        error_log("Validating as type: $type");
+        
+        // Skip validation for empty values
+        if (trim($value) === '') {
+            error_log("Empty value, returning default for type $type");
+            return ($type === 'integer' || $type === 'float') ? 0 : $value;
+        }
         
         switch ($type) {
             case 'integer':
+                // Stricter integer validation - only digits and commas as thousand separators
+                if (!preg_match('/^[0-9,]+$/', $value)) {
+                    throw new Exception("Invalid integer value: '$value' for column '$column' - Please use only digits");
+                }
                 return (int) preg_replace('/[^0-9]/', '', $value);
                 
             case 'float':
-                return (float) preg_replace('/[^0-9.]/', '', $value);
+                // Improved float validation - no multiple decimal points, properly formatted
+                if (!preg_match('/^-?\d+(\.\d+)?$/', $value)) {
+                    throw new Exception("Invalid float value: '$value' for column '$column' - Please use numbers with a single decimal point");
+                }
+                
+                // Add additional check for negative values if they shouldn't be allowed
+                if (strpos($value, '-') === 0 && !in_array($column, ['Events per session'])) {
+                    throw new Exception("Negative values are not allowed for column '$column'");
+                }
+                
+                return (float) $value;
                 
             case 'percentage':
-                return (float) preg_replace('/[^0-9.]/', '', $value) / 100;
+                // Stricter percentage validation
+                if (strpos($value, '%') !== false) {
+                    // If it has a % sign, validate format and convert
+                    if (!preg_match('/^[0-9,.]+%$/', $value)) {
+                        throw new Exception("Invalid percentage value: '$value' for column '$column' - Format should be like '25%'");
+                    }
+                    return (float) preg_replace('/[^0-9.]/', '', $value) / 100;
+                } else {
+                    // Otherwise treat as decimal (between 0-1)
+                    if (!preg_match('/^(0|0\.\d+|1(\.0+)?)$/', $value)) {
+                        throw new Exception("Invalid percentage value: '$value' for column '$column' - Value should be between 0-1 or include % sign");
+                    }
+                    return (float) $value;
+                }
                 
             case 'time':
-                // Convert various time formats to seconds
+                // Robust time format validation
                 if (strpos($value, ':') !== false) {
                     // Format: MM:SS or HH:MM:SS
                     $parts = array_map('intval', explode(':', $value));
                     if (count($parts) == 2) {
+                        // Validate MM:SS format
+                        if ($parts[0] < 0 || $parts[1] < 0 || $parts[1] > 59) {
+                            throw new Exception("Invalid time value: '$value' for column '$column' - Minutes:Seconds format required with seconds 0-59");
+                        }
                         return $parts[0] * 60 + $parts[1];
                     } elseif (count($parts) == 3) {
+                        // Validate HH:MM:SS format
+                        if ($parts[0] < 0 || $parts[1] < 0 || $parts[2] < 0 || 
+                            $parts[1] > 59 || $parts[2] > 59) {
+                            throw new Exception("Invalid time value: '$value' for column '$column' - Hours:Minutes:Seconds format required with minutes and seconds 0-59");
+                        }
                         return $parts[0] * 3600 + $parts[1] * 60 + $parts[2];
+                    } else {
+                        throw new Exception("Invalid time format: '$value' for column '$column' - Use MM:SS or HH:MM:SS format");
                     }
+                } elseif (!preg_match('/^\d+(\.\d+)?$/', $value)) {
+                    throw new Exception("Invalid time value: '$value' for column '$column' - Use either seconds (numeric) or MM:SS format");
                 }
-                return (int) $value;
+                return (float) $value;
+                
+            case 'text':
+                // Allow any text value
+                return $value;
                 
             default:
                 return $value;
         }
     }
-
-    // Add this method to the CsvProcessor class
 
 /**
  * Extract metadata from GA4 format CSV
@@ -550,8 +668,8 @@ public function extractGa4Metadata($filePath) {
                 // Format GA4 date (YYYYMMDD) to MySQL date (YYYY-MM-DD)
                 if (strlen($dateStr) == 8) {
                     $metadata['start_date'] = substr($dateStr, 0, 4) . '-' . 
-                                             substr($dateStr, 4, 2) . '-' . 
-                                             substr($dateStr, 6, 2);
+                                            substr($dateStr, 4, 2) . '-' . 
+                                            substr($dateStr, 6, 2);
                     error_log("Found start date: " . $metadata['start_date']);
                 }
             }
@@ -561,8 +679,8 @@ public function extractGa4Metadata($filePath) {
                 // Format GA4 date (YYYYMMDD) to MySQL date (YYYY-MM-DD)
                 if (strlen($dateStr) == 8) {
                     $metadata['end_date'] = substr($dateStr, 0, 4) . '-' . 
-                                           substr($dateStr, 4, 2) . '-' . 
-                                           substr($dateStr, 6, 2);
+                                        substr($dateStr, 4, 2) . '-' . 
+                                        substr($dateStr, 6, 2);
                     error_log("Found end date: " . $metadata['end_date']);
                 }
             }

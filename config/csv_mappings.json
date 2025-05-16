@@ -17,13 +17,15 @@
             "Avg Session Duration": "avg_session_duration"
         },
         "data_types": {
-            "Source": "string",
-            "Medium": "string",
             "Sessions": "integer",
-            "Users": "integer",
-            "Pageviews": "integer",
-            "Bounce Rate": "percentage",
-            "Avg Session Duration": "time"
+            "Engaged sessions": "integer",
+            "Engagement rate": "float",
+            "Average engagement time per session": "float",
+            "Events per session": "float",
+            "Event count": "integer",
+            "Key events": "integer",
+            "Session key event rate": "percentage",
+            "Total revenue": "float"
         }
     },
     "matomo": {

@@ -293,6 +293,79 @@ footer {
     box-shadow: var(--shadow);
 }
 
+/* Enhanced error message styling */
+.message.error h3 {
+    margin-top: 0;
+    color: #721c24;
+}
+
+.message.error .error-list {
+    margin-bottom: 15px;
+    padding-left: 20px;
+}
+
+.message.error .error-list li {
+    margin-bottom: 8px;
+}
+
+.validation-help {
+    background-color: #f8f9fa;
+    border-left: 3px solid #6c757d;
+    padding: 10px 15px;
+    margin-top: 10px;
+    border-radius: 0 5px 5px 0;
+}
+
+.validation-help h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #495057;
+}
+
+.validation-help ul {
+    margin-bottom: 0;
+}
+
+/* Scrollable error list styling */
+.error-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #f8d7da;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    background-color: #fff8f8;
+}
+
+.error-summary {
+    font-weight: bold;
+    color: #721c24;
+    margin-bottom: 10px;
+}
+
+.error-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.error-list li {
+    margin-bottom: 8px;
+    color: #721c24;
+    line-height: 1.4;
+}
+
+.error-list li:hover {
+    background-color: #ffe6e6;
+}
+
+.validation-help {
+    background-color: #f8f9fa;
+    border-left: 3px solid #6c757d;
+    padding: 10px 15px;
+    margin: 15px 0;
+    border-radius: 0 5px 5px 0;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .metrics-grid, .dashboard-cards {

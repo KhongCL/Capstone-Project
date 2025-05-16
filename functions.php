@@ -19,6 +19,14 @@ function handleCsvUpload($conn, $file) {
             'message' => "Invalid file type. Please upload a CSV file."
         ];
     }
+
+    $maxFileSize = 5 * 1024 * 1024; // 5MB in bytes
+    if ($file['size'] > $maxFileSize) {
+        return [
+            'type' => 'error',
+            'message' => "File size exceeds the 5MB limit. Please upload a smaller file."
+        ];
+    }
     
     // Ensure config directory and mappings file exist
     if (!file_exists('config/csv_mappings.json')) {
@@ -83,7 +91,7 @@ function handleCsvUpload($conn, $file) {
         if ($result['status'] === 'success') {
             // If format was detected, transform and import the data
             error_log("Format detected: " . $result['format']);
-            $transformedData = $processor->transformData($filePath, $result['mapping']);
+            $transformedData = $processor->transformData($filePath, $result['mapping'], $result['format']);
             error_log("Transformed data count: " . count($transformedData));
             
             // Store metadata in session for later use during saving
@@ -409,6 +417,14 @@ function saveTransformedData($conn, $data) {
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
+
+        // Check if we already have validation errors in the session
+        if (isset($_SESSION['upload_message']) && $_SESSION['upload_message']['type'] === 'error' 
+            && strpos($_SESSION['upload_message']['message'], 'Data validation errors') !== false) {
+            // Keep the existing validation error message as it's more specific
+            return false;
+        }
+
         $_SESSION['upload_message'] = [
             'type' => 'warning',
             'message' => "CSV file has correct format but contains no data rows to import."

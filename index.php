@@ -36,12 +36,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
         </header>
         
         <main>
+        <section class="welcome-section">
+            <h2>Welcome to TrafAnalyz</h2>
+            <p>Your one-stop solution for analyzing web traffic data. Upload your data and start exploring!</p>
         <section class="upload-section">
             <h2>Upload Traffic Data</h2>
-            <?php if (!empty($uploadMessage)): ?>
-                <div class="message <?php echo isset($uploadMessage['type']) ? $uploadMessage['type'] : ''; ?>">
-                    <?php echo isset($uploadMessage['message']) ? $uploadMessage['message'] : $uploadMessage; ?>
+            <?php if (isset($uploadMessage['type']) && $uploadMessage['type'] === 'error' && 
+                strpos($uploadMessage['message'], 'Data validation errors') !== false): ?>
+                <h3>Data Validation Errors Found</h3>
+                
+                <?php 
+                // Extract the actual error details
+                $errorMessage = $uploadMessage['message'];
+                
+                // Remove the prefix "Data validation errors found: " if it exists
+                $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
+                
+                // Remove the "Please correct these issues and upload again" part
+                $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
+                
+                // Split by semicolons
+                $errorList = explode(';', $errorMessage);
+                ?>
+                
+                <div class="error-container">
+                    <p class="error-summary">Found <?php echo count($errorList); ?> validation errors in your CSV file:</p>
+                    <ul class="error-list">
+                        <?php foreach($errorList as $error): ?>
+                            <?php $error = trim($error); ?>
+                            <?php if(!empty($error)): ?>
+                                <li><?php echo $error; ?></li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </ul>
                 </div>
+                
+                <div class="validation-help">
+                    <h4>Common Validation Issues:</h4>
+                    <ul>
+                        <li>Integer fields: Use only whole numbers (e.g., "123" not "123a")</li>
+                        <li>Float fields: Use decimal numbers (e.g., "12.34" not "12:34" or "12.34.5")</li>
+                        <li>Time fields: Use proper time format (e.g., "12:34" or "1:23:45")</li>
+                        <li>Percentage fields: Use decimal numbers (e.g., "0.25" or "25%")</li>
+                    </ul>
+                </div>
+                <p>Please correct these issues and upload again.</p>
+            <?php else: ?>
+                <?php echo isset($uploadMessage['message']) ? $uploadMessage['message'] : $uploadMessage; ?>
             <?php endif; ?>
             <p>Upload your CSV file containing web traffic data. 
                 <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
