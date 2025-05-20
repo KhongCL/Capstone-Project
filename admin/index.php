@@ -1,5 +1,6 @@
 <?php
-// filepath: c:\xampp\htdocs\Capstone-Project\admin\dashboard.php
+require_once '../auth/admin_auth.php'; // Admin Login Validation
+
 session_start();
 require_once '../config.php';
 
@@ -553,6 +554,16 @@ function getReportTypes($conn) {
             </section>
         </main>
 
+<<<<<<< HEAD
+=======
+        <!-- Add before the footer -->
+        <div style="text-align: center; margin: 20px 0;">
+            <form action="../logout.php" method="post" style="display: inline;">
+                <button type="submit" class="btn" style="background-color: #dc3545; color: white;">Logout</button>
+            </form>
+        </div>
+        
+>>>>>>> 28bebf81c88291931626c80fff02c99fe8ee1861
         <footer>
             <p>&copy; <?php echo date('Y'); ?> TrafAnalyz - Administrator Dashboard</p>
         </footer>

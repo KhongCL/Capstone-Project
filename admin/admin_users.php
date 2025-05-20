@@ -1,6 +1,7 @@
 <?php
-require_once '../config.php';
-require_once '../functions.php';
+require_once '../auth/admin_auth.php'; // Admin Login Validation
+require_once 'config.php';
+require_once 'functions.php';
 
 // Check if user is logged in as admin (implement proper authentication)
 session_start();

@@ -1,4 +1,5 @@
 <?php
+require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 require_once '../classes/CsvProcessor.php';
 

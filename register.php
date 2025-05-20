@@ -1,11 +1,12 @@
 <?php
 session_start();
+require_once 'auth/security.php';
 require_once 'config.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Get and sanitize form data
-    $username = trim($_POST['username']);
-    $email = trim($_POST['email']);
+    $username = sanitizeInput($_POST['username']);
+    $email = sanitizeInput($_POST['email']);
     $password = $_POST['password'];
     $confirm_password = $_POST['confirm-password'];
     $created_at = date('Y-m-d H:i:s');
