@@ -241,7 +241,6 @@ class CsvProcessor {
         ];
     }
     
-    
     /**
      * Detect the CSV format based on headers
      */
@@ -367,10 +366,12 @@ class CsvProcessor {
         if ($format) {
             $this->detectedFormat = $format;
         }
-    
+
         error_log("Transform data using format: " . ($this->detectedFormat ?? "No format detected"));
         $transformed = [];
         $validationErrors = [];
+        $validRows = 0; // Initialize $validRows here to avoid undefined variable
+        $rowNumber = 0; // Also initialize $rowNumber for consistent reporting
         error_log("Starting transformData with mapping: " . json_encode($columnMapping));
         
         $isGa4Format = false;
@@ -410,7 +411,6 @@ class CsvProcessor {
                 $headerIndexes = array_flip($header);
                 error_log("Header indexes: " . json_encode($headerIndexes));
 
-                $validRows = 0;
                 $rowNumber = 1;
                 
                 // Process data rows
@@ -425,23 +425,35 @@ class CsvProcessor {
                     
                     $row = [];
                     $rowHasError = false;
+                    $sourceName = $data[$headerIndexes['Session primary channel group (Default channel group)']] ?? 'Unknown';
                     
                     // Map each column according to our defined structure
                     foreach ($this->columnMap as $sourceCol => $targetCol) {
-                        if (isset($headerIndexes[$sourceCol]) && isset($data[$headerIndexes[$sourceCol]])) {
-                            try {
-                                $value = $data[$headerIndexes[$sourceCol]];
-                                $row[$targetCol] = $this->formatValue($value, $sourceCol);
-                            } catch (Exception $e) {
-                                // Log the error with more context about which row had the issue
-                                error_log("Data validation error at row $rowNumber: " . $e->getMessage());
-                                
-                                // Create a more user-friendly error message with row information
-                                $errorWithRow = "Row " . $rowNumber . " (" . $data[$headerIndexes['Session primary channel group (Default channel group)']] . "): " . $e->getMessage();
-                                $validationErrors[] = $errorWithRow;
-                                
-                                $rowHasError = true;
-                            }
+                        // Skip columns that don't exist in this CSV
+                        if (!isset($headerIndexes[$sourceCol])) {
+                            continue;
+                        }
+                        
+                        // Get the value from the data row
+                        $colIndex = $headerIndexes[$sourceCol];
+                        if (!isset($data[$colIndex])) {
+                            continue; // Skip if the cell doesn't exist
+                        }
+                        
+                        $value = $data[$colIndex];
+                        
+                        try {
+                            // Validate the value based on data type
+                            $row[$targetCol] = $this->formatValue($value, $sourceCol);
+                        } catch (Exception $e) {
+                            // Log the error with more context about which row had the issue
+                            error_log("Data validation error at row $rowNumber: " . $e->getMessage());
+                            
+                            // Create a more user-friendly error message with row information
+                            $errorWithRow = "Row " . $rowNumber . " ($sourceName): " . $e->getMessage();
+                            $validationErrors[] = $errorWithRow;
+                            
+                            $rowHasError = true;
                         }
                     }
                     
@@ -458,26 +470,49 @@ class CsvProcessor {
             if (($handle = fopen($filePath, "r")) !== FALSE) {
                 $header = fgetcsv($handle);
                 $headerIndexes = array_flip($header);
+                $rowNumber = 0;
                 
                 while (($data = fgetcsv($handle)) !== FALSE) {
+                    $rowNumber++;
                     $row = [];
+                    $rowHasError = false;
+                    $sourceName = isset($headerIndexes['Source']) && isset($data[$headerIndexes['Source']]) 
+                        ? $data[$headerIndexes['Source']] 
+                        : "Row $rowNumber";
                     
-                foreach ($this->columnMap as $sourceCol => $targetCol) {
-                    if (isset($headerIndexes[$sourceCol]) && isset($data[$headerIndexes[$sourceCol]])) {
+                    foreach ($this->columnMap as $sourceCol => $targetCol) {
+                        // Skip columns that don't exist in this CSV
+                        if (!isset($headerIndexes[$sourceCol])) {
+                            continue;
+                        }
+                        
+                        // Get the value from the data row
+                        $colIndex = $headerIndexes[$sourceCol];
+                        if (!isset($data[$colIndex])) {
+                            continue; // Skip if the cell doesn't exist
+                        }
+                        
+                        $value = $data[$colIndex];
+                        
                         try {
-                            $value = $data[$headerIndexes[$sourceCol]];
+                            // Validate the value based on data type
                             $row[$targetCol] = $this->formatValue($value, $sourceCol);
                         } catch (Exception $e) {
                             // Log the error with more context
                             error_log("Data validation error: " . $e->getMessage() . " (Row: " . json_encode($data) . ")");
-                            // Add to validation errors collection
-                            $validationErrors[] = $e->getMessage();
+                            
+                            // Add to validation errors collection with source info
+                            $errorWithRow = "Row " . $rowNumber . " ($sourceName): " . $e->getMessage();
+                            $validationErrors[] = $errorWithRow;
+                            
+                            $rowHasError = true;
                         }
                     }
-                }
                     
-                    if (!empty($row)) {
+                    // Only add row if it has no validation errors
+                    if (!$rowHasError && !empty($row)) {
                         $transformed[] = $row;
+                        $validRows++;
                     }
                 }
                 fclose($handle);
@@ -486,9 +521,41 @@ class CsvProcessor {
         
         error_log("Transformed " . count($transformed) . " rows");
         
-        // ADD THIS: Better empty file detection
+        // Better empty file detection
         if (count($transformed) === 0) {
             error_log("No data rows found after transformation");
+            
+            // Create a detailed error message depending on whether there were validation errors
+            if (!empty($validationErrors)) {
+                error_log("Validation errors found: " . implode("; ", $validationErrors));
+                
+                // Store error message in session with all errors
+                if (session_status() == PHP_SESSION_NONE) {
+                    session_start();
+                }
+                
+                $_SESSION['upload_message'] = [
+                    'type' => 'error',
+                    'message' => "Data validation errors found: " . implode("; ", $validationErrors) . ". Please correct these issues and upload again."
+                ];
+            } else {
+                if (session_status() == PHP_SESSION_NONE) {
+                    session_start();
+                }
+                
+                $_SESSION['upload_message'] = [
+                    'type' => 'warning',
+                    'message' => "No valid data rows found in the CSV file after validation."
+                ];
+            }
+            
+            // Clean up the file when there are validation errors
+            if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
+                unlink($_SESSION['uploaded_csv']);
+                unset($_SESSION['uploaded_csv']);
+            }
+            
+            // Return empty array to indicate no valid data
             return [];
         }
         
@@ -499,30 +566,29 @@ class CsvProcessor {
         error_log("Validated $rowNumber rows, found " . count($validationErrors) . " errors, $validRows rows valid");
 
         if (!empty($validationErrors)) {
-        error_log("Validation errors found: " . implode("; ", $validationErrors));
-        
-        // Store error message in session with all errors, not just first 3
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        $_SESSION['upload_message'] = [
-            'type' => 'error',
-            'message' => "Data validation errors found: " . implode("; ", $validationErrors) . ". Please correct these issues and upload again."
-        ];
-        
-        // Clean up the file when there are validation errors
-        if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
-            unlink($_SESSION['uploaded_csv']);
-            unset($_SESSION['uploaded_csv']);
-        }
-        
-        // Return empty array to indicate no valid data
-        return [];
-    } else {
+            error_log("Validation errors found: " . implode("; ", $validationErrors));
+            
+            // Store error message in session with all errors
+            if (session_status() == PHP_SESSION_NONE) {
+                session_start();
+            }
+            
+            $_SESSION['upload_message'] = [
+                'type' => 'error',
+                'message' => "Data validation errors found: " . implode("; ", $validationErrors) . ". Please correct these issues and upload again."
+            ];
+            
+            // Clean up the file when there are validation errors
+            if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
+                unlink($_SESSION['uploaded_csv']);
+                unset($_SESSION['uploaded_csv']);
+            }
+            
+            // Return empty array to indicate no valid data
+            return [];
+        } else {
             return $transformed;
         }
-
     }
     
     /**
@@ -536,7 +602,33 @@ class CsvProcessor {
             return $value;
         }
         
+        // If no data type is specified in the mappings, use special logic for certain target fields
         if (!isset($this->mappings[$this->detectedFormat]['data_types'][$column])) {
+            // Check if this column maps to a known target field that needs validation
+            $targetField = $this->columnMap[$column] ?? null;
+            if ($targetField === 'traffic_source') {
+                // Allow any text for traffic sources
+                return $value;
+            } else if ($targetField === 'total_revenue') {
+                // If it maps to revenue, enforce numeric validation
+                if (!is_numeric($value)) {
+                    throw new Exception("Invalid revenue value: '$value' for column '$column' - Must be a number");
+                }
+                return (float) $value;
+            } else if ($targetField === 'key_events') {
+                // For key events, they should be integers
+                if (!preg_match('/^[0-9]+$/', $value)) {
+                    throw new Exception("Invalid key events value: '$value' for column '$column' - Must be a whole number");
+                }
+                return (int) $value;
+            } else if ($targetField === 'session_key_event_rate' || strpos($targetField, 'rate') !== false) {
+                // If it's a rate/percentage field without a defined type, validate as percentage
+                if (!preg_match('/^([0-9]*\.?[0-9]+%?|[0-1](\.\d+)?)$/', $value)) {
+                    throw new Exception("Invalid rate value: '$value' for column '$column' - Must be a number between 0-1 or percentage");
+                }
+                return (float) str_replace('%', '', $value) / (strpos($value, '%') !== false ? 100 : 1);
+            }
+            
             error_log("No data type defined for column '$column' in format: " . $this->detectedFormat);
             return $value;
         }
@@ -547,7 +639,7 @@ class CsvProcessor {
         // Skip validation for empty values
         if (trim($value) === '') {
             error_log("Empty value, returning default for type $type");
-            return ($type === 'integer' || $type === 'float') ? 0 : $value;
+            return ($type === 'integer' || $type === 'float' || $type === 'currency') ? 0 : $value;
         }
         
         switch ($type) {
@@ -581,11 +673,18 @@ class CsvProcessor {
                     return (float) preg_replace('/[^0-9.]/', '', $value) / 100;
                 } else {
                     // Otherwise treat as decimal (between 0-1)
-                    if (!preg_match('/^(0|0\.\d+|1(\.0+)?)$/', $value)) {
+                    if (!is_numeric($value) || (float)$value < 0 || (float)$value > 1) {
                         throw new Exception("Invalid percentage value: '$value' for column '$column' - Value should be between 0-1 or include % sign");
                     }
                     return (float) $value;
                 }
+                
+            case 'currency':
+                // New currency type for revenue fields
+                if (!is_numeric($value)) {
+                    throw new Exception("Invalid currency value: '$value' for column '$column' - Must be a number");
+                }
+                return (float) $value;
                 
             case 'time':
                 // Robust time format validation
@@ -622,75 +721,76 @@ class CsvProcessor {
         }
     }
 
-/**
- * Extract metadata from GA4 format CSV
- * @param string $filePath Path to the CSV file
- * @return array Metadata including dates, account name, property name
- */
-public function extractGa4Metadata($filePath) {
-    $metadata = [
-        'start_date' => null,
-        'end_date' => null,
-        'account_name' => null,
-        'property_name' => null,
-        'report_type' => null
-    ];
-    
-    if (($handle = fopen($filePath, "r")) !== FALSE) {
-        $lineNum = 0;
-        while (($line = fgets($handle)) !== FALSE && $lineNum < 15) {
-            // Extract account and property info
-            if (strpos($line, 'Account:') !== false) {
-                $rawValue = trim(str_replace('# Account:', '', $line));
-                // Remove trailing commas
-                $metadata['account_name'] = preg_replace('/,+$/', '', $rawValue);
-                error_log("Found account name: " . $metadata['account_name']);
-            }
-            
-            if (strpos($line, 'Property:') !== false) {
-                $rawValue = trim(str_replace('# Property:', '', $line));
-                // Remove trailing commas
-                $metadata['property_name'] = preg_replace('/,+$/', '', $rawValue);
-                error_log("Found property name: " . $metadata['property_name']);
-            }
-            
-            // Extract report type
-            if (strpos($line, 'Traffic acquisition:') !== false) {
-                $rawValue = trim(str_replace('# Traffic acquisition:', '', $line));
-                // Remove trailing commas
-                $metadata['report_type'] = preg_replace('/,+$/', '', $rawValue);
-                error_log("Found report type: " . $metadata['report_type']);
-            }
-            
-            // Extract date range
-            if (strpos($line, 'Start date:') !== false) {
-                $dateStr = trim(str_replace('# Start date:', '', $line));
-                // Format GA4 date (YYYYMMDD) to MySQL date (YYYY-MM-DD)
-                if (strlen($dateStr) == 8) {
-                    $metadata['start_date'] = substr($dateStr, 0, 4) . '-' . 
+    /**
+     * Extract metadata from GA4 format CSV
+     * @param string $filePath Path to the CSV file
+     * @return array Metadata including dates, account name, property name
+     */
+    public function extractGa4Metadata($filePath) {
+        
+        $metadata = [
+            'start_date' => null,
+            'end_date' => null,
+            'account_name' => null,
+            'property_name' => null,
+            'report_type' => null
+        ];
+        
+        if (($handle = fopen($filePath, "r")) !== FALSE) {
+            $lineNum = 0;
+            while (($line = fgets($handle)) !== FALSE && $lineNum < 15) {
+                // Extract account and property info
+                if (strpos($line, 'Account:') !== false) {
+                    $rawValue = trim(str_replace('# Account:', '', $line));
+                    // Remove trailing commas
+                    $metadata['account_name'] = preg_replace('/,+$/', '', $rawValue);
+                    error_log("Found account name: " . $metadata['account_name']);
+                }
+                
+                if (strpos($line, 'Property:') !== false) {
+                    $rawValue = trim(str_replace('# Property:', '', $line));
+                    // Remove trailing commas
+                    $metadata['property_name'] = preg_replace('/,+$/', '', $rawValue);
+                    error_log("Found property name: " . $metadata['property_name']);
+                }
+                
+                // Extract report type
+                if (strpos($line, 'Traffic acquisition:') !== false) {
+                    $rawValue = trim(str_replace('# Traffic acquisition:', '', $line));
+                    // Remove trailing commas
+                    $metadata['report_type'] = preg_replace('/,+$/', '', $rawValue);
+                    error_log("Found report type: " . $metadata['report_type']);
+                }
+                
+                // Extract date range
+                if (strpos($line, 'Start date:') !== false) {
+                    $dateStr = trim(str_replace('# Start date:', '', $line));
+                    // Format GA4 date (YYYYMMDD) to MySQL date (YYYY-MM-DD)
+                    if (strlen($dateStr) == 8) {
+                        $metadata['start_date'] = substr($dateStr, 0, 4) . '-' . 
+                                                substr($dateStr, 4, 2) . '-' . 
+                                                substr($dateStr, 6, 2);
+                        error_log("Found start date: " . $metadata['start_date']);
+                    }
+                }
+                
+                if (strpos($line, 'End date:') !== false) {
+                    $dateStr = trim(str_replace('# End date:', '', $line));
+                    // Format GA4 date (YYYYMMDD) to MySQL date (YYYY-MM-DD)
+                    if (strlen($dateStr) == 8) {
+                        $metadata['end_date'] = substr($dateStr, 0, 4) . '-' . 
                                             substr($dateStr, 4, 2) . '-' . 
                                             substr($dateStr, 6, 2);
-                    error_log("Found start date: " . $metadata['start_date']);
+                        error_log("Found end date: " . $metadata['end_date']);
+                    }
                 }
+                
+                $lineNum++;
             }
-            
-            if (strpos($line, 'End date:') !== false) {
-                $dateStr = trim(str_replace('# End date:', '', $line));
-                // Format GA4 date (YYYYMMDD) to MySQL date (YYYY-MM-DD)
-                if (strlen($dateStr) == 8) {
-                    $metadata['end_date'] = substr($dateStr, 0, 4) . '-' . 
-                                        substr($dateStr, 4, 2) . '-' . 
-                                        substr($dateStr, 6, 2);
-                    error_log("Found end date: " . $metadata['end_date']);
-                }
-            }
-            
-            $lineNum++;
+            fclose($handle);
         }
-        fclose($handle);
+        
+        return $metadata;
     }
-    
-    return $metadata;
-}
 }
 ?>
