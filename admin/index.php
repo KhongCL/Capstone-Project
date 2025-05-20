@@ -1,4 +1,6 @@
 <?php
+require_once '../auth/admin_auth.php'; // Admin Login Validation
+
 session_start();
 
 // Check if user is logged in
@@ -66,6 +68,13 @@ require_once '../config.php';
                 </div>
             </section>
         </main>
+
+        <!-- Add before the footer -->
+        <div style="text-align: center; margin: 20px 0;">
+            <form action="../logout.php" method="post" style="display: inline;">
+                <button type="submit" class="btn" style="background-color: #dc3545; color: white;">Logout</button>
+            </form>
+        </div>
         
         <footer>
             <p>&copy; <?php echo date('Y'); ?> TrafAnalyz - Admin Dashboard</p>
