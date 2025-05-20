@@ -1,23 +1,28 @@
 <?php
 session_start();
 require_once 'config.php';
+require_once 'auth/security.php';
 
 $errors = [];
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
+    // Sanitize inputs
+    $username = sanitizeInput($_POST['username']);
+    $password = $_POST['password']; // Don't sanitize passwords
 
     // Validate inputs
     if (empty($username)) {
         $errors[] = "Username is required.";
+    } elseif (!validateUsername($username)) {
+        $errors[] = "Invalid username format.";
     }
+    
     if (empty($password)) {
         $errors[] = "Password is required.";
     }
 
     if (empty($errors)) {
-        // Check user credentials
+        // Use prepared statement for SQL injection protection
         $sql = "SELECT UserID, Username, PasswordHash, Role FROM USER WHERE Username = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("s", $username);
@@ -27,10 +32,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($result->num_rows === 1) {
             $user = $result->fetch_assoc();
             if (password_verify($password, $user['PasswordHash'])) {
-                // Login successful
-                $_SESSION['user_id'] = $user['UserID'];
-                $_SESSION['username'] = $user['Username'];
-                $_SESSION['role'] = $user['Role'];
+                // Store sanitized values in session
+                $_SESSION['user_id'] = (int)$user['UserID']; // Cast to integer
+                $_SESSION['username'] = sanitizeOutput($user['Username']);
+                $_SESSION['role'] = sanitizeOutput($user['Role']);
                 
                 // Set a flag to show success popup
                 $_SESSION['login_success'] = true;
@@ -42,10 +47,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $redirectUrl = "user/index.php";
                 }
 
-                // Redirect after showing popup
                 header("refresh:2;url=" . $redirectUrl);
-                
-                // Don't exit here - let the page render
             } else {
                 $errors[] = "Invalid username or password.";
             }

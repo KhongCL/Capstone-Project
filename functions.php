@@ -238,19 +238,20 @@ function getKeyMetrics($conn) {
 
 
 // Get traffic over time data for charts
-function getTrafficOverTime($conn, $interval = 'day') {
+function getTrafficOverTime($conn, $interval = 'day', $uploadId = null) {
     $data = [];
     
     try {
-        // Get the most recent upload ID
-        $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
-        $result = $conn->query($query);
-        $latestUpload = 0;
-        if ($result && $row = $result->fetch_assoc()) {
-            $latestUpload = $row['latest_upload'];
+        // If no uploadId provided, get the most recent upload ID
+        if (!$uploadId) {
+            $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
+            $result = $conn->query($query);
+            if ($result && $row = $result->fetch_assoc()) {
+                $uploadId = $row['latest_upload'];
+            }
         }
         
-        // Get sessions data by date - only from latest upload
+        // Get sessions data by date for the specified upload
         $query = "SELECT 
                     pdp.DataDate as time_period,
                     SUM(pdp.Value) as page_views,
@@ -258,11 +259,14 @@ function getTrafficOverTime($conn, $interval = 'day') {
                   FROM PROCESSED_DATA_POINT pdp
                   JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
                   WHERE mt.MetricName = 'Sessions'
-                  AND pdp.UploadID = $latestUpload
+                  AND pdp.UploadID = ?
                   GROUP BY pdp.DataDate
                   ORDER BY pdp.DataDate";
                   
-        $result = $conn->query($query);
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $uploadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
         if ($result) {
             while ($row = $result->fetch_assoc()) {
@@ -275,7 +279,6 @@ function getTrafficOverTime($conn, $interval = 'day') {
     
     return $data;
 }
-
 
 // Get traffic sources distribution data
 function getTrafficSourcesDistribution($conn) {
@@ -729,6 +732,10 @@ function deleteUser($conn, $userId) {
         return false;
     }
 }
+
+
+
+
 
 
 ?>
