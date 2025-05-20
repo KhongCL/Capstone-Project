@@ -1,0 +1,27 @@
+{
+    "ga4_traffic_acquisition": {
+        "format_detection": [
+            "Sessions",
+            "Engaged sessions",
+            "Engagement rate",
+            "Session primary channel group (Default channel group)"
+        ],
+        "column_mappings": {
+            "Session primary channel group (Default channel group)": "traffic_source",
+            "Sessions": "visits",
+            "Engaged sessions": "engaged_sessions",
+            "Engagement rate": "bounce_rate",
+            "Average engagement time per session": "avg_session_duration",
+            "Events per session": "events_per_session",
+            "Event count": "event_count"
+        },
+        "data_types": {
+            "Sessions": "integer",
+            "Engaged sessions": "integer",
+            "Engagement rate": "float",
+            "Average engagement time per session": "float",
+            "Events per session": "float",
+            "Event count": "integer"
+        }
+    }
+}
