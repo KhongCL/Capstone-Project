@@ -1,12 +1,21 @@
 <?php
 class CsvProcessor {
-    private $mappingsFile = 'config/csv_mappings.json';
+    private $mappingsFile;
     private $mappings;
     private $detectedFormat = null;
     private $columnMap = [];
     private $csvData = [];
     
     public function __construct() {
+        // Use absolute path to root config file instead of relative path
+        $this->mappingsFile = __DIR__ . '/../config/csv_mappings.json';
+        
+        error_log("Loading mappings from: " . $this->mappingsFile);
+
+        if (!file_exists($this->mappingsFile)) {
+            throw new Exception('Mappings file not found at: ' . $this->mappingsFile);
+        }
+
         $this->mappings = json_decode(file_get_contents($this->mappingsFile), true);
         if (!$this->mappings) {
             throw new Exception('Failed to load CSV mapping configurations');
@@ -120,7 +129,7 @@ class CsvProcessor {
             $foundMetadataCount = 0;
             $lineNum = 0;
             
-            // Check first 15 lines for required GA4 metadata patterns
+            // Check first 50 lines for required GA4 metadata patterns
             while (($line = fgets($handle)) !== FALSE && $lineNum < 50) {
                 $lineNum++;
                 $line = trim($line);
@@ -176,7 +185,7 @@ class CsvProcessor {
         // Header validation with relevance score
         $gaKeywords = [
             'Session', 'Sessions', 'Engagement', 'Traffic', 'Source', 
-            'Medium', 'Channel', 'Events', 'Users', 'Revenue', 'Visit'
+            'Medium', 'Channel', 'Events', 'Users', 'Revenue', 'Visit', 'Key'
         ];
         
         // Calculate how many GA-related headers we find
@@ -219,12 +228,109 @@ class CsvProcessor {
                 // If we find an exact match or at least 70% of the expected columns
                 if ($matched || ($matchCount >= count($requiredColumns) * 0.7)) {
                     error_log("Matched format: " . $formatKey);
+                    
+                    // Use ALL mappings directly from configuration
+                    $mappingToUse = $format['column_mappings'];
+                    $dataTypesToUse = $format['data_types'];
+                    
+                    // Log all mappings for debugging
+                    error_log("Configuration mappings: " . json_encode(array_keys($mappingToUse)));
+                    error_log("CSV header columns: " . json_encode($header));
+                    
+                    // Add mappings with improved comparison
+                    foreach ($mappingToUse as $sourceCol => $targetCol) {
+                        error_log("Including column in mapping: $sourceCol -> $targetCol");
+                    }
+                    
+                    // Check if any CSV columns are not in the mapping with detailed debugging
+                    $unfoundColumns = [];
+                    foreach ($header as $csvColumn) {
+                        $found = false;
+                        $matchedConfigCol = null;
+
+                        error_log("Checking CSV column: '$csvColumn'");
+                        
+                    foreach ($format['column_mappings'] as $configCol => $targetCol) {
+                        error_log("  Comparing with config column: '$configCol'");
+                        // Use case-insensitive, whitespace-insensitive comparison
+                        if (strcasecmp(trim($csvColumn), trim($configCol)) === 0) {
+                            $found = true;
+                            $matchedConfigCol = $configCol;
+                            error_log("  ✓ MATCHED: '$csvColumn' to config: '$configCol'");
+                            break;
+                        } else {
+                            error_log("  ✗ NO MATCH: '" . trim($csvColumn) . "' vs '" . trim($configCol) . "'");
+                            error_log("    - Lengths: " . strlen(trim($csvColumn)) . " vs " . strlen(trim($configCol)));
+                            error_log("    - ASCII codes: " . implode(',', array_map(function($c) { return ord($c); }, str_split(trim($csvColumn)))) . 
+                                     " vs " . implode(',', array_map(function($c) { return ord($c); }, str_split(trim($configCol)))));
+                        }
+                    }
+                        
+                        if (!$found) {
+                            error_log("WARNING: CSV column '$csvColumn' has no mapping in configuration");
+                            // Try to find closest match for debugging
+                            foreach ($format['column_mappings'] as $configCol => $targetCol) {
+                                error_log("  Compare with: '$configCol' - Length: " . strlen($configCol) . " vs " . strlen($csvColumn));
+                            }
+                            $unfoundColumns[] = $csvColumn;
+                        } else {
+                            // Ensure the mapping uses the exact CSV column name
+                            // This is critical for the subsequent processing
+                            $mappingToUse[$csvColumn] = $format['column_mappings'][$matchedConfigCol];
+                        }
+                    }
+
+                    // Important: Add CSV columns to config mapping if they exist in config but with different case
+                    foreach ($unfoundColumns as $csvColumn) {
+                        foreach ($format['column_mappings'] as $configCol => $targetCol) {
+                            if (strcasecmp(trim($csvColumn), trim($configCol)) === 0) {
+                                error_log("Adding case-insensitive match: '$csvColumn' to '$targetCol'");
+                                $mappingToUse[$csvColumn] = $targetCol;
+                                break;
+                            }
+                        }
+                    }
+
+                    foreach ($format['column_mappings'] as $configCol => $targetCol) {
+                        $exactMatch = false;
+                        $caseInsensitiveMatch = false;
+                        $matchedCsvColumn = null;
+                        
+                        // First check for exact match
+                        if (in_array($configCol, $header)) {
+                            $exactMatch = true;
+                            $matchedCsvColumn = $configCol;
+                        } else {
+                            // Then try case-insensitive match
+                            foreach ($header as $csvColumn) {
+                                if (strcasecmp(trim($csvColumn), trim($configCol)) === 0) {
+                                    $caseInsensitiveMatch = true;
+                                    $matchedCsvColumn = $csvColumn;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if ($exactMatch) {
+                            error_log("Config column '$configCol' has exact match in CSV");
+                            // Already handled above
+                        } else if ($caseInsensitiveMatch) {
+                            error_log("Config column '$configCol' has case-insensitive match to CSV column '$matchedCsvColumn'");
+                            $mappingToUse[$matchedCsvColumn] = $targetCol;
+                        } else {
+                            error_log("Config column '$configCol' has NO match in CSV - but keeping it in the mapping");
+                            // Keep the column in the mapping even if it doesn't exist in the CSV
+                            // This is crucial for the problematic columns
+                            $mappingToUse[$configCol] = $targetCol;
+                        }
+                    }
+                    
                     return [
                         'status' => 'success',
                         'format' => $formatKey,
                         'header' => $header,
-                        'mapping' => $format['column_mappings'],
-                        'data_types' => $format['data_types'],
+                        'mapping' => $mappingToUse,
+                        'data_types' => $dataTypesToUse,
                         'sample' => array_slice($data, 0, 5)
                     ];
                 }
@@ -363,11 +469,67 @@ class CsvProcessor {
      */
     public function transformData($filePath, $columnMapping, $format = null) {
         $this->columnMap = $columnMapping;
+
+        if ($format && isset($this->mappings[$format]['column_mappings'])) {
+            // Get all mappings from configuration
+            foreach ($this->mappings[$format]['column_mappings'] as $sourceCol => $targetCol) {
+                $this->columnMap[$sourceCol] = $targetCol;
+                error_log("Added mapping from config: $sourceCol -> $targetCol");
+            }
+            
+            // Get all headers from the CSV file
+            $csvHeaders = [];
+            if (($handle = fopen($filePath, "r")) !== FALSE) {
+                // existing code to read headers...
+            }
+            
+            // Check if any CSV headers don't have mappings
+            foreach ($csvHeaders as $header) {
+                if (!isset($this->columnMap[$header])) {
+                    // Try case-insensitive matching
+                    $foundMatch = false;
+                    foreach ($this->mappings[$format]['column_mappings'] as $configCol => $targetCol) {
+                        if (strcasecmp(trim($header), trim($configCol)) === 0) {
+                            $this->columnMap[$header] = $targetCol;
+                            $foundMatch = true;
+                            error_log("Added case-insensitive mapping: $header -> $targetCol");
+                            break;
+                        }
+                    }
+                    
+                    if (!$foundMatch) {
+                        error_log("WARNING: No mapping found for CSV column: $header");
+                    }
+                }
+            }
+        }
+
         if ($format) {
             $this->detectedFormat = $format;
         }
 
+        // Add missing mappings if they exist in the configuration but not in the provided mapping
+        if ($this->detectedFormat && isset($this->mappings[$this->detectedFormat]['column_mappings'])) {
+            $configMappings = $this->mappings[$this->detectedFormat]['column_mappings'];
+            foreach ($configMappings as $sourceCol => $targetCol) {
+                if (!isset($this->columnMap[$sourceCol])) {
+                    $this->columnMap[$sourceCol] = $targetCol;
+                    error_log("Added missing mapping: '$sourceCol' => '$targetCol'");
+                }
+            }
+        }
+
         error_log("Transform data using format: " . ($this->detectedFormat ?? "No format detected"));
+        // Log the full column mapping to see what's actually being mapped
+        error_log("Full column mapping: " . json_encode($this->columnMap));
+        
+        // Add logging for data types configuration
+        if ($this->detectedFormat) {
+            error_log("Available data types from configuration: " . 
+                json_encode(isset($this->mappings[$this->detectedFormat]['data_types']) ? 
+                array_keys($this->mappings[$this->detectedFormat]['data_types']) : []));
+        }
+        
         $transformed = [];
         $validationErrors = [];
         $validRows = 0; // Initialize $validRows here to avoid undefined variable
@@ -426,28 +588,76 @@ class CsvProcessor {
                     $row = [];
                     $rowHasError = false;
                     $sourceName = $data[$headerIndexes['Session primary channel group (Default channel group)']] ?? 'Unknown';
+
+                    $headerLookup = [];
+                    foreach ($header as $index => $headerCol) {
+                        $headerLookup[strtolower(trim($headerCol))] = $index;
+                    }
                     
                     // Map each column according to our defined structure
                     foreach ($this->columnMap as $sourceCol => $targetCol) {
+                        // Log the column being processed
+                        error_log("Processing column mapping: '$sourceCol' => '$targetCol'");
+                        
+                        // Store original column name for reporting
+                        $originalSourceCol = $sourceCol;
+                        
+                        // First try exact index lookup
+                        $columnIndex = $headerIndexes[$sourceCol] ?? null;
+                        
+                        // If not found, try case-insensitive lookup among header columns
+                        if ($columnIndex === null) {
+                            foreach (array_keys($headerIndexes) as $headerCol) {
+                                if (strcasecmp(trim($sourceCol), trim($headerCol)) === 0) {
+                                    $columnIndex = $headerIndexes[$headerCol];
+                                    error_log("Found column match via case-insensitive comparison: '$sourceCol' matched to header '$headerCol'");
+                                    $sourceCol = $headerCol; // Use the exact column name from the header
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // If still not found, try lowercase lookup
+                        if ($columnIndex === null && isset($headerLookup[strtolower(trim($sourceCol))])) {
+                            $columnIndex = $headerLookup[strtolower(trim($sourceCol))];
+                            error_log("Found column match via lowercase lookup: '$sourceCol'");
+                            
+                            // Find the actual header column that matched
+                            foreach ($header as $index => $headerCol) {
+                                if ($index === $columnIndex) {
+                                    $sourceCol = $headerCol; // Use the exact column name from the header
+                                    break;
+                                }
+                            }
+                        }
+                        
                         // Skip columns that don't exist in this CSV
-                        if (!isset($headerIndexes[$sourceCol])) {
+                        if ($columnIndex === null) {
+                            error_log("Skipping column '$originalSourceCol' - not found in CSV headers");
                             continue;
                         }
                         
                         // Get the value from the data row
-                        $colIndex = $headerIndexes[$sourceCol];
-                        if (!isset($data[$colIndex])) {
+                        if (!isset($data[$columnIndex])) {
+                            error_log("Skipping column '$sourceCol' - no data in this row");
                             continue; // Skip if the cell doesn't exist
                         }
                         
-                        $value = $data[$colIndex];
+                        $value = $data[$columnIndex];
+                        error_log("Column '$sourceCol' => '$targetCol' has value: '$value'");
                         
                         try {
+                            // Check if column has a data type defined
+                            $dataType = isset($this->mappings[$this->detectedFormat]['data_types'][$sourceCol]) ? 
+                                $this->mappings[$this->detectedFormat]['data_types'][$sourceCol] : 'none';
+                            error_log("Column '$sourceCol' has defined data type: '$dataType'");
+                            
                             // Validate the value based on data type
                             $row[$targetCol] = $this->formatValue($value, $sourceCol);
+                            error_log("Validation successful for '$sourceCol' with value '$value'");
                         } catch (Exception $e) {
                             // Log the error with more context about which row had the issue
-                            error_log("Data validation error at row $rowNumber: " . $e->getMessage());
+                            error_log("Data validation error at row $rowNumber, column '$sourceCol': " . $e->getMessage());
                             
                             // Create a more user-friendly error message with row information
                             $errorWithRow = "Row " . $rowNumber . " ($sourceName): " . $e->getMessage();

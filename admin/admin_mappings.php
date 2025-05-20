@@ -4,7 +4,7 @@ require_once '../classes/CsvProcessor.php';
 
 // Admin authentication check would go here
 
-$mappingsFile = '../config/csv_mappings.json';
+$mappingsFile = __DIR__ . '/../config/csv_mappings.json';
 $message = '';
 $error = '';
 

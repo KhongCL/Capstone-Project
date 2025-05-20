@@ -15,35 +15,22 @@ $mappings = [
             "Users" => "visitors",
             "Pageviews" => "page_views",
             "Bounce Rate" => "bounce_rate",
-            "Avg Session Duration" => "avg_session_duration"
+            "Avg Session Duration" => "avg_session_duration",
+            "Key events" => "key_events",
+            "Session key event rate" => "session_key_event_rate",
+            "Total revenue" => "total_revenue"
         ],
         "data_types" => [
-            "Source" => "string",
-            "Medium" => "string",
+            "Source" => "text",
+            "Medium" => "text", 
             "Sessions" => "integer",
             "Users" => "integer",
             "Pageviews" => "integer",
             "Bounce Rate" => "percentage",
-            "Avg Session Duration" => "time"
-        ]
-    ],
-    "matomo" => [
-        "format_detection" => ["Referrer", "Visits", "Actions", "Bounce Rate"],
-        "column_mappings" => [
-            "Referrer" => "traffic_source",
-            "Visits" => "visits",
-            "Unique visitors" => "visitors",
-            "Actions" => "page_views",
-            "Bounce Rate" => "bounce_rate",
-            "Avg. time on website" => "avg_session_duration"
-        ],
-        "data_types" => [
-            "Referrer" => "string",
-            "Visits" => "integer",
-            "Unique visitors" => "integer",
-            "Actions" => "integer",
-            "Bounce Rate" => "percentage",
-            "Avg. time on website" => "time"
+            "Avg Session Duration" => "time",
+            "Key events" => "integer",
+            "Session key event rate" => "percentage",
+            "Total revenue" => "currency"
         ]
     ],
     "ga4_traffic_acquisition" => [
@@ -55,21 +42,28 @@ $mappings = [
             "Engagement rate" => "bounce_rate",
             "Average engagement time per session" => "avg_session_duration",
             "Events per session" => "events_per_session",
-            "Event count" => "event_count"
+            "Event count" => "event_count",
+            "Key events" => "key_events",
+            "Session key event rate" => "session_key_event_rate",
+            "Total revenue" => "total_revenue"
         ],
         "data_types" => [
+            "Session primary channel group (Default channel group)" => "text",
             "Sessions" => "integer",
             "Engaged sessions" => "integer",
             "Engagement rate" => "float",
             "Average engagement time per session" => "float",
             "Events per session" => "float",
-            "Event count" => "integer"
+            "Event count" => "integer",
+            "Key events" => "integer",
+            "Session key event rate" => "percentage",
+            "Total revenue" => "currency"
         ]
-    ]
+    ],
 ];
 
 // Save mappings to JSON file
-file_put_contents('config/csv_mappings.json', json_encode($mappings, JSON_PRETTY_PRINT));
+file_put_contents(__DIR__ . '/../config/csv_mappings.json', json_encode($mappings, JSON_PRETTY_PRINT));
 
 echo "Configuration file created successfully!";
 ?>
