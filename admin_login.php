@@ -2,6 +2,7 @@
 // filepath: c:\xampp\htdocs\trafanalyz\admin_login.php
 session_start();
 require_once 'config.php';
+require_once 'auth/security.php';
 
 // Verify admin key for secure access
 $admin_key = "trafanalyz";
@@ -12,19 +13,23 @@ if (!isset($_GET['key']) || $_GET['key'] !== $admin_key) {
 $errors = [];
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
+    // Sanitize inputs
+    $username = sanitizeInput($_POST['username']);
+    $password = $_POST['password']; // Don't sanitize passwords
 
     // Validate inputs
     if (empty($username)) {
         $errors[] = "Username is required.";
+    } elseif (!validateUsername($username)) {
+        $errors[] = "Invalid username format.";
     }
+    
     if (empty($password)) {
         $errors[] = "Password is required.";
     }
 
     if (empty($errors)) {
-        // Check user credentials - ONLY for Admin role
+        // Use prepared statement for SQL injection protection
         $sql = "SELECT UserID, Username, PasswordHash, Role FROM USER WHERE Username = ? AND Role = 'Admin'";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("s", $username);
@@ -34,21 +39,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($result->num_rows === 1) {
             $user = $result->fetch_assoc();
             if (password_verify($password, $user['PasswordHash'])) {
-                // Login successful
-                $_SESSION['user_id'] = $user['UserID'];
-                $_SESSION['username'] = $user['Username'];
-                $_SESSION['role'] = $user['Role'];
+                // Store sanitized values in session
+                $_SESSION['user_id'] = (int)$user['UserID'];
+                $_SESSION['username'] = sanitizeOutput($user['Username']);
+                $_SESSION['role'] = sanitizeOutput($user['Role']);
                 
-                // Set a flag to show success popup
                 $_SESSION['login_success'] = true;
-                
-                // Redirect to admin dashboard
                 header("refresh:2;url=admin/index.php");
             } else {
                 $errors[] = "Invalid admin credentials.";
             }
         } else {
-            $errors[] = "Invalid admin credentials or you don't have admin privileges.";
+            $errors[] = "Invalid admin credentials or insufficient privileges.";
         }
     }
 }

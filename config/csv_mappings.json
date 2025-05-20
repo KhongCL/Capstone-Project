@@ -17,7 +17,13 @@
             "Avg Session Duration": "avg_session_duration"
         },
         "data_types": {
+            "Source": "text",
+            "Medium": "text",
             "Sessions": "integer",
+            "Users": "integer",
+            "Pageviews": "integer",
+            "Bounce Rate": "percentage",
+            "Avg Session Duration": "time",
             "Engaged sessions": "integer",
             "Engagement rate": "float",
             "Average engagement time per session": "float",
@@ -25,7 +31,7 @@
             "Event count": "integer",
             "Key events": "integer",
             "Session key event rate": "percentage",
-            "Total revenue": "float"
+            "Total revenue": "currency"
         }
     },
     "matomo": {
@@ -44,7 +50,7 @@
             "Avg. time on website": "avg_session_duration"
         },
         "data_types": {
-            "Referrer": "string",
+            "Referrer": "text",
             "Visits": "integer",
             "Unique visitors": "integer",
             "Actions": "integer",
@@ -62,19 +68,35 @@
         "column_mappings": {
             "Session primary channel group (Default channel group)": "traffic_source",
             "Sessions": "visits",
-            "Engaged sessions": "engaged_sessions",
             "Engagement rate": "bounce_rate",
-            "Average engagement time per session": "avg_session_duration",
-            "Events per session": "events_per_session",
-            "Event count": "event_count"
+<<<<<<< HEAD
+            "Average engagement time per session": "avg_session_duration"
         },
         "data_types": {
+            "Session primary channel group (Default channel group)": "string",
+=======
+            "Average engagement time per session": "avg_session_duration",
+            "Events per session": "events_per_session",
+            "Event count": "event_count",
+            "Key events": "key_events",
+            "Session key event rate": "session_key_event_rate",
+            "Total revenue": "total_revenue"
+        },
+        "data_types": {
+            "Session primary channel group (Default channel group)": "text",
+>>>>>>> 28bebf81c88291931626c80fff02c99fe8ee1861
             "Sessions": "integer",
-            "Engaged sessions": "integer",
             "Engagement rate": "float",
+<<<<<<< HEAD
+            "Average engagement time per session": "float"
+=======
             "Average engagement time per session": "float",
             "Events per session": "float",
-            "Event count": "integer"
+            "Event count": "integer",
+            "Key events": "integer",
+            "Session key event rate": "percentage",
+            "Total revenue": "currency"
+>>>>>>> 28bebf81c88291931626c80fff02c99fe8ee1861
         }
     }
 }
