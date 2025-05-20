@@ -1,5 +1,4 @@
 <?php
-// filepath: c:\xampp\htdocs\Capstone-Project\admin\header.php
 /**
  * Common header for admin pages
  * @param string $title - Page title
@@ -31,7 +30,7 @@ $active_page = isset($active_page) ? $active_page : '';
                 <li><a href="admin_users.php">User Management</a></li>
                 <li><a href="admin_mappings.php">CSV Mappings</a></li>
                 <li><a href="export_users_pdf.php" target="_blank">Generate Report</a></li>
-                <li><a href="../user/" target="_blank">End-User View</a></li>
+                <li><a href="../user/index.php" target="_blank">End-User View</a></li>
                 <li><a href="../logout.php">Logout</a></li>
             </ul>
         </nav>

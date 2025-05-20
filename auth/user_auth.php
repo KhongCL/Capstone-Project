@@ -5,9 +5,9 @@ session_start();
 function displayLoginMessage() {
     echo '<script>
         if (confirm("You need to log in to access this page. Go to Login Page? Click cancel to go to home page.")) {
-            window.location.href = "/Capstone-Project/login.php";
+            window.location.href = "/login.php";
         } else {
-            window.location.href = "/Capstone-Project/index.php";
+            window.location.href = "/user/index.php";
         }
     </script>';
     exit();
