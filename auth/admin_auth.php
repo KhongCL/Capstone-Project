@@ -3,8 +3,14 @@ session_start();
 
 function displayAdminLoginMessage() {
     echo '<script>
-        if (confirm("Admin access required. Go to admin login?")) {
-            window.location.href = "/Capstone-Project/admin_login.php?key=trafanalyz";
+        if (confirm("Admin access required. Would you like to verify admin access?")) {
+            let key = prompt("Please enter admin key:");
+            if (key === "trafanalyz") {
+                window.location.href = "/Capstone-Project/admin_login.php?key=" + key;
+            } else {
+                alert("Invalid admin key!");
+                window.location.href = "/Capstone-Project/index.php";
+            }
         } else {
             window.location.href = "/Capstone-Project/index.php";
         }
