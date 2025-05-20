@@ -1,9 +1,23 @@
 <?php
+session_start();
 require_once '../config.php';
 include '../functions.php';
 
-$metrics = getKeyMetrics($conn);
-$trafficData = getTrafficOverTime($conn, 'day');
+// Get uploadId from URL parameter or most recent upload
+$uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null;
+
+if (!$uploadId) {
+    // Get most recent upload for the current user
+    $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC LIMIT 1");
+    $stmt->bind_param("i", $_SESSION['user_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $uploadId = $row ? $row['UploadID'] : null;
+}
+
+$metrics = getKeyMetrics($conn, $uploadId);
+$trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 ?>
 
 <!DOCTYPE html>
@@ -55,9 +69,28 @@ $trafficData = getTrafficOverTime($conn, 'day');
     .export-btn .icon {
       font-size: 1.2rem;
     }
+
+    .chart-container {
+        position: relative;
+        height: 400px;
+        width: 100%;
+        margin: 20px 0;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 400px !important; /* Force height */
+        width: 100%;
+        margin: 20px 0;
+    }
+    
+    #trafficChart {
+        width: 100% !important;
+        height: 100% !important;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
@@ -137,51 +170,66 @@ $trafficData = getTrafficOverTime($conn, 'day');
   </div>
 
   <script>
+    // Only declare once
     const trafficData = <?php echo json_encode($trafficData); ?>;
-    const labels = trafficData.map(item => item.time_period);
-    const pageViewsData = trafficData.map(item => parseInt(item.page_views));
-    const uniqueVisitorsData = trafficData.map(item => parseInt(item.unique_visitors));
+    const uploadId = <?php echo $uploadId ? $uploadId : 'null'; ?>;
+
+    Chart.register(window['chartjs-plugin-annotation']); // ✅ correct plugin registration
 
     const ctx = document.getElementById('trafficChart').getContext('2d');
     const trafficChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: 'Page Views',
-            data: pageViewsData,
-            borderColor: '#4c78d0',
-            backgroundColor: 'rgba(76, 120, 208, 0.1)',
-            tension: 0.1,
-            fill: true
-          },
-          {
-            label: 'Unique Visitors',
-            data: uniqueVisitorsData,
-            borderColor: '#72b966',
-            backgroundColor: 'rgba(114, 185, 102, 0.1)',
-            tension: 0.1,
-            fill: true
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          title: {
-            display: true,
-            text: 'Website Traffic Over Time'
-          },
-          annotation: {
-            annotations: {}
-          }
+        type: 'line',
+        data: {
+            labels: trafficData.map(item => item.time_period),
+            datasets: [
+                {
+                    label: 'Page Views',
+                    data: trafficData.map(item => parseInt(item.page_views)),
+                    borderColor: '#4c78d0',
+                    backgroundColor: 'rgba(76, 120, 208, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                },
+                {
+                    label: 'Unique Visitors',
+                    data: trafficData.map(item => parseInt(item.unique_visitors)),
+                    borderColor: '#72b966',
+                    backgroundColor: 'rgba(114, 185, 102, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                }
+            ]
         },
-        scales: {
-          y: { beginAtZero: true }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Website Traffic Over Time'
+                },
+                annotation: {
+                    annotations: {} // populated later by annotation logic
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Count'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                }
+            }
         }
-      }
     });
+
 
     // Interval Switcher
     document.querySelectorAll('.chart-controls .btn').forEach(button => {
@@ -204,7 +252,12 @@ $trafficData = getTrafficOverTime($conn, 'day');
 
     // ========== Annotations Logic ==========
     function getAnnotations() {
-      return JSON.parse(localStorage.getItem('annotations') || '[]');
+        return fetch(`get_annotations.php?uploadId=${uploadId}`)
+            .then(response => response.json())
+            .catch(error => {
+                console.error('Error fetching annotations:', error);
+                return [];
+            });
     }
 
     function saveAnnotations(data) {
@@ -216,69 +269,118 @@ $trafficData = getTrafficOverTime($conn, 'day');
       document.getElementById('annotationId').value = '';
     }
 
-    function renderAnnotationsList() {
-      const list = document.getElementById('annotationsList');
-      const annotations = getAnnotations();
-      list.innerHTML = '';
-
-      annotations.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.innerHTML = `<strong>${item.date}</strong>: ${item.note}
-          <button onclick="editAnnotation(${index})">Edit</button>
-          <button onclick="deleteAnnotation(${index})">Delete</button>`;
-        list.appendChild(div);
-      });
-
-      trafficChart.options.plugins.annotation.annotations = {};
-      annotations.forEach((item, i) => {
-        trafficChart.options.plugins.annotation.annotations['line' + i] = {
-          type: 'line',
-          scaleID: 'x',
-          value: item.date,
-          borderColor: 'red',
-          borderWidth: 2,
-          label: {
-            content: item.note,
-            enabled: true,
-            position: 'top'
-          }
-        };
-      });
-      trafficChart.update();
+    async function renderAnnotationsList() {
+        const list = document.getElementById('annotationsList');
+        const annotations = await getAnnotations();
+        list.innerHTML = '';
+        
+        annotations.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.innerHTML = `<strong>${item.date}</strong>: ${item.note}
+                <button onclick="editAnnotation(${item.id})">Edit</button>
+                <button onclick="deleteAnnotation(${item.id})">Delete</button>`;
+            list.appendChild(div);
+        });
+      
+        // Update chart annotations
+        trafficChart.options.plugins.annotation.annotations = {};
+        annotations.forEach((item, i) => {
+            trafficChart.options.plugins.annotation.annotations['line' + i] = {
+                type: 'line',
+                scaleID: 'x',
+                value: item.date,
+                borderColor: 'red',
+                borderWidth: 2,
+                label: {
+                    content: item.note,
+                    enabled: true,
+                    position: 'top'
+                }
+            };
+        });
+        trafficChart.update();
     }
 
-    function editAnnotation(index) {
-      const annotations = getAnnotations();
-      const item = annotations[index];
-      document.getElementById('annotationId').value = index;
-      document.getElementById('annotationDate').value = item.date;
-      document.getElementById('annotationNote').value = item.note;
+    async function editAnnotation(id) {
+        try {
+            const annotations = await getAnnotations();
+            const item = annotations.find(annotation => annotation.id === id);
+
+            if (item) {
+                document.getElementById('annotationId').value = item.id;
+                document.getElementById('annotationDate').value = item.date;
+                document.getElementById('annotationNote').value = item.note;
+            }
+        } catch (error) {
+            console.error('Error editing annotation:', error);
+        }
     }
 
-    function deleteAnnotation(index) {
-      const annotations = getAnnotations();
-      annotations.splice(index, 1);
-      saveAnnotations(annotations);
-      renderAnnotationsList();
-      resetForm();
+    async function deleteAnnotation(id) {
+        try {
+            const response = await fetch('delete_annotation.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `annotationId=${id}&uploadId=${uploadId}`
+            });
+          
+            const result = await response.json();
+            if (result.success) {
+                await renderAnnotationsList(); // Refresh the list after successful deletion
+                resetForm();
+            } else {
+                alert('Error deleting annotation: ' + result.message);
+            }
+        } catch (error) {
+            console.error('Error deleting annotation:', error);
+            alert('Error deleting annotation');
+        }
     }
 
-    document.getElementById('annotationForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      const id = document.getElementById('annotationId').value;
-      const date = document.getElementById('annotationDate').value;
-      const note = document.getElementById('annotationNote').value;
-      const annotations = getAnnotations();
+    console.log('Upload ID:', uploadId); // Debug log
+    document.getElementById('annotationForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        
+        if (!uploadId) {
+            alert('No CSV file has been uploaded yet. Please upload a file first.');
+            return;
+        }
 
-      if (id === '') {
-        annotations.push({ date, note });
-      } else {
-        annotations[id] = { date, note };
-      }
+        const id = document.getElementById('annotationId').value;
+        const date = document.getElementById('annotationDate').value;
+        const note = document.getElementById('annotationNote').value;
+        
+        try {
+            const formData = new FormData();
+            formData.append('annotationId', id);
+            formData.append('uploadId', uploadId);
+            formData.append('dataDate', date);
+            formData.append('note', note);
+            
+            console.log('Sending annotation data:', {
+                uploadId: uploadId,
+                date: date,
+                note: note
+            });
 
-      saveAnnotations(annotations);
-      renderAnnotationsList();
-      resetForm();
+            const response = await fetch('save_annotation.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                await renderAnnotationsList();
+                resetForm();
+            } else {
+                alert(result.message || 'Error saving annotation');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error saving annotation');
+        }
     });
 
     renderAnnotationsList();
