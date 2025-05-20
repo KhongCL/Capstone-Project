@@ -1,6 +1,6 @@
 <?php
-require_once 'config.php';
-require_once 'functions.php';
+require_once '../config.php';
+require_once '../functions.php';
 
 // Check if user is logged in as admin (implement proper authentication)
 session_start();
@@ -72,7 +72,7 @@ if ($result) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management - TrafAnalyz Admin</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../styles.css">
     <style>
         .container {
             padding: 20px;
@@ -155,17 +155,7 @@ if ($result) {
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>TrafAnalyz Admin Dashboard</h1>
-            <nav>
-                <ul>
-                    <li><a href="index.php">Home</a></li>
-                    <li><a href="overview.php">Overview</a></li>
-                    <li><a href="admin_users.php" class="active">User Management</a></li>
-                    <li><a href="admin_mappings.php">CSV Mappings</a></li>
-                </ul>
-            </nav>
-        </header>
+        <?php include 'header.php'; ?>
         
         <main>
             <section>

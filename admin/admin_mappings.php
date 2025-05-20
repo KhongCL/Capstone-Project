@@ -51,16 +51,7 @@ $mappings = json_decode(file_get_contents($mappingsFile), true);
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Web Traffic Analysis Dashboard - Admin</h1>
-            <nav>
-                <ul>
-                    <li><a href="index.php">Home</a></li>
-                    <li><a href="admin.php">Admin Panel</a></li>
-                    <li><a href="#" class="active">CSV Mappings</a></li>
-                </ul>
-            </nav>
-        </header>
+        <?php include 'header.php'; ?>
         
         <main>
             <section class="admin-section">

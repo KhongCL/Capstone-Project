@@ -17,15 +17,13 @@
             "Avg Session Duration": "avg_session_duration"
         },
         "data_types": {
+            "Source": "string",
+            "Medium": "string",
             "Sessions": "integer",
-            "Engaged sessions": "integer",
-            "Engagement rate": "float",
-            "Average engagement time per session": "float",
-            "Events per session": "float",
-            "Event count": "integer",
-            "Key events": "integer",
-            "Session key event rate": "percentage",
-            "Total revenue": "float"
+            "Users": "string",
+            "Pageviews": "string",
+            "Bounce Rate": "string",
+            "Avg Session Duration": "string"
         }
     },
     "matomo": {
@@ -62,19 +60,14 @@
         "column_mappings": {
             "Session primary channel group (Default channel group)": "traffic_source",
             "Sessions": "visits",
-            "Engaged sessions": "engaged_sessions",
             "Engagement rate": "bounce_rate",
-            "Average engagement time per session": "avg_session_duration",
-            "Events per session": "events_per_session",
-            "Event count": "event_count"
+            "Average engagement time per session": "avg_session_duration"
         },
         "data_types": {
+            "Session primary channel group (Default channel group)": "string",
             "Sessions": "integer",
-            "Engaged sessions": "integer",
             "Engagement rate": "float",
-            "Average engagement time per session": "float",
-            "Events per session": "float",
-            "Event count": "integer"
+            "Average engagement time per session": "float"
         }
     }
 }
