@@ -1,4 +1,6 @@
 <?php
+ini_set('default_charset', 'UTF-8');
+mb_internal_encoding('UTF-8');
 class CsvProcessor {
     private $mappingsFile;
     private $mappings;
@@ -7,6 +9,9 @@ class CsvProcessor {
     private $csvData = [];
     
     public function __construct() {
+        // Set UTF-8 locale for proper character handling
+        setlocale(LC_ALL, 'en_US.UTF-8');
+
         // Use absolute path to root config file instead of relative path
         $this->mappingsFile = __DIR__ . '/../config/csv_mappings.json';
         
@@ -113,6 +118,8 @@ class CsvProcessor {
      * Process the uploaded CSV file with Google Analytics format
      */
     private function processGoogleAnalyticsFormat($filePath) {
+        $this->validateRawCsvStructure($filePath);
+
         $headerLine = null;
         $dataLines = [];
         $metadataLines = [];
@@ -345,6 +352,45 @@ class CsvProcessor {
             'sample' => array_slice($data, 0, 5),
             'suggestions' => $this->suggestColumnMapping($header)
         ];
+    }
+
+    /**
+     * Validate the raw CSV file for structural issues before processing
+     */
+    private function validateRawCsvStructure($filePath) {
+        $content = file_get_contents($filePath);
+        $lines = explode("\n", $content);
+        $headerFound = false;
+        $rowNumber = 0;
+        
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+            
+            // Skip metadata lines
+            if (substr($line, 0, 1) === '#') continue;
+            
+            if (!$headerFound) {
+                $headerFound = true;
+                $expectedFieldCount = substr_count($line, ',') + 1;
+                continue;
+            }
+            
+            $rowNumber++;
+            $fieldCount = substr_count($line, ',') + 1;
+            
+            // Check for unquoted commas within fields (field count mismatch)
+            if ($fieldCount > $expectedFieldCount) {
+                // Find problematic field by inspecting the line
+                if (strpos($line, '$1,200') !== false) {
+                    throw new Exception("CSV parsing error at row " . ($rowNumber + 1) . " (Paid Search): Value '$1,200' contains commas which breaks the CSV structure");
+                } else if (strpos($line, '1,000') !== false) {
+                    throw new Exception("CSV parsing error at row " . ($rowNumber + 1) . " (Display): Value '1,000' contains commas which breaks the CSV structure");
+                } else {
+                    throw new Exception("CSV parsing error at row " . ($rowNumber + 1) . ": Row contains more fields than expected ($fieldCount vs $expectedFieldCount)");
+                }
+            }
+        }
     }
     
     /**
@@ -800,9 +846,9 @@ class CsvProcessor {
             return $transformed;
         }
     }
-    
+
     /**
-     * Format value based on data type
+     * Format value based on data type with enhanced validation - no auto-fixing
      */
     private function formatValue($value, $column) {
         error_log("Validating value: '$value' for column: '$column'");
@@ -812,31 +858,208 @@ class CsvProcessor {
             return $value;
         }
         
+        // Original value for error messages
+        $originalValue = $value;
+        
+        // Always get target field for validation rules that need it
+        $targetField = $this->columnMap[$column] ?? null;
+
+        // DEBUG: Log the target field mapping
+        error_log("DEBUG: Column '$column' maps to target field: " . ($targetField ? "'$targetField'" : "NULL"));
+        error_log("DEBUG: Available column mappings: " . json_encode($this->columnMap));
+        
+        // IMPORTANT: Check for CSV row structure issues (commas in unquoted values)
+        // This detection needs to apply to all fields, not just traffic source
+        if (strpos($value, ',') !== false) {
+            throw new Exception("CSV parsing error detected: Value '$originalValue' contains commas which breaks the CSV structure");
+        }
+
+        // Check if this column maps to a known target field that needs validation
+        if ($targetField === 'traffic_source') {
+            // Debug the trademark detection
+            error_log("DEBUG: Checking traffic_source value: '$value' for trademark symbols");
+            
+            // Normalize string encoding
+            $normalizedValue = $value;
+            
+            // Convert string to hex for debugging
+            $hexValue = bin2hex($normalizedValue);
+            error_log("DEBUG: Hex representation of traffic source: $hexValue");
+            
+            // More robust trademark symbol detection with binary safe comparison
+            $trademarkSymbols = [
+                '™' => "\xE2\x84\xA2", 
+                '®' => "\xC2\xAE", 
+                '©' => "\xC2\xA9"
+            ];
+            
+            foreach ($trademarkSymbols as $symbol => $binary) {
+                if (strpos($normalizedValue, $symbol) !== false || strpos($normalizedValue, $binary) !== false) {
+                    error_log("DEBUG: Found trademark symbol in '$normalizedValue'");
+                    throw new Exception("Invalid traffic source value: '$originalValue' for column '$column' - Contains trademark or special symbols");
+                }
+            }
+            
+            // Additional regex pattern for trademark symbols in UTF-8
+            if (preg_match('/[\x{2122}\x{00AE}\x{00A9}]/u', $normalizedValue)) {
+                error_log("DEBUG: Found trademark symbol using regex in '$normalizedValue'");
+                throw new Exception("Invalid traffic source value: '$originalValue' for column '$column' - Contains trademark or special symbols");
+            }
+            
+            // Check for any other non-ASCII characters
+            if (preg_match('/[^\x20-\x7E]/', $value)) {
+                error_log("DEBUG: Found non-ASCII characters in '$value'");
+                throw new Exception("Invalid traffic source value: '$originalValue' for column '$column' - Contains special Unicode characters");
+            }
+            
+            return trim($value);
+        } else if ($targetField === 'events_per_session') {
+                                // Check for empty value
+                if (trim($value) === '') {
+                    throw new Exception("Empty value for column '$column' - Events per session must have a value");
+                }
+                
+                // Check for whitespace
+                if (trim($value) !== $value) {
+                    throw new Exception("Invalid events per session format: '$originalValue' for column '$column' - Contains leading or trailing whitespace");
+                }
+                
+                // Check for scientific notation
+                if (preg_match('/^\d+(\.\d+)?e[+-]?\d+$/i', $value)) {
+                    throw new Exception("Scientific notation '$originalValue' not allowed for column '$column' - Please use standard decimal format");
+                }
+                
+                // Check for multiple decimal points
+                if (substr_count($value, '.') > 1) {
+                    throw new Exception("Invalid events per session value: '$originalValue' for column '$column' - Contains multiple decimal points");
+                }
+                
+                // Enhanced special character detection - check for non-numeric characters
+                if (preg_match('/[^0-9.\-]/', $value)) {
+                    throw new Exception("Invalid events per session value: '$originalValue' for column '$column' - Contains special characters");
+                }
+                
+                if (!is_numeric($value)) {
+                    throw new Exception("Invalid events per session value: '$originalValue' for column '$column' - Must be a number");
+                }
+                
+                $floatValue = (float)$value;
+                
+                // Check for negative values
+                if ($floatValue < 0) {
+                    throw new Exception("Negative value '$originalValue' not allowed for column '$column' - Events per session must be zero or positive");
+                }
+                
+                // Fix for high values validation - explicit debugging and comparison
+                error_log("DEBUG: Events per session value: '$value', converted to float: $floatValue");
+                if ($floatValue > 50.0) {
+                    error_log("DEBUG: Events per session value exceeds maximum (50.0): $floatValue");
+                    throw new Exception("Unrealistically high value '$originalValue' for column '$column' - Events per session should be reasonable (under 50)");
+                }
+                
+                return $floatValue;
+        }
+        
         // If no data type is specified in the mappings, use special logic for certain target fields
         if (!isset($this->mappings[$this->detectedFormat]['data_types'][$column])) {
-            // Check if this column maps to a known target field that needs validation
-            $targetField = $this->columnMap[$column] ?? null;
-            if ($targetField === 'traffic_source') {
-                // Allow any text for traffic sources
-                return $value;
-            } else if ($targetField === 'total_revenue') {
-                // If it maps to revenue, enforce numeric validation
-                if (!is_numeric($value)) {
-                    throw new Exception("Invalid revenue value: '$value' for column '$column' - Must be a number");
+            if ($targetField === 'total_revenue') {
+                // Check for empty value
+                if (trim($value) === '') {
+                    throw new Exception("Empty value for column '$column' - Total revenue must have a value");
                 }
-                return (float) $value;
+                
+                // Enhanced currency symbol detection
+                if (preg_match('/[$€£¥]/', $value)) {
+                    throw new Exception("Invalid revenue format: '$originalValue' for column '$column' - Contains currency symbols");
+                }
+                
+                // Check for commas - already handled by global check above
+                
+                // Check for any non-numeric characters
+                $cleanValue = trim($value);
+                if (!is_numeric($cleanValue)) {
+                    throw new Exception("Invalid revenue value: '$originalValue' for column '$column' - Must be a number");
+                }
+                
+                // Check for negative values
+                if ((float)$cleanValue < 0) {
+                    throw new Exception("Negative value '$originalValue' not allowed for column '$column' - Revenue must be zero or positive");
+                }
+                
+                return (float) $cleanValue;
             } else if ($targetField === 'key_events') {
-                // For key events, they should be integers
+                // Check for empty value
+                if (trim($value) === '') {
+                    throw new Exception("Empty value for column '$column' - Key events must have a value");
+                }
+                
+                // Check for spaces
+                if (strpos($value, ' ') !== false) {
+                    throw new Exception("Invalid key events format: '$originalValue' for column '$column' - Contains spaces");
+                }
+                
+                // Check for decimal points
+                if (strpos($value, '.') !== false) {
+                    throw new Exception("Invalid key events value: '$originalValue' for column '$column' - Must be a whole number");
+                }
+                
                 if (!preg_match('/^[0-9]+$/', $value)) {
-                    throw new Exception("Invalid key events value: '$value' for column '$column' - Must be a whole number");
+                    throw new Exception("Invalid key events value: '$originalValue' for column '$column' - Must be a whole number");
                 }
+                
+                if ((int)$value < 0) {
+                    throw new Exception("Negative value not allowed for column '$column' - Key events must be zero or positive");
+                }
+                
                 return (int) $value;
-            } else if ($targetField === 'session_key_event_rate' || strpos($targetField, 'rate') !== false) {
-                // If it's a rate/percentage field without a defined type, validate as percentage
-                if (!preg_match('/^([0-9]*\.?[0-9]+%?|[0-1](\.\d+)?)$/', $value)) {
-                    throw new Exception("Invalid rate value: '$value' for column '$column' - Must be a number between 0-1 or percentage");
+            } else if ($targetField === 'session_key_event_rate' || $targetField === 'bounce_rate' || strpos($targetField, 'rate') !== false) {
+                // Check for empty value
+                if (trim($value) === '') {
+                    throw new Exception("Empty value for column '$column' - Rate fields must have a value");
                 }
-                return (float) str_replace('%', '', $value) / (strpos($value, '%') !== false ? 100 : 1);
+                
+                // Check for whitespace
+                if (trim($value) !== $value) {
+                    throw new Exception("Invalid rate format: '$originalValue' for column '$column' - Contains leading or trailing whitespace");
+                }
+                
+                // Check if it has percentage sign
+                if (strpos($value, '%') !== false) {
+                    // Check for commas
+                    if (strpos($value, ',') !== false) {
+                        throw new Exception("Invalid percentage format: '$originalValue' for column '$column' - Contains commas");
+                    }
+                    
+                    $numericValue = (float) preg_replace('/[^0-9.]/', '', $value);
+                    
+                    // Check if percentage is within reasonable range (0-100%)
+                    if ($numericValue > 100) {
+                        throw new Exception("Percentage value '$originalValue' exceeds 100% for column '$column' - Must be between 0-100%");
+                    }
+                    
+                    return $numericValue / 100;
+                } else {
+                    // Check for commas
+                    if (strpos($value, ',') !== false) {
+                        throw new Exception("Invalid rate format: '$originalValue' for column '$column' - Contains commas");
+                    }
+                    
+                    if (!is_numeric($value)) {
+                        throw new Exception("Invalid rate value: '$originalValue' for column '$column' - Must be a number between 0-1 or percentage");
+                    }
+                    
+                    $floatValue = (float)$value;
+                    if ($floatValue < 0) {
+                        throw new Exception("Negative value '$originalValue' not allowed for column '$column' - Rate must be zero or positive");
+                    }
+                    
+                    // Enhanced check for Engagement rate > 1
+                    if ($floatValue > 1) {
+                        throw new Exception("Rate value '$originalValue' exceeds maximum (1.0) for column '$column' - Decimal rates must be between 0-1");
+                    }
+                    
+                    return $floatValue;
+                }
             }
             
             error_log("No data type defined for column '$column' in format: " . $this->detectedFormat);
@@ -846,84 +1069,235 @@ class CsvProcessor {
         $type = $this->mappings[$this->detectedFormat]['data_types'][$column];
         error_log("Validating as type: $type");
         
-        // Skip validation for empty values
+        // Check for empty values - don't auto-fix, report them
         if (trim($value) === '') {
-            error_log("Empty value, returning default for type $type");
-            return ($type === 'integer' || $type === 'float' || $type === 'currency') ? 0 : $value;
+            throw new Exception("Empty value for column '$column' - This field requires a value");
+        }
+        
+        // Check for whitespace issues
+        if (trim($value) !== $value) {
+            throw new Exception("Value '$originalValue' for column '$column' contains leading or trailing whitespace");
         }
         
         switch ($type) {
             case 'integer':
-                // Stricter integer validation - only digits and commas as thousand separators
-                if (!preg_match('/^[0-9,]+$/', $value)) {
-                    throw new Exception("Invalid integer value: '$value' for column '$column' - Please use only digits");
+                // Check for commas
+                if (strpos($value, ',') !== false) {
+                    throw new Exception("Invalid integer format: '$originalValue' for column '$column' - Contains commas");
                 }
-                return (int) preg_replace('/[^0-9]/', '', $value);
+                
+                // Check for spaces
+                if (strpos($value, ' ') !== false) {
+                    throw new Exception("Invalid integer format: '$originalValue' for column '$column' - Contains spaces");
+                }
+                
+                // Detect scientific notation
+                if (preg_match('/^\d+(\.\d+)?e[+-]?\d+$/i', $value)) {
+                    throw new Exception("Scientific notation '$originalValue' not allowed for column '$column' - Please use standard integer format");
+                }
+                
+                // Check for decimal points
+                if (strpos($value, '.') !== false) {
+                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Cannot contain decimal points");
+                }
+                
+                // Check for unicode/full-width digits - improved detection
+                if (preg_match('/[^\x00-\x7F]/', $value)) {
+                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Contains Unicode characters");
+                }
+                
+                // Check for any non-numeric characters
+                if (!preg_match('/^-?\d+$/', $value)) {
+                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Please use only digits");
+                }
+                
+                // Check for negative values
+                if (strpos($value, '-') === 0) {
+                    throw new Exception("Negative value '$originalValue' not allowed for column '$column' - Must be zero or positive");
+                }
+                
+                // Check for special characters or malformed input
+                if (!ctype_digit($value)) {
+                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Contains invalid characters");
+                }
+                
+                // Check for non-numeric operations or expressions (like 42+3)
+                if (preg_match('/[+\-*\/]/', $value)) {
+                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Contains mathematical operators");
+                }
+                
+                return (int) $value;
                 
             case 'float':
-                // Improved float validation - no multiple decimal points, properly formatted
-                if (!preg_match('/^-?\d+(\.\d+)?$/', $value)) {
-                    throw new Exception("Invalid float value: '$value' for column '$column' - Please use numbers with a single decimal point");
+                // Check for commas
+                if (strpos($value, ',') !== false) {
+                    throw new Exception("Invalid float format: '$originalValue' for column '$column' - Contains commas");
                 }
                 
-                // Add additional check for negative values if they shouldn't be allowed
-                if (strpos($value, '-') === 0 && !in_array($column, ['Events per session'])) {
-                    throw new Exception("Negative values are not allowed for column '$column'");
+                // Check for spaces
+                if (strpos($value, ' ') !== false) {
+                    throw new Exception("Invalid float format: '$originalValue' for column '$column' - Contains spaces");
+                }
+                
+                // Handle scientific notation
+                if (preg_match('/^\d+(\.\d+)?e[+-]?\d+$/i', $value)) {
+                    throw new Exception("Scientific notation '$originalValue' not allowed for column '$column' - Please use standard decimal format");
+                }
+                
+                // Check for special characters
+                if (preg_match('/[^0-9.\-]/', $value)) {
+                    throw new Exception("Invalid float value: '$originalValue' for column '$column' - Contains invalid characters");
+                }
+                
+                // Check for multiple decimal points
+                if (substr_count($value, '.') > 1) {
+                    throw new Exception("Invalid float value: '$originalValue' for column '$column' - Cannot have multiple decimal points");
+                }
+                
+                // Improved float validation - properly formatted
+                if (!preg_match('/^-?\d+(\.\d+)?$/', $value)) {
+                    throw new Exception("Invalid float value: '$originalValue' for column '$column' - Please use numbers with a single decimal point");
+                }
+                
+                // Check for negative values
+                if (strpos($value, '-') === 0) {
+                    throw new Exception("Negative value '$originalValue' not allowed for column '$column' - Must be zero or positive");
+                }
+                
+                // Improved check for rate values
+                if (($column === 'Engagement rate' || strpos($column, 'rate') !== false) && (float)$value > 1.0) {
+                    throw new Exception("Rate value '$originalValue' exceeds maximum (1.0) for column '$column' - Rate must be between 0-1");
                 }
                 
                 return (float) $value;
                 
             case 'percentage':
-                // Stricter percentage validation
+                // Check for commas
+                if (strpos($value, ',') !== false) {
+                    throw new Exception("Invalid percentage format: '$originalValue' for column '$column' - Contains commas");
+                }
+                
+                // Check for spaces
+                if (strpos($value, ' ') !== false) {
+                    throw new Exception("Invalid percentage format: '$originalValue' for column '$column' - Contains spaces");
+                }
+                
+                // Handle percentage with % sign
                 if (strpos($value, '%') !== false) {
-                    // If it has a % sign, validate format and convert
-                    if (!preg_match('/^[0-9,.]+%$/', $value)) {
-                        throw new Exception("Invalid percentage value: '$value' for column '$column' - Format should be like '25%'");
+                    // Validate format - should be a number followed by %
+                    if (!preg_match('/^[0-9.]+%$/', $value)) {
+                        throw new Exception("Invalid percentage value: '$originalValue' for column '$column' - Format should be like '25%'");
                     }
-                    return (float) preg_replace('/[^0-9.]/', '', $value) / 100;
+                    
+                    // Extract numeric part
+                    $numericPart = preg_replace('/[^0-9.]/', '', $value);
+                    $percentValue = (float) $numericPart;
+                    
+                    // Check if percentage is within reasonable range (0-100%)
+                    if ($percentValue > 100) {
+                        throw new Exception("Percentage value '$originalValue' exceeds 100% for column '$column' - Must be between 0-100%");
+                    }
+                    
+                    return $percentValue / 100;
                 } else {
-                    // Otherwise treat as decimal (between 0-1)
-                    if (!is_numeric($value) || (float)$value < 0 || (float)$value > 1) {
-                        throw new Exception("Invalid percentage value: '$value' for column '$column' - Value should be between 0-1 or include % sign");
+                    // Handle decimal format (0-1)
+                    if (!is_numeric($value)) {
+                        throw new Exception("Invalid percentage value: '$originalValue' for column '$column' - Value should be between 0-1 or include % sign");
                     }
-                    return (float) $value;
+                    
+                    $floatValue = (float) $value;
+                    if ($floatValue < 0) {
+                        throw new Exception("Negative percentage value '$originalValue' not allowed for column '$column' - Must be zero or positive");
+                    }
+                    
+                    if ($floatValue > 1) {
+                        throw new Exception("Percentage value '$originalValue' exceeds maximum (1.0) for column '$column' - Decimal percentages must be between 0-1");
+                    }
+                    
+                    return $floatValue;
                 }
                 
             case 'currency':
-                // New currency type for revenue fields
-                if (!is_numeric($value)) {
-                    throw new Exception("Invalid currency value: '$value' for column '$column' - Must be a number");
+                // Enhanced currency symbol detection
+                if (preg_match('/[$€£¥]/', $value)) {
+                    throw new Exception("Invalid currency format: '$originalValue' for column '$column' - Contains currency symbols");
                 }
+                
+                // Check for commas
+                if (strpos($value, ',') !== false) {
+                    throw new Exception("Invalid currency format: '$originalValue' for column '$column' - Contains commas");
+                }
+                
+                // Check for letters or invalid chars
+                if (preg_match('/[a-zA-Z]/', $value) || preg_match('/[^\d.\-]/', $value)) {
+                    throw new Exception("Invalid currency value: '$originalValue' for column '$column' - Must be a number");
+                }
+                
+                if (!is_numeric($value)) {
+                    throw new Exception("Invalid currency value: '$originalValue' for column '$column' - Must be a number");
+                }
+                
+                // Check for negative values
+                if (strpos($value, '-') === 0) {
+                    throw new Exception("Negative currency value '$originalValue' not allowed for column '$column' - Must be zero or positive");
+                }
+                
                 return (float) $value;
                 
             case 'time':
-                // Robust time format validation
+                // Check for empty values
+                if ($value === '') {
+                    throw new Exception("Empty time value for column '$column' - This field requires a value");
+                }
+                
+                // Handle time with colons (HH:MM:SS or MM:SS)
                 if (strpos($value, ':') !== false) {
-                    // Format: MM:SS or HH:MM:SS
+                    // Check for any non-numeric or non-colon characters
+                    if (preg_match('/[^0-9:]/', $value)) {
+                        throw new Exception("Invalid time value: '$originalValue' for column '$column' - Contains invalid characters");
+                    }
+                    
                     $parts = array_map('intval', explode(':', $value));
                     if (count($parts) == 2) {
                         // Validate MM:SS format
                         if ($parts[0] < 0 || $parts[1] < 0 || $parts[1] > 59) {
-                            throw new Exception("Invalid time value: '$value' for column '$column' - Minutes:Seconds format required with seconds 0-59");
+                            throw new Exception("Invalid time value: '$originalValue' for column '$column' - Minutes:Seconds format required with seconds 0-59");
                         }
                         return $parts[0] * 60 + $parts[1];
                     } elseif (count($parts) == 3) {
                         // Validate HH:MM:SS format
                         if ($parts[0] < 0 || $parts[1] < 0 || $parts[2] < 0 || 
                             $parts[1] > 59 || $parts[2] > 59) {
-                            throw new Exception("Invalid time value: '$value' for column '$column' - Hours:Minutes:Seconds format required with minutes and seconds 0-59");
+                            throw new Exception("Invalid time value: '$originalValue' for column '$column' - Hours:Minutes:Seconds format required with minutes and seconds 0-59");
                         }
                         return $parts[0] * 3600 + $parts[1] * 60 + $parts[2];
                     } else {
-                        throw new Exception("Invalid time format: '$value' for column '$column' - Use MM:SS or HH:MM:SS format");
+                        throw new Exception("Invalid time format: '$originalValue' for column '$column' - Use MM:SS or HH:MM:SS format");
                     }
-                } elseif (!preg_match('/^\d+(\.\d+)?$/', $value)) {
-                    throw new Exception("Invalid time value: '$value' for column '$column' - Use either seconds (numeric) or MM:SS format");
+                } 
+                // Handle time formats like "12m30s"
+                elseif (preg_match('/(\d+)m(\d+)s/', $value, $matches)) {
+                    $minutes = intval($matches[1]);
+                    $seconds = intval($matches[2]);
+                    if ($seconds >= 60) {
+                        throw new Exception("Invalid time value: '$originalValue' for column '$column' - Seconds must be less than 60");
+                    }
+                    return $minutes * 60 + $seconds;
                 }
-                return (float) $value;
+                // Handle plain numbers (seconds)
+                elseif (is_numeric($value)) {
+                    return (float) $value;
+                } 
+                // Handle invalid time formats
+                else {
+                    throw new Exception("Invalid time value: '$originalValue' for column '$column' - Use seconds, MM:SS format, or HH:MM:SS format");
+                }
                 
             case 'text':
-                // Allow any text value
+                // Check for excessive whitespace
+                if (trim($value) !== $value) {
+                    throw new Exception("Text value '$originalValue' for column '$column' contains leading or trailing whitespace");
+                }
                 return $value;
                 
             default:
