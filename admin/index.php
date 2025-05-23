@@ -1,20 +1,6 @@
 <?php
 require_once '../auth/admin_auth.php'; // Admin Login Validation
-
-session_start();
 require_once '../config.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: ../admin_login.php?key=trafanalyz");
-    exit;
-}
-
-// Check if user is admin
-if ($_SESSION['role'] !== 'Admin') {
-    header("Location: ../user/");
-    exit;
-}
 
 // Get summary statistics
 $userStats = getUserStats($conn);

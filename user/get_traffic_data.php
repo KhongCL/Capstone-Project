@@ -1,4 +1,5 @@
 <?php
+require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 

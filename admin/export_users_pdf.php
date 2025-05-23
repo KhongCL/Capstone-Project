@@ -1,15 +1,9 @@
 <?php
+require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 require_once '../functions.php';
 
 date_default_timezone_set('Asia/Kuala_Lumpur');
-
-// Check authentication
-session_start();
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
-    header('Location: ../login.php');
-    exit;
-}
 
 // Get users
 $users = [];
