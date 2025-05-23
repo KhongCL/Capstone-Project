@@ -49,6 +49,7 @@ $mappings = json_decode(file_get_contents($mappingsFile), true);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - CSV Mappings Configuration</title>
     <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="admin_style.css">
 </head>
 <body>
     <div class="container">

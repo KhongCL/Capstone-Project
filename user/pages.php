@@ -13,7 +13,8 @@ $pagesData = getTopVisitedPages($conn, 10);
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Top Pages - Web Traffic Analysis Dashboard</title>
-  <link rel="stylesheet" href="../styles.css" />
+	<link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="user_style.css">
   <style>
     .export-controls {
       display: flex;

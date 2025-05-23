@@ -72,6 +72,7 @@ if ($result) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Management - TrafAnalyz Admin</title>
     <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="admin_style.css">
     <style>
         .container {
             padding: 20px;

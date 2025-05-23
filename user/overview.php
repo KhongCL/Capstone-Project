@@ -89,6 +89,8 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
         height: 100% !important;
     }
   </style>
+	<link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="user_style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
