@@ -343,47 +343,53 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 
     console.log('Upload ID:', uploadId); // Debug log
     document.getElementById('annotationForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
+      e.preventDefault();
+      
+      if (!uploadId) {
+          alert('No CSV file has been uploaded yet. Please upload a file first.');
+          return;
+      }
+    
+      const id = document.getElementById('annotationId').value;
+      const date = document.getElementById('annotationDate').value;
+      const note = document.getElementById('annotationNote').value;
+      
+      try {
+          // Check for existing annotation on same date
+          const annotations = await getAnnotations();
+          const existingAnnotation = annotations.find(annotation => 
+              annotation.date === date && annotation.id !== parseInt(id)
+          );
         
-        if (!uploadId) {
-            alert('No CSV file has been uploaded yet. Please upload a file first.');
-            return;
-        }
-
-        const id = document.getElementById('annotationId').value;
-        const date = document.getElementById('annotationDate').value;
-        const note = document.getElementById('annotationNote').value;
+          if (existingAnnotation) {
+              if (!confirm('An annotation already exists for this date. Are you sure you want to override it?')) {
+                  return;
+              }
+          }
         
-        try {
-            const formData = new FormData();
-            formData.append('annotationId', id);
-            formData.append('uploadId', uploadId);
-            formData.append('dataDate', date);
-            formData.append('note', note);
-            
-            console.log('Sending annotation data:', {
-                uploadId: uploadId,
-                date: date,
-                note: note
-            });
-
-            const response = await fetch('save_annotation.php', {
-                method: 'POST',
-                body: formData
-            });
-            
-            const result = await response.json();
-            if (result.success) {
-                await renderAnnotationsList();
-                resetForm();
-            } else {
-                alert(result.message || 'Error saving annotation');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Error saving annotation');
-        }
-    });
+          const formData = new FormData();
+          formData.append('annotationId', id);
+          formData.append('uploadId', uploadId);
+          formData.append('dataDate', date);
+          formData.append('note', note);
+        
+          const response = await fetch('save_annotation.php', {
+              method: 'POST',
+              body: formData
+          });
+          
+          const result = await response.json();
+          if (result.success) {
+              await renderAnnotationsList();
+              resetForm();
+          } else {
+              alert(result.message || 'Error saving annotation');
+          }
+      } catch (error) {
+          console.error('Error:', error);
+          alert('Error saving annotation');
+      }
+  });
 
     renderAnnotationsList();
 
