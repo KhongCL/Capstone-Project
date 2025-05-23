@@ -29,7 +29,7 @@ function handleCsvUpload($conn, $file) {
     }
     
     // Ensure config directory and mappings file exist
-    if (!file_exists('config/csv_mappings.json')) {
+    if (!file_exists(__DIR__ . '/config/csv_mappings.json')) {
         // Create config directory if needed
         if (!is_dir('config')) {
             mkdir('config', 0755, true);
@@ -58,11 +58,11 @@ function handleCsvUpload($conn, $file) {
                 ]
             ]
         ];
-        file_put_contents('config/csv_mappings.json', json_encode($defaultMappings, JSON_PRETTY_PRINT));
+        file_put_contents(__DIR__ . '/config/csv_mappings.json', json_encode($defaultMappings, JSON_PRETTY_PRINT));
     }
     
     // Move uploaded file to a temporary location
-    $uploadDir = 'uploads/';
+    $uploadDir = __DIR__ . '/uploads/';
     if (!is_dir($uploadDir)) {
         mkdir($uploadDir, 0755, true);
     }
