@@ -272,36 +272,52 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     }
 
     async function renderAnnotationsList() {
-        const list = document.getElementById('annotationsList');
-        const annotations = await getAnnotations();
-        list.innerHTML = '';
-        
-        annotations.forEach((item, index) => {
-            const div = document.createElement('div');
-            div.innerHTML = `<strong>${item.date}</strong>: ${item.note}
-                <button onclick="editAnnotation(${item.id})">Edit</button>
-                <button onclick="deleteAnnotation(${item.id})">Delete</button>`;
-            list.appendChild(div);
-        });
+      const list = document.getElementById('annotationsList');
+      const annotations = await getAnnotations();
+      list.innerHTML = '';
       
-        // Update chart annotations
-        trafficChart.options.plugins.annotation.annotations = {};
-        annotations.forEach((item, i) => {
-            trafficChart.options.plugins.annotation.annotations['line' + i] = {
-                type: 'line',
-                scaleID: 'x',
-                value: item.date,
-                borderColor: 'red',
-                borderWidth: 2,
-                label: {
-                    content: item.note,
-                    enabled: true,
-                    position: 'top'
-                }
-            };
-        });
-        trafficChart.update();
-    }
+      // Group annotations by date
+      const annotationsByDate = {};
+      annotations.forEach(item => {
+          if (!annotationsByDate[item.date]) {
+              annotationsByDate[item.date] = [];
+          }
+          annotationsByDate[item.date].push(item);
+      });
+      
+      // Display annotations grouped by date
+      Object.entries(annotationsByDate).forEach(([date, items]) => {
+          items.forEach((item, index) => {
+              const div = document.createElement('div');
+              div.innerHTML = `<strong>${item.date} (${index + 1}/5)</strong>: ${item.note}
+                  <button onclick="editAnnotation(${item.id})">Edit</button>
+                  <button onclick="deleteAnnotation(${item.id})">Delete</button>`;
+              list.appendChild(div);
+          });
+      });
+      
+      // Update chart annotations
+      trafficChart.options.plugins.annotation.annotations = {};
+      Object.entries(annotationsByDate).forEach(([date, items]) => {
+          items.forEach((item, i) => {
+              const offset = i * 20; // Offset each annotation vertically
+              trafficChart.options.plugins.annotation.annotations[`line${item.id}`] = {
+                  type: 'line',
+                  scaleID: 'x',
+                  value: item.date,
+                  borderColor: 'red',
+                  borderWidth: 2,
+                  label: {
+                      content: `${i + 1}. ${item.note}`,
+                      enabled: true,
+                      position: 'top',
+                      yAdjust: offset // Adjust vertical position to prevent overlap
+                  }
+              };
+          });
+      });
+      trafficChart.update();
+  }
 
     async function editAnnotation(id) {
         try {
@@ -343,53 +359,52 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 
     console.log('Upload ID:', uploadId); // Debug log
     document.getElementById('annotationForm').addEventListener('submit', async function (e) {
-      e.preventDefault();
+        e.preventDefault();
+        
+        if (!uploadId) {
+            alert('No CSV file has been uploaded yet. Please upload a file first.');
+            return;
+        }
       
-      if (!uploadId) {
-          alert('No CSV file has been uploaded yet. Please upload a file first.');
-          return;
-      }
-    
-      const id = document.getElementById('annotationId').value;
-      const date = document.getElementById('annotationDate').value;
-      const note = document.getElementById('annotationNote').value;
-      
-      try {
-          // Check for existing annotation on same date
-          const annotations = await getAnnotations();
-          const existingAnnotation = annotations.find(annotation => 
-              annotation.date === date && annotation.id !== parseInt(id)
-          );
+        const id = document.getElementById('annotationId').value;
+        const date = document.getElementById('annotationDate').value;
+        const note = document.getElementById('annotationNote').value;
         
-          if (existingAnnotation) {
-              if (!confirm('An annotation already exists for this date. Are you sure you want to override it?')) {
-                  return;
-              }
-          }
-        
-          const formData = new FormData();
-          formData.append('annotationId', id);
-          formData.append('uploadId', uploadId);
-          formData.append('dataDate', date);
-          formData.append('note', note);
-        
-          const response = await fetch('save_annotation.php', {
-              method: 'POST',
-              body: formData
-          });
+        try {
+            // Check number of annotations for this date
+            const annotations = await getAnnotations();
+            const sameDataAnnotations = annotations.filter(annotation => 
+                annotation.date === date
+            );
           
-          const result = await response.json();
-          if (result.success) {
-              await renderAnnotationsList();
-              resetForm();
-          } else {
-              alert(result.message || 'Error saving annotation');
-          }
-      } catch (error) {
-          console.error('Error:', error);
-          alert('Error saving annotation');
-      }
-  });
+            if (sameDataAnnotations.length >= 5 && !id) {
+                alert('Maximum of 5 annotations per date allowed. Please edit existing annotations instead.');
+                return;
+            }
+          
+            const formData = new FormData();
+            formData.append('annotationId', id);
+            formData.append('uploadId', uploadId);
+            formData.append('dataDate', date);
+            formData.append('note', note);
+            
+            const response = await fetch('save_annotation.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                await renderAnnotationsList();
+                resetForm();
+            } else {
+                alert(result.message || 'Error saving annotation');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error saving annotation');
+        }
+    });
 
     renderAnnotationsList();
 
