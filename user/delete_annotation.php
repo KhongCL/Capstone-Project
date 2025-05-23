@@ -1,14 +1,8 @@
 <?php
-session_start();
+require_once '../auth/user_auth.php';
 require_once '../config.php';
 
 $response = ['success' => false, 'message' => ''];
-
-if (!isset($_SESSION['user_id'])) {
-    $response['message'] = 'User not authenticated';
-    echo json_encode($response);
-    exit;
-}
 
 if (!isset($_POST['annotationId']) || !isset($_POST['uploadId'])) {
     $response['message'] = 'Missing required parameters';

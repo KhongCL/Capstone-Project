@@ -1,6 +1,5 @@
 <?php
-session_start();
-require_once '../auth/user_auth.php'; // Login Validation
+require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 

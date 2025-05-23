@@ -3,8 +3,6 @@ require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 include '../functions.php';
 
-// Check if user is logged in and has admin privileges
-session_start();
 // In a real app, add authentication check here
 // For example: if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') { ... }
 

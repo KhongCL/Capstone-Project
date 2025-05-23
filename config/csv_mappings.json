@@ -47,13 +47,8 @@
         "column_mappings": {
             "Session primary channel group (Default channel group)": "traffic_source",
             "Sessions": "visits",
+            "Engaged sessions": "engaged_sessions",
             "Engagement rate": "bounce_rate",
-<<<<<<< HEAD
-            "Average engagement time per session": "avg_session_duration"
-        },
-        "data_types": {
-            "Session primary channel group (Default channel group)": "string",
-=======
             "Average engagement time per session": "avg_session_duration",
             "Events per session": "events_per_session",
             "Event count": "event_count",
@@ -63,19 +58,15 @@
         },
         "data_types": {
             "Session primary channel group (Default channel group)": "text",
->>>>>>> 28bebf81c88291931626c80fff02c99fe8ee1861
             "Sessions": "integer",
+            "Engaged sessions": "integer",
             "Engagement rate": "float",
-<<<<<<< HEAD
-            "Average engagement time per session": "float"
-=======
             "Average engagement time per session": "float",
             "Events per session": "float",
             "Event count": "integer",
             "Key events": "integer",
             "Session key event rate": "percentage",
             "Total revenue": "currency"
->>>>>>> 28bebf81c88291931626c80fff02c99fe8ee1861
         }
     }
 }

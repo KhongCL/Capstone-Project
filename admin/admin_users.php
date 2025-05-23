@@ -3,11 +3,9 @@ require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 require_once '../functions.php';
 
-// Check if user is logged in as admin (implement proper authentication)
-session_start();
-
 $message = '';
 $messageType = '';
+
 
 // Process user account actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -156,7 +154,11 @@ if ($result) {
 </head>
 <body>
     <div class="container">
-        <?php include 'header.php'; ?>
+        <?php 
+					$title = "User Management";
+					$active_page = "users";
+					include 'header.php';
+				?>
         
         <main>
             <section>

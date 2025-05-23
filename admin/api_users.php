@@ -1,5 +1,5 @@
 <?php
-// filepath: c:\xampp\htdocs\Capstone-Project\api_users.php
+require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once 'config.php';
 include 'functions.php';  // This is the correct way to include functions
 
@@ -8,7 +8,6 @@ header('Content-Type: application/json');
 
 // Check if request is AJAX and has proper authentication
 // In a production environment, implement proper authentication here
-session_start();
 
 // Initialize response array
 $response = [
