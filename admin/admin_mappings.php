@@ -52,8 +52,12 @@ $mappings = json_decode(file_get_contents($mappingsFile), true);
 </head>
 <body>
     <div class="container">
-        <?php include 'header.php'; ?>
-        
+        <?php 
+					$title = "CSV Mappings";
+					$active_page = "mappings";
+					include 'header.php';
+				?>
+
         <main>
             <section class="admin-section">
                 <h2>Manage CSV Format Mappings</h2>

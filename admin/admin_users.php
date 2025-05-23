@@ -9,6 +9,7 @@ session_start();
 $message = '';
 $messageType = '';
 
+
 // Process user account actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && isset($_POST['user_id'])) {
@@ -156,7 +157,11 @@ if ($result) {
 </head>
 <body>
     <div class="container">
-        <?php include 'header.php'; ?>
+        <?php 
+					$title = "User Management";
+					$active_page = "users";
+					include 'header.php';
+				?>
         
         <main>
             <section>
