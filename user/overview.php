@@ -106,6 +106,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
           <li><a href="overview.php" class="active">Overview</a></li>
           <li><a href="traffic_sources.php">Traffic Sources</a></li>
           <li><a href="pages.php">Pages</a></li>
+          <li><a href="compare.php">Compare</a></li>
         </ul>
       </nav>
     </header>
