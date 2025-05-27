@@ -1,4 +1,5 @@
 <?php
+// filepath: c:\xampp\htdocs\Capstone-Project\admin\admin_mappings.php
 require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 require_once '../classes/CsvProcessor.php';
@@ -11,6 +12,7 @@ $error = '';
 
 // Handle form submission for updating mappings
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_mappings'])) {
+    // Existing mapping update code...
     $mappings = [];
     
     foreach ($_POST['formats'] as $formatId => $format) {
@@ -54,21 +56,21 @@ $mappings = json_decode(file_get_contents($mappingsFile), true);
 <body>
     <div class="container">
         <?php 
-					$title = "CSV Mappings";
-					$active_page = "mappings";
-					include 'header.php';
-				?>
+            $title = "CSV Mappings";
+            $active_page = "mappings";
+            include 'header.php';
+        ?>
 
         <main>
             <section class="admin-section">
                 <h2>Manage CSV Format Mappings</h2>
                 
                 <?php if (!empty($message)): ?>
-                    <div class="success"><?php echo $message; ?></div>
+                    <div class="message success"><?php echo $message; ?></div>
                 <?php endif; ?>
                 
                 <?php if (!empty($error)): ?>
-                    <div class="alert"><?php echo $error; ?></div>
+                    <div class="message error"><?php echo $error; ?></div>
                 <?php endif; ?>
                 
                 <form action="" method="post" id="mappingsForm">
@@ -76,6 +78,7 @@ $mappings = json_decode(file_get_contents($mappingsFile), true);
                         <?php $formatCount = 0; ?>
                         <?php foreach ($mappings as $formatKey => $format): ?>
                             <?php $formatCount++; ?>
+                            <!-- Existing format sections code -->
                             <div class="format-section" id="format-<?php echo $formatCount; ?>">
                                 <h3>Format: <?php echo ucfirst(str_replace('_', ' ', $formatKey)); ?></h3>
                                 
@@ -103,9 +106,7 @@ $mappings = json_decode(file_get_contents($mappingsFile), true);
                                         </tr>
                                     </thead>
                                     <tbody class="columns-container" id="columns-<?php echo $formatCount; ?>">
-                                        <?php $colCount = 0; ?>
                                         <?php foreach ($format['column_mappings'] as $sourceCol => $targetField): ?>
-                                            <?php $colCount++; ?>
                                             <tr class="column-row">
                                                 <td>
                                                     <input type="text" name="formats[<?php echo $formatCount; ?>][columns][<?php echo htmlspecialchars($sourceCol); ?>][source]" 
@@ -150,67 +151,71 @@ $mappings = json_decode(file_get_contents($mappingsFile), true);
                     
                     <div class="form-actions">
                         <button type="button" class="btn btn-secondary" id="add-format">Add New Format</button>
-                        <button type="submit" name="update_mappings" class="btn">Save Mappings</button>
+                        <button type="submit" name="update_mappings" class="btn btn-primary">Save Mappings</button>
                     </div>
                 </form>
             </section>
         </main>
         
         <footer>
-            <p>&copy; <?php echo date('Y'); ?> Web Traffic Analysis Dashboard</p>
+            <p>&copy; <?php echo date('Y'); ?> TrafAnalyz - Web Traffic Analysis Dashboard</p>
         </footer>
     </div>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Existing admin_mappings.php JavaScript for managing formats and columns
             // Add new format
-            document.getElementById('add-format').addEventListener('click', function() {
-                const formatsContainer = document.getElementById('formats-container');
-                const formatCount = formatsContainer.children.length + 1;
-                
-                const formatSection = document.createElement('div');
-                formatSection.className = 'format-section';
-                formatSection.id = `format-${formatCount}`;
-                
-                formatSection.innerHTML = `
-                    <h3>New Format</h3>
+            const addFormatBtn = document.getElementById('add-format');
+            if (addFormatBtn) {
+                addFormatBtn.addEventListener('click', function() {
+                    const formatsContainer = document.getElementById('formats-container');
+                    const formatCount = formatsContainer.children.length + 1;
                     
-                    <div class="form-group">
-                        <label>Format Name:</label>
-                        <input type="text" name="formats[${formatCount}][name]" required>
-                    </div>
+                    const formatSection = document.createElement('div');
+                    formatSection.className = 'format-section';
+                    formatSection.id = `format-${formatCount}`;
                     
-                    <div class="form-group">
-                        <label>Detection Columns (comma-separated):</label>
-                        <input type="text" name="formats[${formatCount}][detection]" required>
-                        <p class="help-text">List of column names that identify this format</p>
-                    </div>
+                    formatSection.innerHTML = `
+                        <h3>New Format</h3>
+                        
+                        <div class="form-group">
+                            <label>Format Name:</label>
+                            <input type="text" name="formats[${formatCount}][name]" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Detection Columns (comma-separated):</label>
+                            <input type="text" name="formats[${formatCount}][detection]" required>
+                            <p class="help-text">List of column names that identify this format</p>
+                        </div>
+                        
+                        <h4>Column Mappings</h4>
+                        <table class="mapping-table">
+                            <thead>
+                                <tr>
+                                    <th>Source Column</th>
+                                    <th>Target Field</th>
+                                    <th>Data Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="columns-container" id="columns-${formatCount}">
+                            </tbody>
+                        </table>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn-small add-column" data-format="${formatCount}">Add Column</button>
+                            <button type="button" class="btn-small btn-danger remove-format" data-format="${formatCount}">Remove Format</button>
+                        </div>
+                    `;
                     
-                    <h4>Column Mappings</h4>
-                    <table class="mapping-table">
-                        <thead>
-                            <tr>
-                                <th>Source Column</th>
-                                <th>Target Field</th>
-                                <th>Data Type</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="columns-container" id="columns-${formatCount}">
-                        </tbody>
-                    </table>
+                    formatsContainer.appendChild(formatSection);
                     
-                    <div class="form-actions">
-                        <button type="button" class="btn-small add-column" data-format="${formatCount}">Add Column</button>
-                        <button type="button" class="btn-small btn-danger remove-format" data-format="${formatCount}">Remove Format</button>
-                    </div>
-                `;
-                
-                formatsContainer.appendChild(formatSection);
-                
-                // Add event listeners to new buttons
-                addButtonListeners();
-            });
+                    // Add event listeners to new buttons
+                    addButtonListeners();
+                });
+            }
             
             // Add button event listeners
             function addButtonListeners() {

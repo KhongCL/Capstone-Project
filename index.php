@@ -1,5 +1,4 @@
 <?php
-// filepath: c:\xampp\htdocs\trafanalyz\index.php
 session_start();
 ?>
 
