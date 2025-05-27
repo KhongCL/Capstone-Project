@@ -73,15 +73,6 @@ $mappings = json_decode(file_get_contents($mappingsFile), true);
                     <div class="message error"><?php echo $error; ?></div>
                 <?php endif; ?>
                 
-                <!-- REMOVED the sample_upload_message section that was here -->
-                
-                <!-- Regular CSV Mappings Management -->
-                <div class="admin-actions">
-                    <a href="upload_sample_data.php" class="btn btn-primary">
-                        <i class="fas fa-upload"></i> Upload Sample CSV Files
-                    </a>
-                </div>
-                
                 <form action="" method="post" id="mappingsForm">
                     <div id="formats-container">
                         <?php $formatCount = 0; ?>
