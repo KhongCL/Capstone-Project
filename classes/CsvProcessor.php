@@ -596,32 +596,6 @@ class CsvProcessor {
                 $this->columnMap[$sourceCol] = $targetCol;
                 error_log("Added mapping from config: $sourceCol -> $targetCol");
             }
-            
-            // Get all headers from the CSV file
-            $csvHeaders = [];
-            if (($handle = fopen($filePath, "r")) !== FALSE) {
-                // existing code to read headers...
-            }
-            
-            // Check if any CSV headers don't have mappings
-            foreach ($csvHeaders as $header) {
-                if (!isset($this->columnMap[$header])) {
-                    // Try case-insensitive matching
-                    $foundMatch = false;
-                    foreach ($this->mappings[$format]['column_mappings'] as $configCol => $targetCol) {
-                        if (strcasecmp(trim($header), trim($configCol)) === 0) {
-                            $this->columnMap[$header] = $targetCol;
-                            $foundMatch = true;
-                            error_log("Added case-insensitive mapping: $header -> $targetCol");
-                            break;
-                        }
-                    }
-                    
-                    if (!$foundMatch) {
-                        error_log("WARNING: No mapping found for CSV column: $header");
-                    }
-                }
-            }
         }
 
         if ($format) {
@@ -640,22 +614,16 @@ class CsvProcessor {
         }
 
         error_log("Transform data using format: " . ($this->detectedFormat ?? "No format detected"));
-        // Log the full column mapping to see what's actually being mapped
         error_log("Full column mapping: " . json_encode($this->columnMap));
-        
-        // Add logging for data types configuration
-        if ($this->detectedFormat) {
-            error_log("Available data types from configuration: " . 
-                json_encode(isset($this->mappings[$this->detectedFormat]['data_types']) ? 
-                array_keys($this->mappings[$this->detectedFormat]['data_types']) : []));
-        }
         
         $transformed = [];
         $validationErrors = [];
-        $validRows = 0; // Initialize $validRows here to avoid undefined variable
-        $rowNumber = 0; // Also initialize $rowNumber for consistent reporting
+        $validRows = 0;
+        $rowNumber = 0;
+        
         error_log("Starting transformData with mapping: " . json_encode($columnMapping));
         
+        // Check if this is a GA4 format file
         $isGa4Format = false;
         $handle = fopen($filePath, "r");
         if ($handle) {
@@ -716,9 +684,6 @@ class CsvProcessor {
                     
                     // Map each column according to our defined structure
                     foreach ($this->columnMap as $sourceCol => $targetCol) {
-                        // Log the column being processed
-                        error_log("Processing column mapping: '$sourceCol' => '$targetCol'");
-                        
                         // Store original column name for reporting
                         $originalSourceCol = $sourceCol;
                         
@@ -730,7 +695,6 @@ class CsvProcessor {
                             foreach (array_keys($headerIndexes) as $headerCol) {
                                 if (strcasecmp(trim($sourceCol), trim($headerCol)) === 0) {
                                     $columnIndex = $headerIndexes[$headerCol];
-                                    error_log("Found column match via case-insensitive comparison: '$sourceCol' matched to header '$headerCol'");
                                     $sourceCol = $headerCol; // Use the exact column name from the header
                                     break;
                                 }
@@ -740,7 +704,6 @@ class CsvProcessor {
                         // If still not found, try lowercase lookup
                         if ($columnIndex === null && isset($headerLookup[strtolower(trim($sourceCol))])) {
                             $columnIndex = $headerLookup[strtolower(trim($sourceCol))];
-                            error_log("Found column match via lowercase lookup: '$sourceCol'");
                             
                             // Find the actual header column that matched
                             foreach ($header as $index => $headerCol) {
@@ -764,14 +727,8 @@ class CsvProcessor {
                         }
                         
                         $value = $data[$columnIndex];
-                        error_log("Column '$sourceCol' => '$targetCol' has value: '$value'");
                         
                         try {
-                            // Check if column has a data type defined
-                            $dataType = isset($this->mappings[$this->detectedFormat]['data_types'][$sourceCol]) ? 
-                                $this->mappings[$this->detectedFormat]['data_types'][$sourceCol] : 'none';
-                            error_log("Column '$sourceCol' has defined data type: '$dataType'");
-                            
                             // Validate the value based on data type
                             $row[$targetCol] = $this->formatValue($value, $sourceCol);
                             error_log("Validation successful for '$sourceCol' with value '$value'");
@@ -793,6 +750,7 @@ class CsvProcessor {
                         $validRows++;
                     }
                 }
+
                 fclose($handle);
             }
         } else {

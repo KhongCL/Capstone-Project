@@ -3,9 +3,9 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
-// Handle CSV upload
+// Handle CSV upload (fallback for non-JavaScript)
 $uploadMessage = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
     $uploadMessage = handleCsvUpload($conn, $_FILES['csvFile']);
 }
 ?>
@@ -140,16 +140,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
                 <p>Upload your CSV file containing web traffic data. 
                     <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
                 </p>
-                <form action="" method="post" enctype="multipart/form-data" id="uploadForm">
+                <form action="" method="post" enctype="multipart/form-data" id="uploadForm" data-ajax-handler="upload_handler.php">
                     <div class="form-group">
                         <label for="csvFile">Select CSV File:</label>
                         <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
+                        <div class="file-info" id="fileInfo" style="display: none;">
+                            <span class="file-name"></span>
+                            <span class="file-size"></span>
+                        </div>
                     </div>
-                    <div class="upload-progress" style="display: none;">
-                        <div class="progress-bar"></div>
-                        <span class="progress-text">Uploading... 0%</span>
+                    
+                    <!-- Enhanced Progress Indicators -->
+                    <div class="upload-progress" id="uploadProgress" style="display: none;">
+                        <div class="progress-container">
+                            <div class="progress-stage active" id="stage1">
+                                <div class="stage-icon">📁</div>
+                                <div class="stage-text">Uploading File</div>
+                                <div class="stage-progress">
+                                    <div class="progress-bar" id="uploadBar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="progress-text" id="uploadPercent">0%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-stage" id="stage2">
+                                <div class="stage-icon">🔍</div>
+                                <div class="stage-text">Validating Structure</div>
+                                <div class="stage-progress">
+                                    <div class="progress-bar" id="validateBar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="progress-text" id="validatePercent">0%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-stage" id="stage3">
+                                <div class="stage-icon">⚙️</div>
+                                <div class="stage-text">Processing Data</div>
+                                <div class="stage-progress">
+                                    <div class="progress-bar" id="processBar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="progress-text" id="processPercent">0%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-stage" id="stage4">
+                                <div class="stage-icon">💾</div>
+                                <div class="stage-text">Saving to Database</div>
+                                <div class="stage-progress">
+                                    <div class="progress-bar" id="saveBar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="progress-text" id="savePercent">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="overall-progress">
+                            <div class="overall-bar">
+                                <div class="overall-fill" id="overallFill" style="width: 0%"></div>
+                            </div>
+                            <div class="overall-text">
+                                <span id="overallPercent">0%</span> Complete
+                                <span id="currentTask">Ready to upload...</span>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-details" id="progressDetails">
+                            <div class="detail-item">
+                                <span class="detail-label">File Size:</span>
+                                <span class="detail-value" id="fileSizeDetail">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Upload Speed:</span>
+                                <span class="detail-value" id="uploadSpeed">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Time Remaining:</span>
+                                <span class="detail-value" id="timeRemaining">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Rows Processed:</span>
+                                <span class="detail-value" id="rowsProcessed">-</span>
+                            </div>
+                        </div>
                     </div>
+                    
                     <button type="submit" class="btn" id="uploadBtn">Upload Data</button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn" style="display: none;">Cancel Upload</button>
                 </form>
                 <div class="sample-data">
                     <p>New to TrafAnalyz? Try with our sample data:</p>
@@ -190,5 +270,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
             <p>&copy; <?php echo date('Y'); ?> Web Traffic Analysis Dashboard</p>
         </footer>
     </div>
+<script src="upload_progress.js"></script>
 </body>
 </html>

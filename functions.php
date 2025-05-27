@@ -11,7 +11,7 @@ function handleCsvUpload($conn, $file) {
         ];
     }
     
-    // Check file extension first (most reliable for CSVs)
+    // File validation
     $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     if ($fileExtension !== 'csv') {
         return [
@@ -76,15 +76,15 @@ function handleCsvUpload($conn, $file) {
             'message' => "Failed to save uploaded file."
         ];
     }
-    
+
     try {
         // Process the CSV file
         $processor = new CsvProcessor();
-        
+
         // Extract metadata for database storage
         $metadata = $processor->extractGa4Metadata($filePath);
         error_log("Extracted metadata: " . json_encode($metadata));
-        
+
         $result = $processor->processFile($filePath);
         error_log("processFile result status: " . $result['status']);
         
@@ -101,7 +101,7 @@ function handleCsvUpload($conn, $file) {
             $_SESSION['csv_metadata'] = $metadata;
             // Store the file path in session for cleanup if needed
             $_SESSION['uploaded_csv'] = $filePath;
-            
+
             if (saveTransformedData($conn, $transformedData)) {
                 return [
                     'type' => 'success',
@@ -159,11 +159,41 @@ function handleCsvUpload($conn, $file) {
         error_log("CSV Processing Error: " . $e->getMessage());
         error_log("Stack trace: " . $e->getTraceAsString());
         
+        // Return the full error message for AJAX handling
         return [
             'type' => 'error',
-            'message' => "Error: " . $e->getMessage()
+            'message' => $e->getMessage() // Don't add "Error: " prefix here
         ];
     }
+}
+
+function updateUploadProgress($stage, $percent, $message, $rowsProcessed = 0, $totalRows = 0) {
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    $_SESSION['upload_progress'] = [
+        'stage' => $stage,
+        'percent' => $percent,
+        'message' => $message,
+        'rows_processed' => $rowsProcessed,
+        'total_rows' => $totalRows,
+        'timestamp' => time()
+    ];
+    
+    // Write session data immediately to make it available for polling
+    session_write_close();
+    
+    // Small delay to allow session to be written
+    usleep(50000); // 50ms - increased from 10ms for better reliability
+    
+    // Restart session for continued use
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // Debug logging
+    error_log("Progress updated: Stage $stage, {$percent}%, $message");
 }
 
 // Get key metrics for the dashboard
@@ -235,7 +265,6 @@ function getKeyMetrics($conn) {
     
     return $metrics;
 }
-
 
 // Get traffic over time data for charts
 function getTrafficOverTime($conn, $interval = 'day', $uploadId = null) {
