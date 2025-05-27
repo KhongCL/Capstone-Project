@@ -167,7 +167,7 @@ function handleCsvUpload($conn, $file) {
 }
 
 // Get key metrics for the dashboard
-function getKeyMetrics($conn) {
+function getKeyMetrics($conn, $uploadId = null) {
     $metrics = [
         'total_page_views' => 0,
         'unique_visitors' => 0,
@@ -176,21 +176,25 @@ function getKeyMetrics($conn) {
     ];
     
     try {
-        // Get the most recent upload ID
-        $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
-        $result = $conn->query($query);
-        $latestUpload = 0;
-        if ($result && $row = $result->fetch_assoc()) {
-            $latestUpload = $row['latest_upload'];
+        // If no uploadId provided, get the most recent upload ID
+        if ($uploadId === null) {
+            $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
+            $result = $conn->query($query);
+            if ($result && $row = $result->fetch_assoc()) {
+                $uploadId = $row['latest_upload'];
+            }
         }
         
-        // Get Sessions count only from latest upload
+        // Get Sessions count for the specified upload
         $query = "SELECT SUM(pdp.Value) as total_views 
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
                  WHERE mt.MetricName = 'Sessions'
-                 AND pdp.UploadID = $latestUpload";
-        $result = $conn->query($query);
+                 AND pdp.UploadID = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $uploadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
             $metrics['total_page_views'] = $row['total_views'] ?: 0;
         }
@@ -198,36 +202,45 @@ function getKeyMetrics($conn) {
         // Count distinct source types as unique visitors
         $query = "SELECT COUNT(DISTINCT SourceTypeID) as unique_visitors 
                  FROM PROCESSED_DATA_POINT 
-                 WHERE UploadID = $latestUpload";
-        $result = $conn->query($query);
+                 WHERE UploadID = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $uploadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
             $metrics['unique_visitors'] = $row['unique_visitors'] ?: 0;
         }
         
-        // Average Session Duration - from latest upload only
+        // Average Session Duration
         $query = "SELECT AVG(pdp.Value) as avg_duration
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
                  WHERE mt.MetricName = 'Average engagement time per session'
-                 AND pdp.UploadID = $latestUpload";
-        $result = $conn->query($query);
+                 AND pdp.UploadID = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $uploadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
             $avgSeconds = $row['avg_duration'] ?: 0;
-            $metrics['avg_session_duration'] = gmdate("H:i:s", $avgSeconds);
+            $metrics['avg_session_duration'] = round($avgSeconds, 1);
         }
         
-        // Bounce Rate (latest upload only)
+        // Bounce Rate
         $query = "SELECT AVG(pdp.Value) as avg_engagement_rate
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
                  WHERE mt.MetricName = 'Engagement rate'
-                 AND pdp.UploadID = $latestUpload";
-        $result = $conn->query($query);
+                 AND pdp.UploadID = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $uploadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
             $engagementRate = $row['avg_engagement_rate'] ?: 0;
             // Bounce rate is roughly inverse of engagement rate
             $bounceRate = (1 - $engagementRate) * 100;
-            $metrics['bounce_rate'] = round($bounceRate, 2) . '%';
+            $metrics['bounce_rate'] = round($bounceRate, 2);
         }
     } catch (Exception $e) {
         error_log("Error getting metrics: " . $e->getMessage());

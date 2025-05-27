@@ -72,6 +72,7 @@ $sourcesData = getTrafficSourcesDistribution($conn);
           <li><a href="overview.php">Overview</a></li>
           <li><a href="traffic_sources.php" class="active">Traffic Sources</a></li>
           <li><a href="pages.php">Pages</a></li>
+          <li><a href="compare.php">Compare</a></li>
         </ul>
       </nav>
     </header>
