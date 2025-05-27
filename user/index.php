@@ -21,7 +21,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="../scripts.js"></script>
-
 </head>
 <body>
     <div class="container">
@@ -38,74 +37,126 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
         </header>
         
         <main>
-        <section class="welcome-section">
-            <h2>Welcome to TrafAnalyz</h2>
-            <p>Your one-stop solution for analyzing web traffic data. Upload your data and start exploring!</p>
-        <section class="upload-section">
-            <h2>Upload Traffic Data</h2>
-            <?php if (isset($uploadMessage['type']) && $uploadMessage['type'] === 'error' && 
-                strpos($uploadMessage['message'], 'Data validation errors') !== false): ?>
-                <h3>Data Validation Errors Found</h3>
-                
-                <?php 
-                // Extract the actual error details
-                $errorMessage = $uploadMessage['message'];
-                
-                // Remove the prefix "Data validation errors found: " if it exists
-                $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
-                
-                // Remove the "Please correct these issues and upload again" part
-                $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
-                
-                // Split by semicolons
-                $errorList = explode(';', $errorMessage);
-                ?>
-                
-                <div class="error-container">
-                    <p class="error-summary">Found <?php echo count($errorList); ?> validation errors in your CSV file:</p>
-                    <ul class="error-list">
-                        <?php foreach($errorList as $error): ?>
-                            <?php $error = trim($error); ?>
-                            <?php if(!empty($error)): ?>
-                                <li><?php echo $error; ?></li>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-                
-                <div class="validation-help">
-                    <h4>Common Validation Issues:</h4>
-                    <ul>
-                        <li>Integer fields: Use only whole numbers (e.g., "123" not "123a")</li>
-                        <li>Float fields: Use decimal numbers (e.g., "12.34" not "12:34" or "12.34.5")</li>
-                        <li>Time fields: Use proper time format (e.g., "12:34" or "1:23:45")</li>
-                        <li>Percentage fields: Use decimal numbers (e.g., "0.25" or "25%")</li>
-                    </ul>
-                </div>
-                <p>Please correct these issues and upload again.</p>
-            <?php else: ?>
-                <?php echo isset($uploadMessage['message']) ? $uploadMessage['message'] : $uploadMessage; ?>
-            <?php endif; ?>
-            <p>Upload your CSV file containing web traffic data. 
-                <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
-            </p>
-            <form action="" method="post" enctype="multipart/form-data" id="uploadForm">
-                <div class="form-group">
-                    <label for="csvFile">Select CSV File:</label>
-                    <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
-                </div>
-                <div class="upload-progress" style="display: none;">
-                    <div class="progress-bar"></div>
-                    <span class="progress-text">Uploading... 0%</span>
-                </div>
-                <button type="submit" class="btn" id="uploadBtn">Upload Data</button>
-            </form>
-            <div class="sample-data">
-                <p>New to TrafAnalyz? Try with our sample data:</p>
-                <a href="?load_sample=1" class="btn btn-secondary">Load Sample Data</a>
-            </div>
-        </section>
+            <section class="welcome-section">
+                <h2>Welcome to TrafAnalyz</h2>
+                <p>Your one-stop solution for analyzing web traffic data. Upload your data and start exploring!</p>
+            </section>
             
+            <section class="upload-section">
+                <h2>Upload Traffic Data</h2>
+                
+                <?php if (!empty($uploadMessage)): ?>
+                    <?php 
+                    // Normalize $uploadMessage to always be an array
+                    if (is_string($uploadMessage)) {
+                        $uploadMessage = ['type' => 'info', 'message' => $uploadMessage];
+                    }
+                    ?>
+                    
+                    <?php if ($uploadMessage['type'] === 'error' && 
+                              strpos($uploadMessage['message'], 'Data validation errors') !== false): ?>
+                        <?php
+                        // Enhanced error message parsing to extract suggestions
+                        $errorMessage = $uploadMessage['message'];
+                        $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
+                        $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
+                        
+                        // Split by semicolons and parse suggestions
+                        $errorList = explode(';', $errorMessage);
+                        ?>
+                        
+                        <div class="error-container">
+                            <p class="error-summary">Found <?php echo count($errorList); ?> validation errors in your CSV file:</p>
+                            <ul class="error-list">
+                                <?php foreach($errorList as $error): ?>
+                                    <?php $error = trim($error); ?>
+                                    <?php if(!empty($error)): ?>
+                                        <?php
+                                        // Parse error and suggestions
+                                        $parts = explode(' Suggestions: ', $error);
+                                        $mainError = $parts[0];
+                                        $suggestions = isset($parts[1]) ? $parts[1] : '';
+                                        ?>
+                                        <li class="error-item">
+                                            <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
+                                            <?php if (!empty($suggestions)): ?>
+                                                <div class="error-suggestions">
+                                                    <strong>💡 Suggestions:</strong> 
+                                                    <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                        </li>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        
+                        <div class="validation-help">
+                            <h4>Quick Fix Guide:</h4>
+                            <div class="fix-guide">
+                                <div class="fix-item">
+                                    <strong>🔢 Integer Issues:</strong>
+                                    <ul>
+                                        <li>Remove letters: "15a" → "15"</li>
+                                        <li>Evaluate expressions: "42+3" → "45"</li>
+                                        <li>Convert Unicode: "５０" → "50"</li>
+                                    </ul>
+                                </div>
+                                <div class="fix-item">
+                                    <strong>📊 Float/Decimal Issues:</strong>
+                                    <ul>
+                                        <li>Fix multiple decimals: "8..5" → "8.5"</li>
+                                        <li>Convert scientific: "1.2e3" → "1200"</li>
+                                        <li>Remove special chars: "~5.3" → "5.3"</li>
+                                    </ul>
+                                </div>
+                                <div class="fix-item">
+                                    <strong>⏰ Time Format Issues:</strong>
+                                    <ul>
+                                        <li>Use proper format: "10:65:30" → "11:05:30"</li>
+                                        <li>Convert units: "12m30s" → "12:30" or "750"</li>
+                                    </ul>
+                                </div>
+                                <div class="fix-item">
+                                    <strong>💰 Currency Issues:</strong>
+                                    <ul>
+                                        <li>Remove symbols: "$1,200" → "1200"</li>
+                                        <li>Remove commas: "500.abc" → "500"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <p class="error-footer">Please correct these issues and upload again.</p>
+                        
+                    <?php else: ?>
+                        <!-- Display other types of messages -->
+                        <div class="message <?php echo $uploadMessage['type']; ?>">
+                            <?php echo htmlspecialchars($uploadMessage['message']); ?>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+                
+                <p>Upload your CSV file containing web traffic data. 
+                    <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
+                </p>
+                <form action="" method="post" enctype="multipart/form-data" id="uploadForm">
+                    <div class="form-group">
+                        <label for="csvFile">Select CSV File:</label>
+                        <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
+                    </div>
+                    <div class="upload-progress" style="display: none;">
+                        <div class="progress-bar"></div>
+                        <span class="progress-text">Uploading... 0%</span>
+                    </div>
+                    <button type="submit" class="btn" id="uploadBtn">Upload Data</button>
+                </form>
+                <div class="sample-data">
+                    <p>New to TrafAnalyz? Try with our sample data:</p>
+                    <a href="?load_sample=1" class="btn btn-secondary">Load Sample Data</a>
+                </div>
+            </section>
+                
             <section class="dashboard-links">
                 <h2>Dashboard Navigation</h2>
                 <div class="dashboard-cards">
