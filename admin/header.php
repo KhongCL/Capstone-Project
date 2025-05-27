@@ -29,6 +29,7 @@ $active_page = isset($active_page) ? $active_page : 'dashboard';
                     <li><a href="index.php" <?php echo ($active_page == 'dashboard') ? 'class="active"' : ''; ?>>Dashboard</a></li>
                     <li><a href="admin_users.php" <?php echo ($active_page == 'users') ? 'class="active"' : ''; ?>>User Management</a></li>
                     <li><a href="admin_mappings.php" <?php echo ($active_page == 'mappings') ? 'class="active"' : ''; ?>>CSV Mappings</a></li>
+										<li><a href="upload_sample_data.php" <?php echo ($active_page == 'sample_data') ? 'class="active"' : ''; ?>>Upload Sample Data</a></li>
                     <li><a href="export_users_pdf.php" target="_blank" <?php echo ($active_page == 'report') ? 'class="active"' : ''; ?>>Generate Report</a></li>
                     <li><a href="../user/index.php" target="_blank" <?php echo ($active_page == 'user-view') ? 'class="active"' : ''; ?>>End-User View</a></li>
                     <li><a href="../logout.php">Logout</a></li>
