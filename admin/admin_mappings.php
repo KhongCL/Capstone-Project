@@ -1,4 +1,5 @@
 <?php
+// filepath: c:\xampp\htdocs\Capstone-Project\admin\admin_mappings.php
 require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 require_once '../classes/CsvProcessor.php';
@@ -72,14 +73,15 @@ $mappings = json_decode(file_get_contents($mappingsFile), true);
                     <div class="message error"><?php echo $error; ?></div>
                 <?php endif; ?>
                 
-                <?php if (isset($_SESSION['sample_upload_message'])): ?>
-                    <div class="message <?php echo $_SESSION['sample_upload_message']['success'] ? 'success' : 'error'; ?>">
-                        <?php echo $_SESSION['sample_upload_message']['message']; ?>
-                    </div>
-                    <?php unset($_SESSION['sample_upload_message']); ?>
-                <?php endif; ?>
+                <!-- REMOVED the sample_upload_message section that was here -->
                 
                 <!-- Regular CSV Mappings Management -->
+                <div class="admin-actions">
+                    <a href="upload_sample_data.php" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Upload Sample CSV Files
+                    </a>
+                </div>
+                
                 <form action="" method="post" id="mappingsForm">
                     <div id="formats-container">
                         <?php $formatCount = 0; ?>
@@ -113,9 +115,7 @@ $mappings = json_decode(file_get_contents($mappingsFile), true);
                                         </tr>
                                     </thead>
                                     <tbody class="columns-container" id="columns-<?php echo $formatCount; ?>">
-                                        <?php $colCount = 0; ?>
                                         <?php foreach ($format['column_mappings'] as $sourceCol => $targetField): ?>
-                                            <?php $colCount++; ?>
                                             <tr class="column-row">
                                                 <td>
                                                     <input type="text" name="formats[<?php echo $formatCount; ?>][columns][<?php echo htmlspecialchars($sourceCol); ?>][source]" 

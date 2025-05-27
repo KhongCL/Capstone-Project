@@ -1,7 +1,7 @@
 <?php
-// filepath: c:\xampp\htdocs\Capstone-Project\admin\index.php
 require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
+require_once '../functions.php';
 
 // Get summary statistics
 $userStats = getUserStats($conn);
@@ -110,12 +110,7 @@ function getReportTypes($conn) {
         <?php include 'header.php'; ?>
 
         <main>
-            <?php if (isset($_SESSION['sample_upload_message'])): ?>
-                <div class="message <?php echo $_SESSION['sample_upload_message']['success'] ? 'success' : 'error'; ?>">
-                    <?php echo $_SESSION['sample_upload_message']['message']; ?>
-                </div>
-                <?php unset($_SESSION['sample_upload_message']); ?>
-            <?php endif; ?>
+            <?php /* Removed the sample_upload_message display section that was here */ ?>
 
             <?php if (isset($_SESSION['sample_clear_message'])): ?>
                 <div class="message <?php echo $_SESSION['sample_clear_message']['success'] ? 'success' : 'error'; ?>">
@@ -218,7 +213,7 @@ function getReportTypes($conn) {
                         </tbody>
                     </table>
                 </section>
-                
+
                 <section class="admin-section">
                     <h3><i class="fas fa-file-alt"></i> Supported Report Types</h3>
                     <div class="report-types">

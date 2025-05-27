@@ -3,6 +3,13 @@ require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 require_once '../classes/CsvProcessor.php';
 
+// Track if this page was loaded after a form submission
+$isPostRedirect = false;
+if (isset($_SERVER['HTTP_REFERER'])) {
+    $referer = $_SERVER['HTTP_REFERER'];
+    $isPostRedirect = (strpos($referer, 'upload_sample.php') !== false);
+}
+
 // Get report types for sample upload dropdown
 $reportTypes = [];
 $sql = "SELECT DISTINCT ReportType FROM csv_upload ORDER BY ReportType";
@@ -36,7 +43,10 @@ if ($result) {
             <section class="admin-section">
                 <h2>Upload Sample CSV Data</h2>
                 
-                <?php if (isset($_SESSION['sample_upload_message'])): ?>
+                <?php 
+                // Only show message if it exists AND this was a post-redirect
+                if (isset($_SESSION['sample_upload_message']) && $isPostRedirect): 
+                ?>
                     <div class="message <?php echo $_SESSION['sample_upload_message']['success'] ? 'success' : 'error'; ?>">
                         <?php echo $_SESSION['sample_upload_message']['message']; ?>
                     </div>
@@ -46,10 +56,11 @@ if ($result) {
                 <div class="sample-upload-section">                    
                     <div class="card" style="margin-bottom: 30px;">
                         <h3><i class="fas fa-upload"></i> Upload New Sample File</h3>
-                        <form action="upload_sample.php" method="post" enctype="multipart/form-data">
+                        <form action="upload_sample.php" method="post" enctype="multipart/form-data" onsubmit="return validateSampleFile()">
                             <div class="form-group">
                                 <label for="sampleCsv">Select CSV File:</label>
                                 <input type="file" name="sampleCsv" id="sampleCsv" accept=".csv" required>
+                                <small class="help-text">Only CSV files up to 5MB are allowed</small>
                             </div>
                             
                             <div class="form-group">
@@ -136,6 +147,47 @@ if ($result) {
                 });
             }
         });
+        
+        // Form validation
+        function validateSampleFile() {
+            const fileInput = document.getElementById('sampleCsv');
+            const reportType = document.getElementById('reportType');
+            const newReportType = document.getElementById('newReportType');
+            
+            // File validation
+            if (fileInput.files.length === 0) {
+                alert('Please select a CSV file to upload');
+                return false;
+            }
+            
+            const file = fileInput.files[0];
+            
+            // Check file extension
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                alert('Only CSV files are allowed');
+                return false;
+            }
+            
+            // Check file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size exceeds the 5MB limit');
+                return false;
+            }
+            
+            // Report type validation
+            if (reportType.value === '') {
+                alert('Please select a report type');
+                return false;
+            }
+            
+            // New report type validation
+            if (reportType.value === 'new' && !newReportType.value.trim()) {
+                alert('Please enter a name for the new report type');
+                return false;
+            }
+            
+            return true;
+        }
     </script>
 </body>
 </html>
