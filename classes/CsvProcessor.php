@@ -42,16 +42,23 @@ class CsvProcessor {
         }
 
         // First check if this is a Google Analytics format CSV (has metadata lines with #)
-        $handle = fopen($filePath, "r");
-        if ($handle) {
-            $firstLine = fgets($handle);
-            fclose($handle);
-            
-            if (substr(trim($firstLine), 0, 1) === '#') {
-                // This looks like a Google Analytics export format
-                return $this->processGoogleAnalyticsFormat($filePath);
+            $handle = fopen($filePath, "r");
+            if ($handle) {
+                $firstLine = fgets($handle);
+                fclose($handle);
+                
+                if (substr(trim($firstLine), 0, 1) === '#') {
+                    // This looks like a Google Analytics export format
+                    return $this->processGoogleAnalyticsFormat($filePath);
+                } else {
+                    // Try to process as simple format first
+                    $result = $this->processSimpleFormat($filePath);
+                    if ($result['status'] === 'success') {
+                        return $result;
+                    }
+                    // If simple format fails, fall through to standard processing
+                }
             }
-        }
         
         // Standard CSV format processing
         if (($handle = fopen($filePath, "r")) !== FALSE) {
@@ -111,6 +118,73 @@ class CsvProcessor {
         return [
             'status' => 'error',
             'message' => 'Failed to open or process the CSV file'
+        ];
+    }
+
+    private function processSimpleFormat($filePath) {
+        if (($handle = fopen($filePath, "r")) !== FALSE) {
+            $header = fgetcsv($handle);
+            $data = [];
+            $i = 0;
+            while (($row = fgetcsv($handle)) !== FALSE && $i < 5) {
+                if (!empty(array_filter($row))) { // Skip empty rows
+                    $data[] = $row;
+                    $i++;
+                }
+            }
+            fclose($handle);
+            
+            // Check if this looks like a simplified GA4 format
+            $ga4Indicators = [
+                'Session primary channel group',
+                'Sessions',
+                'Engagement rate',
+                'Average time'
+            ];
+            
+            $matchCount = 0;
+            foreach ($ga4Indicators as $indicator) {
+                foreach ($header as $headerCol) {
+                    if (stripos($headerCol, $indicator) !== false) {
+                        $matchCount++;
+                        break;
+                    }
+                }
+            }
+            
+            // If it looks like GA4 data, try to map it automatically
+            if ($matchCount >= 3) {
+                $this->detectedFormat = 'ga4_traffic_acquisition';
+                
+                // Create automatic mapping based on column names
+                $mapping = [];
+                foreach ($header as $col) {
+                    if (stripos($col, 'Session primary channel group') !== false) {
+                        $mapping[$col] = 'traffic_source';
+                    } elseif (stripos($col, 'Sessions') !== false) {
+                        $mapping[$col] = 'visits';
+                    } elseif (stripos($col, 'Engagement rate') !== false) {
+                        $mapping[$col] = 'bounce_rate';
+                    } elseif (stripos($col, 'Average time') !== false) {
+                        $mapping[$col] = 'avg_session_duration';
+                    }
+                }
+                
+                return [
+                    'status' => 'success',
+                    'format' => 'ga4_traffic_acquisition',
+                    'header' => $header,
+                    'sample' => $data,
+                    'mapping' => $mapping
+                ];
+            }
+        }
+        
+        return [
+            'status' => 'needs_mapping',
+            'header' => $header,
+            'sample' => $data,
+            'suggestions' => $this->suggestColumnMapping($header)
         ];
     }
     
@@ -936,7 +1010,9 @@ class CsvProcessor {
                 
                 // Enhanced special character detection - check for non-numeric characters
                 if (preg_match('/[^0-9.\-]/', $value)) {
-                    throw new Exception("Invalid events per session value: '$originalValue' for column '$column' - Contains special characters");
+                    $suggestions = $this->suggestDataFix($value, 'float', $column);
+                    $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                    throw new Exception("Invalid events per session value: '$originalValue' for column '$column' - Contains special characters$suggestionText");
                 }
                 
                 if (!is_numeric($value)) {
@@ -958,6 +1034,37 @@ class CsvProcessor {
                 }
                 
                 return $floatValue;
+        } else if ($targetField === 'key_events') {
+                // Check for empty value
+                if (trim($value) === '') {
+                    throw new Exception("Empty value for column '$column' - Key events must have a value");
+                }
+                
+                // Check for spaces
+                if (strpos($value, ' ') !== false) {
+                    throw new Exception("Invalid key events format: '$originalValue' for column '$column' - Contains spaces");
+                }
+                
+                // Check for decimal points
+                if (strpos($value, '.') !== false) {
+                    throw new Exception("Invalid key events value: '$originalValue' for column '$column' - Must be a whole number");
+                }
+                
+                if (!preg_match('/^[0-9]+$/', $value)) {
+                    throw new Exception("Invalid key events value: '$originalValue' for column '$column' - Must be a whole number");
+                }
+                
+                if ((int)$value < 0) {
+                    throw new Exception("Negative value not allowed for column '$column' - Key events must be zero or positive");
+                }
+
+                // Add business logic validation for unrealistically high values
+                $keyEventValue = (int)$value;
+                if ($keyEventValue > 500) {
+                    throw new Exception("Unrealistically high value '$originalValue' for column '$column' - Key events should be reasonable (under 500)");
+                }
+                
+                return (int) $value;
         }
         
         // If no data type is specified in the mappings, use special logic for certain target fields
@@ -987,31 +1094,6 @@ class CsvProcessor {
                 }
                 
                 return (float) $cleanValue;
-            } else if ($targetField === 'key_events') {
-                // Check for empty value
-                if (trim($value) === '') {
-                    throw new Exception("Empty value for column '$column' - Key events must have a value");
-                }
-                
-                // Check for spaces
-                if (strpos($value, ' ') !== false) {
-                    throw new Exception("Invalid key events format: '$originalValue' for column '$column' - Contains spaces");
-                }
-                
-                // Check for decimal points
-                if (strpos($value, '.') !== false) {
-                    throw new Exception("Invalid key events value: '$originalValue' for column '$column' - Must be a whole number");
-                }
-                
-                if (!preg_match('/^[0-9]+$/', $value)) {
-                    throw new Exception("Invalid key events value: '$originalValue' for column '$column' - Must be a whole number");
-                }
-                
-                if ((int)$value < 0) {
-                    throw new Exception("Negative value not allowed for column '$column' - Key events must be zero or positive");
-                }
-                
-                return (int) $value;
             } else if ($targetField === 'session_key_event_rate' || $targetField === 'bounce_rate' || strpos($targetField, 'rate') !== false) {
                 // Check for empty value
                 if (trim($value) === '') {
@@ -1034,7 +1116,9 @@ class CsvProcessor {
                     
                     // Check if percentage is within reasonable range (0-100%)
                     if ($numericValue > 100) {
-                        throw new Exception("Percentage value '$originalValue' exceeds 100% for column '$column' - Must be between 0-100%");
+                        $suggestions = $this->suggestDataFix($value, 'percentage', $column);
+                        $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                        throw new Exception("Percentage value '$originalValue' exceeds 100% for column '$column' - Must be between 0-100%$suggestionText");
                     }
                     
                     return $numericValue / 100;
@@ -1078,6 +1162,12 @@ class CsvProcessor {
         if (trim($value) !== $value) {
             throw new Exception("Value '$originalValue' for column '$column' contains leading or trailing whitespace");
         }
+
+        // Get the data type for suggestion generation
+        $dataType = null;
+        if (isset($this->mappings[$this->detectedFormat]['data_types'][$column])) {
+            $dataType = $this->mappings[$this->detectedFormat]['data_types'][$column];
+        }
         
         switch ($type) {
             case 'integer':
@@ -1103,12 +1193,15 @@ class CsvProcessor {
                 
                 // Check for unicode/full-width digits - improved detection
                 if (preg_match('/[^\x00-\x7F]/', $value)) {
-                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Contains Unicode characters");
+                    $suggestions = $this->suggestDataFix($value, 'integer', $column);
+                    $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Contains Unicode characters$suggestionText");
                 }
-                
                 // Check for any non-numeric characters
                 if (!preg_match('/^-?\d+$/', $value)) {
-                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Please use only digits");
+                    $suggestions = $this->suggestDataFix($value, 'integer', $column);
+                    $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Please use only digits$suggestionText");
                 }
                 
                 // Check for negative values
@@ -1123,7 +1216,9 @@ class CsvProcessor {
                 
                 // Check for non-numeric operations or expressions (like 42+3)
                 if (preg_match('/[+\-*\/]/', $value)) {
-                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Contains mathematical operators");
+                    $suggestions = $this->suggestDataFix($value, 'integer', $column);
+                    $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                    throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Contains mathematical operators$suggestionText");
                 }
                 
                 return (int) $value;
@@ -1146,17 +1241,23 @@ class CsvProcessor {
                 
                 // Check for special characters
                 if (preg_match('/[^0-9.\-]/', $value)) {
-                    throw new Exception("Invalid float value: '$originalValue' for column '$column' - Contains invalid characters");
+                    $suggestions = $this->suggestDataFix($value, 'float', $column);
+                    $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                    throw new Exception("Invalid float value: '$originalValue' for column '$column' - Contains invalid characters$suggestionText");
                 }
                 
                 // Check for multiple decimal points
                 if (substr_count($value, '.') > 1) {
-                    throw new Exception("Invalid float value: '$originalValue' for column '$column' - Cannot have multiple decimal points");
+                    $suggestions = $this->suggestDataFix($value, 'float', $column);
+                    $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                    throw new Exception("Invalid float value: '$originalValue' for column '$column' - Cannot have multiple decimal points$suggestionText");
                 }
                 
                 // Improved float validation - properly formatted
                 if (!preg_match('/^-?\d+(\.\d+)?$/', $value)) {
-                    throw new Exception("Invalid float value: '$originalValue' for column '$column' - Please use numbers with a single decimal point");
+                    $suggestions = $this->suggestDataFix($value, 'float', $column);
+                    $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                    throw new Exception("Invalid float value: '$originalValue' for column '$column' - Please use numbers with a single decimal point$suggestionText");
                 }
                 
                 // Check for negative values
@@ -1185,8 +1286,10 @@ class CsvProcessor {
                 // Handle percentage with % sign
                 if (strpos($value, '%') !== false) {
                     // Validate format - should be a number followed by %
-                    if (!preg_match('/^[0-9.]+%$/', $value)) {
-                        throw new Exception("Invalid percentage value: '$originalValue' for column '$column' - Format should be like '25%'");
+                    if (!preg_match('/^[0-9.]+%?$/', $value)) {
+                        $suggestions = $this->suggestDataFix($value, 'percentage', $column);
+                        $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                        throw new Exception("Invalid percentage value: '$originalValue' for column '$column' - Format should be like '25%' or '0.25'$suggestionText");
                     }
                     
                     // Extract numeric part
@@ -1195,7 +1298,9 @@ class CsvProcessor {
                     
                     // Check if percentage is within reasonable range (0-100%)
                     if ($percentValue > 100) {
-                        throw new Exception("Percentage value '$originalValue' exceeds 100% for column '$column' - Must be between 0-100%");
+                        $suggestions = $this->suggestDataFix($value, 'percentage', $column);
+                        $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                        throw new Exception("Percentage value '$originalValue' exceeds 100% for column '$column' - Must be between 0-100%$suggestionText");
                     }
                     
                     return $percentValue / 100;
@@ -1220,7 +1325,9 @@ class CsvProcessor {
             case 'currency':
                 // Enhanced currency symbol detection
                 if (preg_match('/[$€£¥]/', $value)) {
-                    throw new Exception("Invalid currency format: '$originalValue' for column '$column' - Contains currency symbols");
+                    $suggestions = $this->suggestDataFix($value, 'currency', $column);
+                    $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                    throw new Exception("Invalid currency format: '$originalValue' for column '$column' - Contains currency symbols$suggestionText");
                 }
                 
                 // Check for commas
@@ -1230,7 +1337,9 @@ class CsvProcessor {
                 
                 // Check for letters or invalid chars
                 if (preg_match('/[a-zA-Z]/', $value) || preg_match('/[^\d.\-]/', $value)) {
-                    throw new Exception("Invalid currency value: '$originalValue' for column '$column' - Must be a number");
+                    $suggestions = $this->suggestDataFix($value, 'currency', $column);
+                    $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                    throw new Exception("Invalid currency value: '$originalValue' for column '$column' - Must be a number$suggestionText");
                 }
                 
                 if (!is_numeric($value)) {
@@ -1254,7 +1363,9 @@ class CsvProcessor {
                 if (strpos($value, ':') !== false) {
                     // Check for any non-numeric or non-colon characters
                     if (preg_match('/[^0-9:]/', $value)) {
-                        throw new Exception("Invalid time value: '$originalValue' for column '$column' - Contains invalid characters");
+                        $suggestions = $this->suggestDataFix($value, 'time', $column);
+                        $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
+                        throw new Exception("Invalid time value: '$originalValue' for column '$column' - Contains invalid characters$suggestionText");
                     }
                     
                     $parts = array_map('intval', explode(':', $value));
@@ -1303,6 +1414,144 @@ class CsvProcessor {
             default:
                 return $value;
         }
+    }
+
+    /**
+     * Suggest data fixes for common validation errors
+     */
+    private function suggestDataFix($value, $expectedType, $column = '') {
+        $suggestions = [];
+        
+        switch ($expectedType) {
+            case 'integer':
+                // Extract numbers from mixed content
+                if (preg_match('/(\d+)[^\d]/', $value, $matches)) {
+                    $suggestions[] = "Try: '{$matches[1]}'";
+                }
+                // Handle mathematical expressions
+                if (preg_match('/(\d+)\s*[\+\-\*\/]\s*(\d+)/', $value, $matches)) {
+                    $result = $this->evaluateSimpleExpression($value);
+                    if ($result !== null) {
+                        $suggestions[] = "Try: '$result' (calculated from $value)";
+                    }
+                }
+                // Handle unicode digits
+                if (preg_match('/[０-９]+/', $value)) {
+                    $converted = $this->convertUnicodeDigits($value);
+                    $suggestions[] = "Try: '$converted' (converted from Unicode)";
+                }
+                break;
+                
+            case 'float':
+                // Extract valid decimal numbers
+                if (preg_match('/(\d+\.\d+)/', $value, $matches)) {
+                    $suggestions[] = "Try: '{$matches[1]}'";
+                }
+                // Handle multiple decimal points
+                if (substr_count($value, '.') > 1) {
+                    $cleaned = preg_replace('/\.(?=.*\.)/', '', $value);
+                    if (is_numeric($cleaned)) {
+                        $suggestions[] = "Try: '$cleaned' (removed extra decimal points)";
+                    }
+                }
+                // Handle scientific notation
+                if (preg_match('/(\d+(?:\.\d+)?)[eE][\+\-]?(\d+)/', $value, $matches)) {
+                    $converted = (float)$value;
+                    $suggestions[] = "Try: '$converted' (converted from scientific notation)";
+                }
+                // Handle time-like format in float fields
+                if (preg_match('/(\d+):(\d+)/', $value, $matches)) {
+                    $totalSeconds = ($matches[1] * 60) + $matches[2];
+                    $suggestions[] = "Try: '$totalSeconds' (converted from MM:SS to seconds)";
+                }
+                // Handle time formats like "12m30s"
+                if (preg_match('/(\d+)m(\d+)s/', $value, $matches)) {
+                    $totalSeconds = ($matches[1] * 60) + $matches[2];
+                    $suggestions[] = "Try: '$totalSeconds' (converted from minutes/seconds)";
+                }
+                // Handle percentage values in float fields
+                if (preg_match('/(\d+(?:\.\d+)?)%/', $value, $matches)) {
+                    $asDecimal = $matches[1] / 100;
+                    $suggestions[] = "Try: '$asDecimal' (converted from percentage)";
+                }
+                // Remove special characters and extract numbers
+                if (preg_match('/[~#@&*]/', $value)) {
+                    $cleaned = preg_replace('/[~#@&*]/', '', $value);
+                    if (is_numeric($cleaned)) {
+                        $suggestions[] = "Try: '$cleaned' (removed special characters)";
+                    }
+                }
+                break;
+                
+            case 'time':
+                // Handle common time format issues
+                if (preg_match('/(\d+):(\d+):(\d+)/', $value, $matches)) {
+                    if ($matches[1] > 59 || $matches[2] > 59) {
+                        $suggestions[] = "Check time format - minutes and seconds should be 0-59";
+                    }
+                }
+                // Handle formats like "12m30s"
+                if (preg_match('/(\d+)m(\d+)s/', $value, $matches)) {
+                    $totalSeconds = ($matches[1] * 60) + $matches[2];
+                    $suggestions[] = "Try: '$totalSeconds' seconds or '" . 
+                        gmdate("H:i:s", $totalSeconds) . "' (HH:MM:SS format)";
+                }
+                break;
+                
+            case 'percentage':
+                // Handle percentage without % sign
+                if (is_numeric($value) && (float)$value > 1) {
+                    $asPercent = (float)$value . '%';
+                    $asDecimal = (float)$value / 100;
+                    $suggestions[] = "Try: '$asPercent' or '$asDecimal' (as decimal)";
+                }
+                // Handle invalid percentage formats
+                if (preg_match('/(\d+(?:\.\d+)?)/', $value, $matches)) {
+                    $number = $matches[1];
+                    $suggestions[] = "Try: '{$number}%' or '" . ($number/100) . "' (as decimal)";
+                }
+                break;
+                
+            case 'currency':
+                // Remove currency symbols
+                $cleaned = preg_replace('/[$€£¥,]/', '', $value);
+                if (is_numeric($cleaned)) {
+                    $suggestions[] = "Try: '$cleaned' (removed currency symbols)";
+                }
+                // Remove alphabetic characters
+                if (preg_match('/[a-zA-Z]/', $value)) {
+                    $cleaned = preg_replace('/[a-zA-Z]/', '', $value);
+                    if (is_numeric($cleaned)) {
+                        $suggestions[] = "Try: '$cleaned' (removed letters)";
+                    }
+                }
+                break;
+        }
+        
+        return $suggestions;
+    }
+    
+    /**
+     * Evaluate simple mathematical expressions
+     */
+    private function evaluateSimpleExpression($expression) {
+        // Only handle simple + and - operations for security
+        if (preg_match('/^(\d+)\s*[\+]\s*(\d+)$/', $expression, $matches)) {
+            return $matches[1] + $matches[2];
+        }
+        if (preg_match('/^(\d+)\s*[\-]\s*(\d+)$/', $expression, $matches)) {
+            return $matches[1] - $matches[2];
+        }
+        return null;
+    }
+    
+    /**
+     * Convert Unicode digits to ASCII digits
+     */
+    private function convertUnicodeDigits($value) {
+        $unicodeDigits = ['０', '１', '２', '３', '４', '５', '６', '７', '８', '９'];
+        $asciiDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        return str_replace($unicodeDigits, $asciiDigits, $value);
     }
 
     /**
