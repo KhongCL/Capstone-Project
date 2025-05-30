@@ -162,6 +162,22 @@ class UploadProgressTracker {
         if (progressText) progressText.textContent = '100%';
     }
 
+    // NEW METHOD: Complete stage with error state
+    completeStageWithError(stageIndex) {
+        const stageElement = document.getElementById(this.stages[stageIndex].id);
+        stageElement.classList.remove('active');
+        stageElement.classList.add('error');
+
+        const icon = stageElement.querySelector('.stage-icon');
+        icon.textContent = '❌';
+
+        const progressFill = stageElement.querySelector('.progress-fill');
+        const progressText = stageElement.querySelector('.progress-text');
+        
+        if (progressFill) progressFill.style.width = '100%';
+        if (progressText) progressText.textContent = '100%';
+    }
+
     updateStageProgress(stageIndex, percent) {
         if (stageIndex < 0 || stageIndex >= this.stages.length) return;
 
@@ -248,10 +264,8 @@ class UploadProgressTracker {
                 // Process the server response first to determine if there will be errors
                 this.handleServerResponse(this.xhr.responseText);
                 
-                // Only start simulation if no errors or if we need to show progress
-                if (!this.serverResponseReceived || this.serverResponse.success) {
-                    this.simulateServerProcessing();
-                }
+                // Always start simulation to show structure validation
+                this.simulateServerProcessing();
             } else {
                 this.handleError('Upload failed with status: ' + this.xhr.status);
             }
@@ -272,36 +286,183 @@ class UploadProgressTracker {
         this.xhr.send(formData);
     }
 
+    // NEW METHOD: Check if there are structure-related errors
+    hasStructureErrors() {
+        console.log("DEBUG: Checking for structure errors");
+        console.log("DEBUG: serverResponseReceived:", this.serverResponseReceived);
+        console.log("DEBUG: serverResponse:", this.serverResponse);
+        
+        if (!this.serverResponseReceived || !this.serverResponse || !this.serverResponse.errors) {
+            console.log("DEBUG: No server response or errors available");
+            return false;
+        }
+
+        console.log("DEBUG: Checking errors:", this.serverResponse.errors);
+
+        // Look for structure-related error patterns
+        const structureErrorPatterns = [
+            /contains trademark or special symbols/i,
+            /contains unicode characters/i,
+            /invalid traffic source value/i,
+            /leading or trailing whitespace/i,
+            /CSV parsing error/i,
+            /contains commas which breaks the CSV structure/i,
+            /breaks the CSV structure/i
+        ];
+
+        const hasErrors = this.serverResponse.errors.some(error => {
+            const errorMessage = typeof error === 'object' ? error.message : error;
+            console.log("DEBUG: Checking error message:", errorMessage);
+            
+            const matchesPattern = structureErrorPatterns.some(pattern => {
+                const matches = pattern.test(errorMessage);
+                if (matches) {
+                    console.log("DEBUG: Error matches structure pattern:", pattern.toString());
+                }
+                return matches;
+            });
+            
+            return matchesPattern;
+        });
+        
+        console.log("DEBUG: hasStructureErrors result:", hasErrors);
+        return hasErrors;
+    }
+
+    // NEW METHOD: Show error at structure validation stage with 0% progress
+    showErrorAtStructureStage() {
+        this.clearSimulationTimeouts();
+        
+        // Activate the structure validation stage first, then show error
+        this.activateStage(1);
+        this.updateOverallProgress(30, 'Starting structure validation...');
+        
+        // Show error after a brief moment
+        setTimeout(() => {
+            const stageElement = document.getElementById(this.stages[1].id);
+            stageElement.classList.remove('active');
+            stageElement.classList.add('error');
+            
+            const icon = stageElement.querySelector('.stage-icon');
+            icon.textContent = '❌';
+            
+            // Keep progress at 0% to show it failed immediately
+            this.updateStageProgress(1, 0);
+            this.updateOverallProgress(0, 'Structure validation failed');
+            
+            // Show detailed error message after a brief pause
+            setTimeout(() => {
+                this.hideProgressContainer();
+                this.showDetailedErrors(this.serverResponse);
+            }, 2000);
+        }, 500);
+    }
+
     simulateServerProcessing() {
-        // Stage 2: Validation (25% - 45%)
+        console.log("DEBUG: Starting simulateServerProcessing");
+        console.log("DEBUG: serverResponseReceived:", this.serverResponseReceived);
+        console.log("DEBUG: serverResponse:", this.serverResponse);
+        
+        // Check for structure errors immediately after server response
+        if (this.serverResponseReceived && this.hasStructureErrors()) {
+            console.log("DEBUG: Structure errors detected immediately, showing error");
+            // If structure errors detected, skip simulation and show error immediately
+            setTimeout(() => {
+                this.showErrorAtStructureStage();
+            }, 300);
+            return;
+        }
+
+        // Stage 2: Structure Validation (25% - 45%)
         this.simulationTimeouts.push(setTimeout(() => {
-            if (this.cancelled || this.shouldStopSimulation(1)) return;
+            if (this.cancelled) return;
+            
+            console.log("DEBUG: Starting structure validation simulation");
+            console.log("DEBUG: Checking for structure errors before activating stage");
+            
+            // Double-check for structure errors before starting validation animation
+            if (this.serverResponseReceived && this.hasStructureErrors()) {
+                console.log("DEBUG: Structure errors found at 300ms, stopping simulation");
+                this.showErrorAtStructureStage();
+                return;
+            }
+            
+            console.log("DEBUG: No structure errors detected, activating stage 1");
             this.activateStage(1);
             this.updateOverallProgress(30, 'Validating file structure...');
         }, 300));
 
         this.simulationTimeouts.push(setTimeout(() => {
-            if (this.cancelled || this.shouldStopSimulation(1)) return;
+            if (this.cancelled) return;
+            
+            console.log("DEBUG: 600ms checkpoint - checking for structure errors");
+            
+            // Check again before progressing
+            if (this.serverResponseReceived && this.hasStructureErrors()) {
+                console.log("DEBUG: Structure errors found at 600ms, stopping simulation");
+                this.showErrorAtStructureStage();
+                return;
+            }
+            
+            console.log("DEBUG: Progressing structure validation to 40%");
             this.updateStageProgress(1, 40);
             this.updateOverallProgress(35, 'Checking data format...');
         }, 600));
 
         this.simulationTimeouts.push(setTimeout(() => {
-            if (this.cancelled || this.shouldStopSimulation(1)) return;
+            if (this.cancelled) return;
+            
+            console.log("DEBUG: 900ms checkpoint - checking for structure errors");
+            
+            // Check again before progressing
+            if (this.serverResponseReceived && this.hasStructureErrors()) {
+                console.log("DEBUG: Structure errors found at 900ms, stopping simulation");
+                this.showErrorAtStructureStage();
+                return;
+            }
+            
+            console.log("DEBUG: Progressing structure validation to 80%");
             this.updateStageProgress(1, 80);
             this.updateOverallProgress(40, 'Validating columns...');
         }, 900));
 
         this.simulationTimeouts.push(setTimeout(() => {
-            if (this.cancelled || this.shouldStopSimulation(1)) return;
-            this.completeStage(1);
-            this.updateOverallProgress(45, 'Validation completed');
+            if (this.cancelled) return;
             
-            // Stage 3: Processing (45% - 80%)
-            this.activateStage(2);
-            this.updateOverallProgress(50, 'Processing data rows...');
+            console.log("DEBUG: 1200ms checkpoint - final structure validation check");
+            
+            // Final structure validation check
+            const hasStructureErrors = this.hasStructureErrors();
+            console.log("DEBUG: hasStructureErrors result:", hasStructureErrors);
+            
+            if (hasStructureErrors) {
+                console.log("DEBUG: Structure errors confirmed at 1200ms, showing error");
+                // Show error at structure validation stage with 0% progress
+                this.showErrorAtStructureStage();
+                return;
+            } else {
+                console.log("DEBUG: No structure errors, completing structure validation");
+                // Complete structure validation successfully (green ✅ 100%)
+                this.completeStage(1);
+                this.updateOverallProgress(45, 'Structure validation completed');
+                
+                // Check if we should proceed to data processing or show error
+                if (this.shouldStopSimulation(2)) {
+                    console.log("DEBUG: Should stop simulation, showing data processing error");
+                    // Show error on data processing stage
+                    setTimeout(() => {
+                        this.showErrorAtDataProcessingStage();
+                    }, 300);
+                } else {
+                    console.log("DEBUG: Continuing with data processing");
+                    // Continue with data processing
+                    this.activateStage(2);
+                    this.updateOverallProgress(50, 'Processing data rows...');
+                }
+            }
         }, 1200));
 
+        // Only continue if no data validation errors
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(2)) return;
             this.updateStageProgress(2, 25);
@@ -372,9 +533,9 @@ class UploadProgressTracker {
     getErrorStage(responseStage) {
         // Map server response stage to our visual stages
         switch (responseStage) {
-            case 1: // Failed during basic validation
+            case 1: // Failed during basic validation (structure issues)
                 return 1; // Show error on validation stage
-            case 2: // Failed during processing
+            case 2: // Failed during processing (data validation issues)
                 return 2; // Show error on processing stage
             default:
                 return 2; // Default to processing stage for errors
@@ -382,13 +543,15 @@ class UploadProgressTracker {
     }
 
     handleServerResponse(responseText) {
-        console.log("Raw server response:", responseText);
+        console.log("DEBUG: Raw server response:", responseText);
         
         let response;
         
         try {
             response = JSON.parse(responseText);
-            console.log("Parsed response:", response);
+            console.log("DEBUG: Parsed response:", response);
+            console.log("DEBUG: Response success:", response.success);
+            console.log("DEBUG: Response errors:", response.errors);
         } catch (e) {
             console.error("JSON parse error:", e);
             console.log("Response text:", responseText);
@@ -398,16 +561,43 @@ class UploadProgressTracker {
 
         this.serverResponseReceived = true;
         this.serverResponse = response;
-
-        // If there's an error, we'll handle it after a short delay to let some simulation run
-        if (!response.success) {
-            const errorStage = this.getErrorStage(response.stage);
-            
-            // Set a timeout to show the error at the appropriate stage
-            this.simulationTimeouts.push(setTimeout(() => {
-                this.showErrorAtStage(errorStage, response);
-            }, 1500 + (errorStage * 600))); // Show error after that stage starts
+        
+        console.log("DEBUG: Server response stored, serverResponseReceived:", this.serverResponseReceived);
+        
+        // Immediately check for structure errors after receiving response
+        if (this.hasStructureErrors()) {
+            console.log("DEBUG: Structure errors detected in handleServerResponse!");
+        } else {
+            console.log("DEBUG: No structure errors detected in handleServerResponse");
         }
+    }
+
+    showErrorAtDataProcessingStage() {
+        this.clearSimulationTimeouts();
+        
+        // Activate the data processing stage first, then show error
+        this.activateStage(2);
+        this.updateOverallProgress(45, 'Starting data processing...');
+        
+        // Show error after a brief moment
+        setTimeout(() => {
+            const stageElement = document.getElementById(this.stages[2].id);
+            stageElement.classList.remove('active');
+            stageElement.classList.add('error');
+            
+            const icon = stageElement.querySelector('.stage-icon');
+            icon.textContent = '❌';
+            
+            // Keep progress at 0% to show it failed immediately
+            this.updateStageProgress(2, 0);
+            this.updateOverallProgress(0, 'Data processing failed');
+            
+            // Show detailed error message after a brief pause
+            setTimeout(() => {
+                this.hideProgressContainer();
+                this.showDetailedErrors(this.serverResponse);
+            }, 2000);
+        }, 500);
     }
 
     showErrorAtStage(stageIndex, response) {
@@ -447,7 +637,7 @@ class UploadProgressTracker {
                 window.location.href = 'overview.php';
             }, 2000);
         }
-        // Error handling is already done in showErrorAtStage
+        // Error handling is already done in showErrorAtDataProcessingStage
     }
 
     clearSimulationTimeouts() {
@@ -456,8 +646,8 @@ class UploadProgressTracker {
     }
 
     handleProcessingError(response) {
-        // This method is now handled by showErrorAtStage
-        this.showErrorAtStage(this.getErrorStage(response.stage), response);
+        // This method is now handled by showErrorAtDataProcessingStage
+        this.showErrorAtDataProcessingStage();
     }
 
     showDetailedErrors(response) {
@@ -560,6 +750,14 @@ class UploadProgressTracker {
                         <ul>
                             <li>Remove symbols: "$1,200" → "1200"</li>
                             <li>Remove commas: "500.abc" → "500"</li>
+                        </ul>
+                    </div>
+                    <div class="fix-item">
+                        <strong>📝 Structure Issues:</strong>
+                        <ul>
+                            <li>Remove special symbols: "Direct™" → "Direct"</li>
+                            <li>Convert Unicode: "５０" → "50"</li>
+                            <li>Remove extra spaces: " value " → "value"</li>
                         </ul>
                     </div>
                 </div>

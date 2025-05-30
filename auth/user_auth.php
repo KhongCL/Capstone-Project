@@ -7,9 +7,9 @@ if (session_status() == PHP_SESSION_NONE) {
 function displayLoginMessage() {
     echo '<script>
         if (confirm("You need to log in to access this page. Go to Login Page? Click cancel to go to home page.")) {
-            window.location.href = "/login.php";
+            window.location.href = "../login.php";
         } else {
-            window.location.href = "/user/index.php";
+            window.location.href = "../index.php";
         }
     </script>';
     exit();

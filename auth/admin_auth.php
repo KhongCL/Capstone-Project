@@ -8,13 +8,13 @@ function displayAdminLoginMessage() {
         if (confirm("Admin access required. Would you like to verify admin access?")) {
             let key = prompt("Please enter admin key:");
             if (key === "trafanalyz") {
-                window.location.href = "/admin_login.php?key=" + key;
+                window.location.href = "../admin_login.php?key=" + key;
             } else {
                 alert("Invalid admin key!");
-                window.location.href = "/admin/index.php";
+                window.location.href = "../index.php";
             }
         } else {
-            window.location.href = "/admin/index.php";
+            window.location.href = "../index.php";
         }
     </script>';
     exit();
