@@ -4,30 +4,40 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-function displayLoginMessage() {
-    echo '<script>
-        if (confirm("You need to log in to access this page. Go to Login Page? Click cancel to go to home page.")) {
-            window.location.href = "/login.php";
-        } else {
-            window.location.href = "/user/index.php";
-        }
-    </script>';
+function redirectToIndex() {
+    // Display a brief message and redirect to index.php
+    echo '<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Access Denied</title>
+
+    </head>
+    <body>
+        <div class="access-denied">
+            <h2>Access Denied</h2>
+            <p>Please log in to access this page.</p>
+						<a href="../index.php">Return to Landing Page</a>
+        </div>
+    </body>
+    </html>';
     exit();
 }
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    displayLoginMessage();
+    redirectToIndex();
 }
 
 // Check if user has the correct role
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'End-User') {
-    displayLoginMessage();
+    redirectToIndex();
 }
 
 // Additional check for UserID existence
 if (empty($_SESSION['user_id'])) {
-    displayLoginMessage();
+    redirectToIndex();
 }
 
 session_write_close();

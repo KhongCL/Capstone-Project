@@ -1,5 +1,16 @@
 <?php
+// filepath: c:\xampp\htdocs\Capstone-Project\index.php
 session_start();
+
+// Redirect logged-in users to their appropriate dashboard
+if (isset($_SESSION['user_id'])) {
+    if ($_SESSION['role'] === 'Admin') {
+        header("Location: admin/index.php");
+    } else {
+        header("Location: user/index.php");
+    }
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -225,14 +236,6 @@ session_start();
             <ul>
                 <li><a href="login.php">Login</a></li>
                 <li><a href="register.php">Register</a></li>
-                <?php if (isset($_SESSION['user_id'])): ?>
-                    <?php if ($_SESSION['role'] === 'Admin'): ?>
-                        <li><a href="admin/index.php">Admin Dashboard</a></li>
-                    <?php else: ?>
-                        <li><a href="user/index.php">Dashboard</a></li>
-                    <?php endif; ?>
-                    <li><a href="logout.php">Logout</a></li>
-                <?php endif; ?>
             </ul>
         </nav>
     </header>
