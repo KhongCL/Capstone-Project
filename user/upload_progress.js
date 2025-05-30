@@ -286,38 +286,52 @@ class UploadProgressTracker {
         this.xhr.send(formData);
     }
 
-    // NEW METHOD: Check if there are structure-related errors
+    // Check if there are structure-related errors
     hasStructureErrors() {
         console.log("DEBUG: Checking for structure errors");
         console.log("DEBUG: serverResponseReceived:", this.serverResponseReceived);
         console.log("DEBUG: serverResponse:", this.serverResponse);
         
-        if (!this.serverResponseReceived || !this.serverResponse || !this.serverResponse.errors) {
-            console.log("DEBUG: No server response or errors available");
+        if (!this.serverResponseReceived || !this.serverResponse) {
+            console.log("DEBUG: No server response available");
             return false;
         }
 
-        console.log("DEBUG: Checking errors:", this.serverResponse.errors);
-
-        // Look for structure-related error patterns
+        // Look for structure-related error patterns (CSV parsing issues only)
         const structureErrorPatterns = [
-            /contains trademark or special symbols/i,
-            /contains unicode characters/i,
-            /invalid traffic source value/i,
-            /leading or trailing whitespace/i,
             /CSV parsing error/i,
             /contains commas which breaks the CSV structure/i,
-            /breaks the CSV structure/i
+            /breaks the CSV structure/i,
+            /Multiple CSV parsing errors detected/i
         ];
 
-        const hasErrors = this.serverResponse.errors.some(error => {
-            const errorMessage = typeof error === 'object' ? error.message : error;
-            console.log("DEBUG: Checking error message:", errorMessage);
+        // Check both the main message and errors array
+        const messagesToCheck = [];
+        
+        // Add main message if it exists
+        if (this.serverResponse.message) {
+            messagesToCheck.push(this.serverResponse.message);
+            console.log("DEBUG: Checking main message:", this.serverResponse.message);
+        }
+        
+        // Add error messages from errors array if it exists
+        if (this.serverResponse.errors && Array.isArray(this.serverResponse.errors)) {
+            console.log("DEBUG: Checking errors array:", this.serverResponse.errors);
+            this.serverResponse.errors.forEach(error => {
+                const errorMessage = typeof error === 'object' ? error.message : error;
+                if (errorMessage) {
+                    messagesToCheck.push(errorMessage);
+                }
+            });
+        }
+
+        const hasErrors = messagesToCheck.some(message => {
+            console.log("DEBUG: Checking message:", message);
             
             const matchesPattern = structureErrorPatterns.some(pattern => {
-                const matches = pattern.test(errorMessage);
+                const matches = pattern.test(message);
                 if (matches) {
-                    console.log("DEBUG: Error matches structure pattern:", pattern.toString());
+                    console.log("DEBUG: Message matches structure pattern:", pattern.toString());
                 }
                 return matches;
             });
@@ -329,7 +343,7 @@ class UploadProgressTracker {
         return hasErrors;
     }
 
-    // NEW METHOD: Show error at structure validation stage with 0% progress
+    // Show error at structure validation stage with 0% progress
     showErrorAtStructureStage() {
         this.clearSimulationTimeouts();
         
@@ -538,7 +552,12 @@ class UploadProgressTracker {
             case 2: // Failed during processing (data validation issues)
                 return 2; // Show error on processing stage
             default:
-                return 2; // Default to processing stage for errors
+                // For general errors, check if they're structure-related
+                if (this.hasStructureErrors()) {
+                    return 1; // Structure validation stage
+                } else {
+                    return 2; // Data processing stage
+                }
         }
     }
 
@@ -658,7 +677,7 @@ class UploadProgressTracker {
         existingErrors.forEach(el => el.remove());
         
         if (response.errors && response.errors.length > 0) {
-            // Create detailed error display
+            // Create detailed error display for errors array
             const errorContainer = document.createElement('div');
             errorContainer.className = 'error-container';
             
@@ -716,77 +735,128 @@ class UploadProgressTracker {
             
             errorContainer.appendChild(errorList);
             
-            // Add the validation help section
-            const validationHelp = document.createElement('div');
-            validationHelp.className = 'validation-help';
-            validationHelp.innerHTML = `
-                <h4>Quick Fix Guide:</h4>
-                <div class="fix-guide">
-                    <div class="fix-item">
-                        <strong>🔢 Integer Issues:</strong>
-                        <ul>
-                            <li>Remove letters: "15a" → "15"</li>
-                            <li>Evaluate expressions: "42+3" → "45"</li>
-                            <li>Convert Unicode: "５０" → "50"</li>
-                        </ul>
-                    </div>
-                    <div class="fix-item">
-                        <strong>📊 Float/Decimal Issues:</strong>
-                        <ul>
-                            <li>Fix multiple decimals: "8..5" → "8.5"</li>
-                            <li>Convert scientific: "1.2e3" → "1200"</li>
-                            <li>Remove special chars: "~5.3" → "5.3"</li>
-                        </ul>
-                    </div>
-                    <div class="fix-item">
-                        <strong>⏰ Time Format Issues:</strong>
-                        <ul>
-                            <li>Use proper format: "10:65:30" → "11:05:30"</li>
-                            <li>Convert units: "12m30s" → "12:30" or "750"</li>
-                        </ul>
-                    </div>
-                    <div class="fix-item">
-                        <strong>💰 Currency Issues:</strong>
-                        <ul>
-                            <li>Remove symbols: "$1,200" → "1200"</li>
-                            <li>Remove commas: "500.abc" → "500"</li>
-                        </ul>
-                    </div>
-                    <div class="fix-item">
-                        <strong>📝 Structure Issues:</strong>
-                        <ul>
-                            <li>Remove special symbols: "Direct™" → "Direct"</li>
-                            <li>Convert Unicode: "５０" → "50"</li>
-                            <li>Remove extra spaces: " value " → "value"</li>
-                        </ul>
-                    </div>
-                </div>
-            `;
+            // Insert after the form
+            const form = uploadSection.querySelector('form');
+            if (form && form.parentNode) {
+                form.parentNode.insertBefore(errorContainer, form.nextSibling);
+            }
+            
+        } else if (response.message) {
+            // Handle main message (including multi-line structure errors)
+            const errorContainer = document.createElement('div');
+            errorContainer.className = 'error-container';
+            
+            // Check if it's a multi-line error message
+            if (response.message.includes('\n')) {
+                const errorSummary = document.createElement('p');
+                errorSummary.className = 'error-summary';
+                errorSummary.textContent = 'CSV Structure Errors Detected:';
+                errorContainer.appendChild(errorSummary);
+                
+                const errorList = document.createElement('ul');
+                errorList.className = 'error-list';
+                
+                // Split multi-line message into individual errors
+                const errorLines = response.message.split('\n').filter(line => line.trim() !== '');
+                
+                errorLines.forEach((errorLine, index) => {
+                    // Skip the first line if it's just "Multiple CSV parsing errors detected:"
+                    if (index === 0 && errorLine.includes('Multiple CSV parsing errors detected:')) {
+                        return;
+                    }
+                    
+                    const errorItem = document.createElement('li');
+                    errorItem.className = 'error-item';
+                    
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'error-message';
+                    errorMessage.textContent = errorLine.trim();
+                    
+                    errorItem.appendChild(errorMessage);
+                    errorList.appendChild(errorItem);
+                });
+                
+                errorContainer.appendChild(errorList);
+            } else {
+                // Single line error message
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = response.message;
+                errorContainer.appendChild(errorDiv);
+            }
             
             // Insert after the form
             const form = uploadSection.querySelector('form');
             if (form && form.parentNode) {
                 form.parentNode.insertBefore(errorContainer, form.nextSibling);
-                form.parentNode.insertBefore(validationHelp, errorContainer.nextSibling);
-            }
-            
-            // Add error footer
-            const errorFooter = document.createElement('p');
-            errorFooter.className = 'error-footer';
-            errorFooter.textContent = 'Please correct these issues and upload again.';
-            validationHelp.appendChild(errorFooter);
-            
-        } else {
-            // Simple error message
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'message error';
-            errorDiv.textContent = response.message;
-            
-            const form = uploadSection.querySelector('form');
-            if (form && form.parentNode) {
-                form.parentNode.insertBefore(errorDiv, form.nextSibling);
             }
         }
+        
+        // Add the validation help section for structure errors
+        const validationHelp = document.createElement('div');
+        validationHelp.className = 'validation-help';
+        validationHelp.innerHTML = `
+            <h4>Quick Fix Guide:</h4>
+            <div class="fix-guide">
+                <div class="fix-item">
+                    <strong>💰 CSV Structure Issues:</strong>
+                    <ul>
+                        <li>Remove commas from currency values: "$1,200" → "$1200" or "1200"</li>
+                        <li>Remove commas from numbers: "1,000" → "1000"</li>
+                        <li>Quote values containing commas: "New York, NY" → '"New York, NY"'</li>
+                        <li>Use proper CSV format with quoted fields when necessary</li>
+                    </ul>
+                </div>
+                <div class="fix-item">
+                    <strong>🔢 Integer Issues:</strong>
+                    <ul>
+                        <li>Remove letters: "15a" → "15"</li>
+                        <li>Evaluate expressions: "42+3" → "45"</li>
+                        <li>Convert Unicode: "５０" → "50"</li>
+                    </ul>
+                </div>
+                <div class="fix-item">
+                    <strong>📊 Float/Decimal Issues:</strong>
+                    <ul>
+                        <li>Fix multiple decimals: "8..5" → "8.5"</li>
+                        <li>Convert scientific: "1.2e3" → "1200"</li>
+                        <li>Remove special chars: "~5.3" → "5.3"</li>
+                    </ul>
+                </div>
+                <div class="fix-item">
+                    <strong>⏰ Time Format Issues:</strong>
+                    <ul>
+                        <li>Use proper format: "10:65:30" → "11:05:30"</li>
+                        <li>Convert units: "12m30s" → "12:30" or "750"</li>
+                    </ul>
+                </div>
+                <div class="fix-item">
+                    <strong>📝 Structure Issues:</strong>
+                    <ul>
+                        <li>Remove special symbols: "Direct™" → "Direct"</li>
+                        <li>Convert Unicode: "５０" → "50"</li>
+                        <li>Remove extra spaces: " value " → "value"</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        
+        // Insert validation help
+        const form = uploadSection.querySelector('form');
+        if (form && form.parentNode) {
+            const errorContainer = uploadSection.querySelector('.error-container');
+            if (errorContainer) {
+                form.parentNode.insertBefore(validationHelp, errorContainer.nextSibling);
+            } else {
+                form.parentNode.insertBefore(validationHelp, form.nextSibling);
+            }
+        }
+        
+        // Add error footer
+        const errorFooter = document.createElement('p');
+        errorFooter.className = 'error-footer';
+        errorFooter.textContent = 'Please correct these issues and upload again.';
+        validationHelp.appendChild(errorFooter);
     }
 
     handleError(message) {
