@@ -259,17 +259,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset
                 </div>
             </section>
         </main>
+        
+        <footer>
+            <p>&copy; <?php echo date('Y'); ?> Web Traffic Analysis Dashboard</p>
+        </footer>
 
-        <!-- Add before the footer -->
         <div style="text-align: center; margin: 20px 0;">
             <form action="../logout.php" method="post" style="display: inline;">
                 <button type="submit" class="btn" style="background-color: #dc3545; color: white;">Logout</button>
             </form>
         </div>
-        
-        <footer>
-            <p>&copy; <?php echo date('Y'); ?> Web Traffic Analysis Dashboard</p>
-        </footer>
     </div>
 <script src="upload_progress.js"></script>
 </body>
