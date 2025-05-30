@@ -39,88 +39,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
                 $errorMessage = str_replace('Data validation errors found: ', '', $errorMessage);
                 $errorMessage = str_replace('. Please correct these issues and upload again.', '', $errorMessage);
                 
-                // Better parsing: Look for row patterns to split errors properly
                 $parsedErrors = [];
                 
-                // Split by "Row X (" pattern to separate individual errors
-                $errorParts = preg_split('/(?=Row \d+ \([^)]+\):)/', $errorMessage);
+                // NEW APPROACH: Use regex to extract each complete error message
+                // This pattern captures: "Row X (Something): The error message"
+                preg_match_all('/Row \d+ \([^)]*\)[^;]*(?:(?:; (?!Row \d+))[^;]*)*/', $errorMessage, $matches);
                 
-                foreach ($errorParts as $errorPart) {
-                    $errorPart = trim($errorPart);
-                    if (empty($errorPart)) continue;
-                    
-                    // Check if this error contains suggestions
-                    if (strpos($errorPart, ' Suggestions: ') !== false) {
-                        // Split error and suggestions
-                        $parts = explode(' Suggestions: ', $errorPart, 2);
-                        $mainError = trim($parts[0]);
-                        $suggestions = isset($parts[1]) ? trim($parts[1]) : '';
-                        
-                        $parsedErrors[] = [
-                            'message' => $mainError,
-                            'suggestions' => $suggestions
-                        ];
-                    } else {
-                        // No suggestions, just the error message
-                        $parsedErrors[] = [
-                            'message' => $errorPart,
-                            'suggestions' => ''
-                        ];
+                foreach ($matches[0] as $error) {
+                    $error = trim($error);
+                    if (!empty($error)) {
+                        addParsedError($parsedErrors, $error);
                     }
                 }
                 
-                // If the regex split didn't work well, fall back to semicolon splitting
-                // but be more careful about suggestions
-                if (count($parsedErrors) <= 1 && !empty($errorMessage)) {
-                    $parsedErrors = [];
+                // If we didn't find any errors with the regex, fallback to the old method
+                if (empty($parsedErrors)) {
+                    // Try a more aggressive approach by directly splitting on "Row"
+                    $errorParts = preg_split('/(?=Row \d+ \()/', $errorMessage, -1, PREG_SPLIT_NO_EMPTY);
                     
-                    // Try a different approach: split by semicolon but reconstruct errors with suggestions
-                    $rawErrors = explode(';', $errorMessage);
-                    $currentError = '';
-                    $inSuggestions = false;
-                    
-                    foreach ($rawErrors as $part) {
+                    foreach ($errorParts as $part) {
                         $part = trim($part);
-                        if (empty($part)) continue;
-                        
-                        // Check if this part starts a new error (contains "Row X (")
-                        if (preg_match('/^Row \d+ \([^)]+\):/', $part)) {
-                            // If we have a current error, save it
-                            if (!empty($currentError)) {
-                                $this->addParsedError($parsedErrors, $currentError);
-                                $currentError = '';
-                            }
-                            $currentError = $part;
-                            $inSuggestions = false;
-                        } 
-                        // Check if this part is a suggestion (starts with "Try:")
-                        else if (strpos($part, 'Try:') === 0) {
-                            if (!$inSuggestions) {
-                                $currentError .= ' Suggestions: ' . $part;
-                                $inSuggestions = true;
-                            } else {
-                                $currentError .= '; ' . $part;
+                        if (!empty($part)) {
+                            // Ensure the part starts with "Row" (might have been split incorrectly)
+                            if (strpos($part, 'Row ') === 0) {
+                                addParsedError($parsedErrors, $part);
                             }
                         }
-                        // This is likely a continuation of the current error or suggestion
-                        else {
-                            if ($inSuggestions) {
-                                $currentError .= '; ' . $part;
-                            } else {
-                                // Check if it contains suggestions
-                                if (strpos($part, 'Suggestions: ') !== false) {
-                                    $currentError .= ' ' . $part;
-                                    $inSuggestions = true;
-                                } else {
-                                    $currentError .= ' ' . $part;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Don't forget the last error
-                    if (!empty($currentError)) {
-                        $this->addParsedError($parsedErrors, $currentError);
                     }
                 }
                 
@@ -143,6 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
 
 // Helper function to add parsed errors
 function addParsedError(&$parsedErrors, $errorText) {
+    $errorText = trim($errorText);
+    if (empty($errorText)) return;
+    
+    // Check if this error contains suggestions
     if (strpos($errorText, ' Suggestions: ') !== false) {
         // Split error and suggestions
         $parts = explode(' Suggestions: ', $errorText, 2);
@@ -154,11 +102,22 @@ function addParsedError(&$parsedErrors, $errorText) {
             'suggestions' => $suggestions
         ];
     } else {
-        // No suggestions, just the error message
-        $parsedErrors[] = [
-            'message' => trim($errorText),
-            'suggestions' => ''
-        ];
+        // Check for inline suggestions pattern (Try: at the end)
+        if (preg_match('/^(.+?)\s+Try:\s*(.+)$/s', $errorText, $matches)) {
+            $mainError = trim($matches[1]);
+            $suggestions = 'Try: ' . trim($matches[2]);
+            
+            $parsedErrors[] = [
+                'message' => $mainError,
+                'suggestions' => $suggestions
+            ];
+        } else {
+            // No suggestions, just the error message
+            $parsedErrors[] = [
+                'message' => $errorText,
+                'suggestions' => ''
+            ];
+        }
     }
 }
 
