@@ -1,18 +1,57 @@
 <?php
+// filepath: c:\xampp\htdocs\Capstone-Project\user\compare.php
 
 require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
-// Get user uploads
+$error = '';
+$success = '';
+$firstUploadId = null;
+$secondUploadId = null;
+
+// Process file uploads if form submitted
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['first_file'], $_FILES['second_file'])) {
+    // Process first file upload
+    if ($_FILES['first_file']['error'] === UPLOAD_ERR_OK) {
+        $firstFileResult = processUpload($_FILES['first_file'], $conn, $_SESSION['user_id']);
+        if ($firstFileResult['success']) {
+            $firstUploadId = $firstFileResult['upload_id'];
+            $success .= "First file uploaded successfully. ";
+        } else {
+            $error .= "First file error: " . $firstFileResult['message'] . " ";
+        }
+    } else {
+        $error .= "Error uploading first file: " . getUploadErrorMessage($_FILES['first_file']['error']) . " ";
+    }
+
+    // Process second file upload
+    if ($_FILES['second_file']['error'] === UPLOAD_ERR_OK) {
+        $secondFileResult = processUpload($_FILES['second_file'], $conn, $_SESSION['user_id']);
+        if ($secondFileResult['success']) {
+            $secondUploadId = $secondFileResult['upload_id'];
+            $success .= "Second file uploaded successfully.";
+        } else {
+            $error .= "Second file error: " . $secondFileResult['message'];
+        }
+    } else {
+        $error .= "Error uploading second file: " . getUploadErrorMessage($_FILES['second_file']['error']);
+    }
+}
+
+// Fallback to GET parameters if no successful uploads
+if (!$firstUploadId && isset($_GET['first'])) {
+    $firstUploadId = $_GET['first'];
+}
+if (!$secondUploadId && isset($_GET['second'])) {
+    $secondUploadId = $_GET['second'];
+}
+
+// Get user uploads for the dropdown fallback
 $stmt = $conn->prepare("SELECT UploadID, FileName, UploadDate FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC");
 $stmt->bind_param("i", $_SESSION['user_id']);
 $stmt->execute();
 $uploads = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-// Default to the two most recent uploads if available
-$firstUploadId = isset($_GET['first']) ? $_GET['first'] : (isset($uploads[0]['UploadID']) ? $uploads[0]['UploadID'] : null);
-$secondUploadId = isset($_GET['second']) ? $_GET['second'] : (isset($uploads[1]['UploadID']) ? $uploads[1]['UploadID'] : null);
 
 // Get data for both uploads
 $firstMetrics = $firstUploadId ? getKeyMetrics($conn, $firstUploadId) : null;
@@ -20,9 +59,88 @@ $secondMetrics = $secondUploadId ? getKeyMetrics($conn, $secondUploadId) : null;
 $firstTrafficData = $firstUploadId ? getTrafficOverTime($conn, 'day', $firstUploadId) : [];
 $secondTrafficData = $secondUploadId ? getTrafficOverTime($conn, 'day', $secondUploadId) : [];
 
+// Helper function to process file upload and return result
+function processUpload($file, $conn, $userId) {
+    $result = ['success' => false, 'message' => '', 'upload_id' => null];
+    
+    // Check file type
+    $fileName = basename($file['name']);
+    $fileType = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    
+    if ($fileType != 'csv') {
+        $result['message'] = "Only CSV files are allowed.";
+        return $result;
+    }
+    
+    // Create upload directory if it doesn't exist
+    $uploadDir = '../uploads/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+    
+    // Generate a unique filename
+    $uniqueFileName = time() . '_' . $fileName;
+    $targetFile = $uploadDir . $uniqueFileName;
+    
+    // Move uploaded file
+    if (!move_uploaded_file($file['tmp_name'], $targetFile)) {
+        $result['message'] = "Failed to move uploaded file.";
+        return $result;
+    }
+    
+    // Parse CSV and process data
+    $csvData = parseCSV($targetFile);
+    if (!$csvData) {
+        $result['message'] = "Failed to parse CSV file.";
+        return $result;
+    }
+    
+    // Record the upload in the database
+    $stmt = $conn->prepare("INSERT INTO csv_upload (UserID, FileName, FileLocation, UploadDate) VALUES (?, ?, ?, NOW())");
+    $stmt->bind_param("iss", $userId, $fileName, $targetFile);
+    
+    if (!$stmt->execute()) {
+        $result['message'] = "Failed to record upload in database: " . $conn->error;
+        return $result;
+    }
+    
+    $uploadId = $conn->insert_id;
+    
+    // Transform and save the data
+    $transformResult = saveTransformedData($conn, $csvData, $uploadId);
+    if (!$transformResult['success']) {
+        $result['message'] = "Error processing data: " . $transformResult['message'];
+        return $result;
+    }
+    
+    $result['success'] = true;
+    $result['upload_id'] = $uploadId;
+    return $result;
+}
+
+// Function to parse CSV file
+function parseCSV($filePath) {
+    if (!file_exists($filePath)) {
+        return false;
+    }
+    
+    $data = [];
+    if (($handle = fopen($filePath, "r")) !== false) {
+        // Get headers
+        $headers = fgetcsv($handle);
+        
+        // Process rows
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($headers) === count($row)) {
+                $data[] = array_combine($headers, $row);
+            }
+        }
+        fclose($handle);
+        return $data;
+    }
+    return false;
+}
 ?>
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -120,6 +238,66 @@ $secondTrafficData = $secondUploadId ? getTrafficOverTime($conn, 'day', $secondU
       margin: 20px 0;
     }
     
+    .error-box {
+      background-color: #fff3f3;
+      border-left: 4px solid #e74c3c;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    
+    .success-box {
+      background-color: #f0fff0;
+      border-left: 4px solid #2ecc71;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    
+    .file-upload {
+      margin-bottom: 15px;
+    }
+    
+    .file-upload label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    
+    .file-upload input[type="file"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    
+    .upload-methods {
+      margin-bottom: 20px;
+    }
+    
+    .method-tab {
+      display: inline-block;
+      padding: 8px 16px;
+      margin-right: 5px;
+      background-color: #f2f2f2;
+      border-radius: 4px 4px 0 0;
+      cursor: pointer;
+    }
+    
+    .method-tab.active {
+      background-color: #4a6baf;
+      color: white;
+    }
+    
+    .upload-method {
+      display: none;
+      padding: 15px;
+      background-color: #f5f5f5;
+      border-radius: 0 0 8px 8px;
+    }
+    
+    .upload-method.active {
+      display: block;
+    }
+    
     select {
       width: 100%;
       padding: 8px 12px;
@@ -147,7 +325,48 @@ $secondTrafficData = $secondUploadId ? getTrafficOverTime($conn, 'day', $secondU
         <main>
             <h2>Compare Traffic Periods</h2>
             
-            <div class="upload-selector">
+            <!-- Error/Success Messages -->
+            <?php if ($error): ?>
+                <div class="error-box">
+                    <p><?= htmlspecialchars($error) ?></p>
+                </div>
+            <?php endif; ?>
+            
+            <?php if ($success): ?>
+                <div class="success-box">
+                    <p><?= htmlspecialchars($success) ?></p>
+                </div>
+            <?php endif; ?>
+            
+            <!-- Upload Method Selection -->
+            <div class="upload-methods">
+                <div id="uploadTab" class="method-tab active">Upload New Files</div>
+                <div id="selectTab" class="method-tab">Select Existing Files</div>
+            </div>
+            
+            <!-- Upload New Files -->
+            <div id="uploadMethod" class="upload-method active">
+                <form action="compare.php" method="post" enctype="multipart/form-data">
+                    <div class="compare-container">
+                        <div class="file-upload">
+                            <h3>First Period</h3>
+                            <label for="first_file">Upload CSV for First Period:</label>
+                            <input type="file" name="first_file" id="first_file" accept=".csv" required>
+                            <small>Only CSV files are allowed</small>
+                        </div>
+                        <div class="file-upload">
+                            <h3>Second Period</h3>
+                            <label for="second_file">Upload CSV for Second Period:</label>
+                            <input type="file" name="second_file" id="second_file" accept=".csv" required>
+                            <small>Only CSV files are allowed</small>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn">Upload & Compare Data</button>
+                </form>
+            </div>
+            
+            <!-- Select Existing Files -->
+            <div id="selectMethod" class="upload-method">
                 <form id="compareForm">
                     <div class="compare-container">
                         <div>
@@ -187,21 +406,8 @@ $secondTrafficData = $secondUploadId ? getTrafficOverTime($conn, 'day', $secondU
                       'total_page_views' => 'Total Page Views',
                       'unique_visitors' => 'Unique Visitors',
                       'avg_session_duration' => 'Average Session Duration',
-                      'bounce_rate' => 'Bounce Rate',
-                      'new_users' => 'New Users',
-                      'total_users' => 'Total Users',
-                      'screen_page_views_per_session' => 'Views per Session',
-                      'total_sessions' => 'Sessions',
-                      'engaged_sessions' => 'Engaged sessions',
-                      'engagement_rate' => 'Engagement rate',
-                      'avg_engagement_time_per_session' => 'Average engagement time per session',
-                      'events_per_session' => 'Events per session',
-                      'event_count' => 'Event count',
-                      'key_events' => 'Key events',
-                      'session_key_event_rate' => 'Session key event rate',
-                      'total_revenue' => 'Total revenue'
+                      'bounce_rate' => 'Bounce Rate'
                     ];
-
                   ?>
                   <?php foreach ($allMetrics as $key => $label): ?>
                     <div class="metric-card">
@@ -234,6 +440,36 @@ $secondTrafficData = $secondUploadId ? getTrafficOverTime($conn, 'day', $secondU
                   <?php endforeach; ?>
                 </div>
               </section>
+              
+              <!-- Charts Section -->
+              <section class="chart-section">
+                <h3>Traffic Comparison</h3>
+                <div class="chart-toggle">
+                  <button id="overlayBtn" class="btn btn-sm active">Overlay Chart</button>
+                  <button id="sideBySideBtn" class="btn btn-sm">Side-by-Side</button>
+                </div>
+                
+                <div id="overlayChartContainer" class="chart-container">
+                  <canvas id="overlayChart"></canvas>
+                </div>
+                
+                <div id="sideBySideContainer" class="compare-container" style="display:none;">
+                  <div class="chart-container">
+                    <canvas id="firstChart"></canvas>
+                  </div>
+                  <div class="chart-container">
+                    <canvas id="secondChart"></canvas>
+                  </div>
+                </div>
+              </section>
+            <?php elseif ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['first']) || isset($_GET['second'])): ?>
+              <div class="message-box">
+                <p>Comparison data could not be loaded. Please ensure both files contain valid traffic data.</p>
+              </div>
+            <?php else: ?>
+              <div class="message-box">
+                <p>Upload or select two CSV files to compare their traffic data.</p>
+              </div>
             <?php endif; ?>
         </main>
 
@@ -247,7 +483,22 @@ $secondTrafficData = $secondUploadId ? getTrafficOverTime($conn, 'day', $secondU
         const firstTrafficData = <?= json_encode($firstTrafficData) ?>;
         const secondTrafficData = <?= json_encode($secondTrafficData) ?>;
         
-        // Form submission handler
+        // Tab switching
+        document.getElementById('uploadTab').addEventListener('click', function() {
+            document.getElementById('uploadMethod').classList.add('active');
+            document.getElementById('selectMethod').classList.remove('active');
+            document.getElementById('uploadTab').classList.add('active');
+            document.getElementById('selectTab').classList.remove('active');
+        });
+        
+        document.getElementById('selectTab').addEventListener('click', function() {
+            document.getElementById('selectMethod').classList.add('active');
+            document.getElementById('uploadMethod').classList.remove('active');
+            document.getElementById('selectTab').classList.add('active');
+            document.getElementById('uploadTab').classList.remove('active');
+        });
+        
+        // Form submission handler for existing files
         document.getElementById('compareForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const firstId = document.getElementById('firstUpload').value;
@@ -260,6 +511,7 @@ $secondTrafficData = $secondUploadId ? getTrafficOverTime($conn, 'day', $secondU
             }
         });
         
+        <?php if ($firstTrafficData && $secondTrafficData): ?>
         // Chart toggling
         document.getElementById('overlayBtn').addEventListener('click', function() {
             document.getElementById('overlayChartContainer').style.display = 'block';
@@ -275,7 +527,6 @@ $secondTrafficData = $secondUploadId ? getTrafficOverTime($conn, 'day', $secondU
             document.getElementById('overlayBtn').classList.remove('active');
         });
         
-        <?php if ($firstTrafficData && $secondTrafficData): ?>
         // Initialize the charts
         const overlayCtx = document.getElementById('overlayChart').getContext('2d');
         const firstCtx = document.getElementById('firstChart').getContext('2d');
