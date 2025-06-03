@@ -150,20 +150,7 @@ session_start();
         nav a:hover {
             color: #4a6baf;
         }
-        
-        /* Footer - Reused from privacy.php */
-        footer {
-            background-color: #1e3c72;
-            color: white;
-            padding: 2rem;
-            text-align: center;
-            margin-top: 2rem; /* Added margin to separate from content */
-        }
-        
-        .footer-content {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+ 
     </style>
 </head>
 <body>

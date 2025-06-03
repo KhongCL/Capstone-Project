@@ -194,37 +194,6 @@ if (isset($_SESSION['user_id'])) {
             color: #4a6baf;
         }
         
-        /* Footer */
-        footer {
-            background-color: #1e3c72;
-            color: white;
-            padding: 2rem;
-            text-align: center;
-        }
-        
-        .footer-content {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .footer-links {
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .footer-links a {
-            color: #b8c5f0;
-            text-decoration: none;
-            margin: 0 1rem;
-            transition: color 0.3s;
-        }
-        
-        .footer-links a:hover {
-            color: white;
-            text-decoration: underline;
-        }
-        
         /* Responsive Design */
         @media (max-width: 768px) {
             .hero h1 {
@@ -242,14 +211,6 @@ if (isset($_SESSION['user_id'])) {
                 text-align: center;
             }
             
-            .footer-links {
-                margin-top: 1rem;
-            }
-            
-            .footer-links a {
-                display: block;
-                margin: 0.5rem 0;
-            }
         }
     </style>
 </head>

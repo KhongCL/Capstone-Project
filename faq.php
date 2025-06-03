@@ -100,7 +100,7 @@ session_start();
             color: #555; /* Softer color for answers */
         }
 
-        /* Navigation, Logo, Footer styles (copied directly from index.php) */
+        /* Navigation, Logo styles (copied directly from index.php) */
         header {
             background-color: white;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -147,18 +147,6 @@ session_start();
 
         nav a:hover {
             color: #4a6baf;
-        }
-
-        footer {
-            background-color: #1e3c72;
-            color: white;
-            padding: 2rem;
-            text-align: center;
-        }
-
-        .footer-content {
-            max-width: 800px;
-            margin: 0 auto;
         }
 
         /* Responsive Design (copied directly from index.php) */
@@ -320,11 +308,6 @@ session_start();
         </div>
     </section>
 
-    <footer>
-        <div class="footer-content">
-            <p>&copy; <?php echo date('Y'); ?> TrafAnalyz. All rights reserved.</p>
-            <p>A complementary web traffic analysis dashboard for modern websites.</p>
-        </div>
-    </footer>
+    <?php include 'footer.php'; ?>
 </body>
 </html>
