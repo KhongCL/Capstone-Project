@@ -21,14 +21,49 @@ if (!isset($_SESSION['mapping_result'])) {
 
 $mappingResult = $_SESSION['mapping_result'];
 $systemFields = [];
-$query = "SELECT DISTINCT SystemFieldName, CSVColumnName FROM COLUMN_MAPPING ORDER BY SystemFieldName";
+$query = "SELECT DISTINCT SystemFieldName, 
+          GROUP_CONCAT(DISTINCT CSVColumnName SEPARATOR ', ') as CSVColumnNames 
+          FROM COLUMN_MAPPING 
+          WHERE FormatID = 1 
+          GROUP BY SystemFieldName 
+          ORDER BY SystemFieldName";
 $result = $conn->query($query);
 if ($result) {
     while ($row = $result->fetch_assoc()) {
         $systemFields[] = [
             'value' => $row['SystemFieldName'],
             'label' => ucwords(str_replace('_', ' ', $row['SystemFieldName'])),
-            'default_column' => $row['CSVColumnName']
+            'default_columns' => explode(', ', $row['CSVColumnNames'])
+        ];
+    }
+}
+
+// Also add any system fields that might be missing from database but exist in JSON
+$allSystemFields = [];
+if (isset($mappingResult['format']) && $mappingResult['format']) {
+    $processor = new CsvProcessor();
+    $mappings = json_decode(file_get_contents(__DIR__ . '/../config/csv_mappings.json'), true);
+    if (isset($mappings[$mappingResult['format']]['column_mappings'])) {
+        foreach ($mappings[$mappingResult['format']]['column_mappings'] as $csvCol => $systemField) {
+            $allSystemFields[$systemField] = ucwords(str_replace('_', ' ', $systemField));
+        }
+    }
+}
+
+// Merge any missing system fields
+foreach ($allSystemFields as $field => $label) {
+    $exists = false;
+    foreach ($systemFields as $existing) {
+        if ($existing['value'] === $field) {
+            $exists = true;
+            break;
+        }
+    }
+    if (!$exists) {
+        $systemFields[] = [
+            'value' => $field,
+            'label' => $label,
+            'default_columns' => []
         ];
     }
 }
@@ -208,9 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             </section>
         </main>
         
-        <footer>
-            <p>&copy; <?php echo date('Y'); ?> Web Traffic Analysis Dashboard</p>
-        </footer>
+        <?php include 'user_footer.php'; ?>
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {

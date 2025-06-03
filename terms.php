@@ -340,12 +340,7 @@ session_start();
         <h3>13. Contact Information</h3>
         <p>If you have any questions about these Terms, please contact us <a href="contact_us.php" style="color: #4a6baf; text-decoration: underline;">here</a>.</p>
     </main>
-    
-    <footer>
-        <div class="footer-content">
-            <p>&copy; <?php echo date('Y'); ?> TrafAnalyz. All rights reserved.</p>
-            <p>A complementary web traffic analysis dashboard for modern websites.</p>
-        </div>
-    </footer>
+
+		<?php include 'footer.php'; ?>
 </body>
 </html>

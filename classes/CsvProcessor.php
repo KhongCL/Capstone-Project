@@ -499,48 +499,51 @@ class CsvProcessor {
     private function detectFormat($headers) {
         // Validate headers input
         if (!is_array($headers) || empty($headers)) {
-            throw new Exception('Invalid CSV headers: Headers must be a non-empty array.');
+            throw new Exception('Invalid headers provided for format detection');
         }
         
-        // First do analytics relevance check
-        $gaKeywords = [
-            'Session', 'Sessions', 'Engagement', 'Traffic', 'Source', 
-            'Medium', 'Channel', 'Events', 'Users', 'Revenue', 'Visit'
-        ];
+        error_log("Detecting format for headers: " . implode(", ", $headers));
         
-        // Calculate how many GA-related headers we find
-        $gaRelevanceScore = 0;
-        foreach ($headers as $header) {
-            foreach ($gaKeywords as $keyword) {
-                if (stripos($header, $keyword) !== false) {
-                    $gaRelevanceScore++;
-                    break;
-                }
+        // Check for your test CSV format first (ga4_traffic_acquisition)
+        $testCsvHeaders = ['Traffic Source', 'User Sessions', 'Engaged Sessions', 'Bounce Rate'];
+        $testMatches = 0;
+        foreach ($testCsvHeaders as $testHeader) {
+            if (in_array($testHeader, $headers)) {
+                $testMatches++;
+                error_log("Found test CSV header: $testHeader");
             }
         }
         
-        // If the file doesn't look like analytics data at all, reject it
-        if (count($headers) > 3 && $gaRelevanceScore < 2) {
-            throw new Exception('This file does not appear to contain web analytics data.');
+        // If we find 3+ matches, it's the ga4_traffic_acquisition format
+        if ($testMatches >= 3) {
+            error_log("Detected ga4_traffic_acquisition format with $testMatches matches");
+            $this->detectedFormat = 'ga4_traffic_acquisition';
+            return 'ga4_traffic_acquisition';
         }
         
-        // Continue with existing format detection
+        // Continue with existing format detection for other formats
         foreach ($this->mappings as $format => $config) {
-            $requiredColumns = $config['format_detection'];
-            $matchCount = 0;
+            if (!isset($config['format_detection'])) continue;
             
-            foreach ($requiredColumns as $column) {
-                if (in_array($column, $headers)) {
+            $matchCount = 0;
+            $detectionHeaders = $config['format_detection'];
+            
+            foreach ($detectionHeaders as $expectedHeader) {
+                if (in_array($expectedHeader, $headers)) {
                     $matchCount++;
                 }
             }
             
-            // If we find at least 70% of the expected columns, consider it a match
-            if ($matchCount >= count($requiredColumns) * 0.7) {
+            // Require at least 70% match
+            $matchPercentage = ($matchCount / count($detectionHeaders)) * 100;
+            if ($matchPercentage >= 70) {
+                error_log("Detected format: $format with {$matchPercentage}% match");
+                $this->detectedFormat = $format;
                 return $format;
             }
         }
         
+        error_log("No format detected from headers: " . implode(", ", $headers));
         return null;
     }
     
@@ -549,45 +552,106 @@ class CsvProcessor {
      */
     private function suggestColumnMapping($headers) {
         $suggestions = [];
-        $standardColumns = [
-            'traffic_source', 'traffic_medium', 'visits', 
-            'visitors', 'page_views', 'bounce_rate', 
-            'avg_session_duration'
+        
+        // Enhanced keyword mapping for better accuracy - handles multiple CSV formats
+        $keywords = [
+            'traffic_source' => [
+                'traffic source', 
+                'source', 
+                'referrer', 
+                'origin', 
+                'channel group',
+                'session primary channel group',
+                'default channel group'
+            ],
+            'visits' => [
+                'user sessions', 
+                'sessions', 
+                'visits'
+            ],
+            'engaged_sessions' => [
+                'engaged sessions', 
+                'engaged', 
+                'quality sessions'
+            ],
+            'bounce_rate' => [
+                'bounce rate', 
+                'bounce',
+                'engagement rate'
+            ],
+            'avg_session_duration' => [
+                'avg session time', 
+                'session time', 
+                'session duration', 
+                'average time', 
+                'time',
+                'average engagement time per session',
+                'engagement time'
+            ],
+            'events_per_session' => [
+                'events per session', 
+                'events/session'
+            ],
+            'event_count' => [
+                'total events', 
+                'event count', 
+                'events'
+            ],
+            'key_events' => [
+                'conversions', 
+                'key events', 
+                'goals'
+            ],
+            'session_key_event_rate' => [
+                'conversion rate', 
+                'key event rate', 
+                'goal rate',
+                'session key event rate'
+            ],
+            'total_revenue' => [
+                'revenue', 
+                'total revenue', 
+                'income'
+            ]
         ];
         
-        $keywords = [
-            'traffic_source' => ['source', 'referrer', 'origin', 'from', 'site'],
-            'traffic_medium' => ['medium', 'channel', 'type'],
-            'visits' => ['visits', 'sessions', 'hits'],
-            'visitors' => ['visitors', 'users', 'unique'],
-            'page_views' => ['page', 'view', 'pageview', 'impression', 'actions'],
-            'bounce_rate' => ['bounce', 'exit'],
-            'avg_session_duration' => ['duration', 'time', 'session', 'length', 'stay']
-        ];
+        // Track which system fields have been assigned to avoid duplicates
+        $assignedFields = [];
         
         foreach ($headers as $header) {
             $bestMatch = null;
             $bestScore = 0;
+            $headerLower = strtolower(trim($header));
             
-            // Check exact matches first
-            foreach ($this->mappings as $format => $config) {
-                if (isset($config['column_mappings'][$header])) {
-                    $bestMatch = $config['column_mappings'][$header];
-                    $bestScore = 100;
-                    break;
+            // Check for exact or close matches
+            foreach ($keywords as $systemField => $fieldKeywords) {
+                // Skip if this system field is already assigned
+                if (in_array($systemField, $assignedFields)) {
+                    continue;
                 }
-            }
-            
-            // If no exact match, try keyword matching
-            if (!$bestMatch) {
-                foreach ($keywords as $column => $keywordList) {
-                    foreach ($keywordList as $keyword) {
-                        if (stripos($header, $keyword) !== false) {
-                            $score = 70 + (strlen($keyword) / strlen($header) * 30);
-                            if ($score > $bestScore) {
-                                $bestScore = $score;
-                                $bestMatch = $column;
-                            }
+                
+                foreach ($fieldKeywords as $keyword) {
+                    $keywordLower = strtolower($keyword);
+                    
+                    // Exact match gets highest score
+                    if ($headerLower === $keywordLower) {
+                        $bestMatch = $systemField;
+                        $bestScore = 100;
+                        break 2; // Break out of both loops
+                    }
+                    
+                    // Partial match scoring
+                    if (strpos($headerLower, $keywordLower) !== false || strpos($keywordLower, $headerLower) !== false) {
+                        $score = 85; // High confidence for partial matches
+                        
+                        // Boost score for closer matches
+                        $similarity = 0;
+                        similar_text($headerLower, $keywordLower, $similarity);
+                        $score = min(95, $score + ($similarity / 10));
+                        
+                        if ($score > $bestScore) {
+                            $bestMatch = $systemField;
+                            $bestScore = $score;
                         }
                     }
                 }
@@ -597,11 +661,12 @@ class CsvProcessor {
             if ($bestMatch && $bestScore >= 60) {
                 $suggestions[$header] = [
                     'suggested_mapping' => $bestMatch,
-                    'confidence' => $bestScore
+                    'confidence' => round($bestScore)
                 ];
+                $assignedFields[] = $bestMatch; // Mark this field as assigned
             } else {
                 $suggestions[$header] = [
-                    'suggested_mapping' => null,
+                    'suggested_mapping' => '',
                     'confidence' => 0
                 ];
             }
@@ -628,13 +693,14 @@ class CsvProcessor {
             $this->detectedFormat = $format;
         }
 
-        // Add missing mappings if they exist in the configuration but not in the provided mapping
+        // IMPORTANT: Use mappings from JSON config, not database
         if ($this->detectedFormat && isset($this->mappings[$this->detectedFormat]['column_mappings'])) {
+            // Merge JSON mappings with provided mapping
             $configMappings = $this->mappings[$this->detectedFormat]['column_mappings'];
-            foreach ($configMappings as $sourceCol => $targetCol) {
-                if (!isset($this->columnMap[$sourceCol])) {
-                    $this->columnMap[$sourceCol] = $targetCol;
-                    error_log("Added missing mapping: '$sourceCol' => '$targetCol'");
+            foreach ($configMappings as $csvCol => $systemField) {
+                if (!isset($this->columnMap[$csvCol])) {
+                    $this->columnMap[$csvCol] = $systemField;
+                    error_log("Added mapping from config: $csvCol -> $systemField");
                 }
             }
         }
@@ -701,7 +767,24 @@ class CsvProcessor {
                     
                     $row = [];
                     $rowHasError = false;
-                    $sourceName = $data[$headerIndexes['Session primary channel group (Default channel group)']] ?? 'Unknown';
+                    $sourceName = 'Unknown';
+
+                    // Try to find traffic source using multiple possible column names
+                    $trafficSourceColumns = [
+                        'Session primary channel group (Default channel group)',
+                        'Traffic Source',
+                        'Source',
+                        'Channel'
+                    ];
+
+                    foreach ($trafficSourceColumns as $colName) {
+                        if (isset($headerIndexes[$colName]) && isset($data[$headerIndexes[$colName]])) {
+                            $sourceName = $data[$headerIndexes[$colName]];
+                            break;
+                        }
+                    }
+
+                    error_log("Using source name: $sourceName for row $rowNumber");
 
                     $headerLookup = [];
                     foreach ($header as $index => $headerCol) {

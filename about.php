@@ -183,20 +183,7 @@ session_start();
         nav a:hover {
             color: #4a6baf;
         }
-        
-        /* Footer */
-        footer {
-            background-color: #1e3c72;
-            color: white;
-            padding: 2rem;
-            text-align: center;
-        }
-        
-        .footer-content {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
+      
         /* Responsive Design */
         @media (max-width: 768px) {
             .hero h1 {
@@ -283,11 +270,6 @@ session_start();
         </section>
     </main>
 
-    <footer>
-        <div class="footer-content">
-            <p>&copy; <?php echo date('Y'); ?> TrafAnalyz. All rights reserved.</p>
-            <p>A complementary web traffic analysis dashboard for modern websites.</p>
-        </div>
-    </footer>
+    <?php include 'footer.php'; ?>
 </body>
 </html>

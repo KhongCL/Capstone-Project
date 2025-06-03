@@ -1,4 +1,5 @@
 <?php
+// filepath: c:\xampp\htdocs\Capstone-Project\login.php
 session_start();
 require_once 'config.php';
 require_once 'auth/security.php';
@@ -22,8 +23,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     if (empty($errors)) {
-        // Use prepared statement for SQL injection protection
-        $sql = "SELECT UserID, Username, PasswordHash, Role FROM USER WHERE Username = ?";
+        // Use prepared statement for SQL injection protection - ONLY for End-User role
+        $sql = "SELECT UserID, Username, PasswordHash, Role FROM USER WHERE Username = ? AND Role = 'End-User'";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("s", $username);
         $stmt->execute();
@@ -40,19 +41,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 // Set a flag to show success popup
                 $_SESSION['login_success'] = true;
 
-                // Choose redirect URL based on user role
-                if ($user['Role'] === 'Admin') {
-                    $redirectUrl = "admin/index.php";
-                } else {
-                    $redirectUrl = "user/index.php";
-                }
-
-                header("refresh:2;url=" . $redirectUrl);
+                // Redirect to user dashboard only
+                header("refresh:2;url=user/index.php");
             } else {
                 $errors[] = "Invalid username or password.";
             }
         } else {
-            $errors[] = "Invalid username or password.";
+            // Check if user exists but is an Admin
+            $admin_check_sql = "SELECT Role FROM USER WHERE Username = ?";
+            $admin_stmt = $conn->prepare($admin_check_sql);
+            $admin_stmt->bind_param("s", $username);
+            $admin_stmt->execute();
+            $admin_result = $admin_stmt->get_result();
+            
+            if ($admin_result->num_rows === 1) {
+                $admin_user = $admin_result->fetch_assoc();
+                if ($admin_user['Role'] === 'Admin') {
+                    $errors[] = "Admin users cannot log in through this page. Please use the admin login.";
+                } else {
+                    $errors[] = "Invalid username or password.";
+                }
+            } else {
+                $errors[] = "Invalid username or password.";
+            }
         }
     }
 }
@@ -218,7 +229,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         .remember-forgot {
             display: flex;
-            justify-content: flex-start;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 30px;
         }
@@ -231,6 +242,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .remember input {
             margin-right: 8px;
             accent-color: #007bff;
+        }
+
+        .admin-login-link {
+            color: #9333ea;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .admin-login-link:hover {
+            text-decoration: underline;
         }
 
         .password-toggle {
@@ -296,11 +318,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-left: 6px solid transparent;
             border-right: 6px solid transparent;
             border-bottom: 6px solid #ff4444;
-        }
-
-        .form-group {
-            position: relative;
-            margin-bottom: 20px;
         }
 
         .input-error {
@@ -383,6 +400,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 min-height: 300px;
                 order: -1;
             }
+
+            .remember-forgot {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
         }
     </style>
 </head>
@@ -414,7 +437,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 } else if (error.indexOf("Password") !== -1 && error.indexOf("required") !== -1) {
                                     showError("passwordInput", error);
                                 } else {
-                                    // For invalid credentials message
+                                    // For invalid credentials message or admin restriction
                                     showError("username", error);
                                 }
                             });
@@ -434,6 +457,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <input type="checkbox" name="remember">
                         Remember me
                     </label>
+                    <a href="admin_login.php?key=trafanalyz" class="admin-login-link">Admin Login</a>
                 </div>
 
                 <button type="submit" class="sign-in-btn">Sign In</button>

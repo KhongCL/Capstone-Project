@@ -182,9 +182,6 @@ foreach ($users as $user) {
         </tbody>
     </table>
     
-    <div class="footer">
-        <p>This report contains confidential information and is for authorized personnel only.</p>
-        <p>TrafAnalyz System - <?php echo date('Y'); ?></p>
-    </div>
+    <?php include 'admin_footer.php'; ?>
 </body>
 </html>

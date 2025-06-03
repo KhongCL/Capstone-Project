@@ -1,12 +1,25 @@
 <?php
+// Suppress PHP warnings/notices in output for AJAX responses
+ini_set('display_errors', 0);
+error_reporting(E_ERROR | E_PARSE);
+
 require_once '../auth/user_auth.php';
 require_once '../config.php';
+require_once '../classes/CsvProcessor.php';
 include '../functions.php';
+
+// Ensure this is an AJAX request
+if (!isset($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) !== 'xmlhttprequest') {
+    http_response_code(400);
+    exit('Bad Request');
+}
 
 // Add debugging
 error_log("Upload handler called");
 
 header('Content-Type: application/json');
+
+session_start();
 
 $response = [
     'success' => false,
@@ -26,6 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
             $response['success'] = true;
             $response['message'] = $uploadMessage['message'];
             $response['stage'] = 4; // Completed
+        } else if ($uploadMessage['type'] === 'needs_mapping') {
+            // Handle column mapping scenario
+            $response['success'] = true;
+            $response['message'] = $uploadMessage['message'];
+            $response['redirect'] = $uploadMessage['redirect'];
+            $response['stage'] = 4; // Completed processing, ready for mapping
         } else {
             $response['success'] = false;
             $response['message'] = $uploadMessage['message'];
@@ -41,8 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
                 
                 $parsedErrors = [];
                 
-                // NEW APPROACH: Use regex to extract each complete error message
-                // This pattern captures: "Row X (Something): The error message"
+                // Use regex to extract each complete error message
                 preg_match_all('/Row \d+ \([^)]*\)[^;]*(?:(?:; (?!Row \d+))[^;]*)*/', $errorMessage, $matches);
                 
                 foreach ($matches[0] as $error) {
@@ -54,13 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
                 
                 // If we didn't find any errors with the regex, fallback to the old method
                 if (empty($parsedErrors)) {
-                    // Try a more aggressive approach by directly splitting on "Row"
                     $errorParts = preg_split('/(?=Row \d+ \()/', $errorMessage, -1, PREG_SPLIT_NO_EMPTY);
                     
                     foreach ($errorParts as $part) {
                         $part = trim($part);
                         if (!empty($part)) {
-                            // Ensure the part starts with "Row" (might have been split incorrectly)
                             if (strpos($part, 'Row ') === 0) {
                                 addParsedError($parsedErrors, $part);
                             }

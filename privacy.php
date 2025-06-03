@@ -150,20 +150,7 @@ session_start();
         nav a:hover {
             color: #4a6baf;
         }
-        
-        /* Footer - Reused from privacy.php */
-        footer {
-            background-color: #1e3c72;
-            color: white;
-            padding: 2rem;
-            text-align: center;
-            margin-top: 2rem; /* Added margin to separate from content */
-        }
-        
-        .footer-content {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+ 
     </style>
 </head>
 <body>
@@ -250,11 +237,6 @@ session_start();
         <p>If you have any questions about this Privacy Policy, please contact us <a href="contact_us.php">here</a>.</p>
     </div>
 
-    <footer>
-        <div class="footer-content">
-            <p>&copy; <?php echo date('Y'); ?> TrafAnalyz. All rights reserved.</p>
-            <p>A complementary web traffic analysis dashboard for modern websites.</p>
-        </div>
-    </footer>
+    <?php include 'footer.php'; ?>
 </body>
 </html>
