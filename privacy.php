@@ -250,11 +250,6 @@ session_start();
         <p>If you have any questions about this Privacy Policy, please contact us <a href="contact_us.php">here</a>.</p>
     </div>
 
-    <footer>
-        <div class="footer-content">
-            <p>&copy; <?php echo date('Y'); ?> TrafAnalyz. All rights reserved.</p>
-            <p>A complementary web traffic analysis dashboard for modern websites.</p>
-        </div>
-    </footer>
+    <?php include 'footer.php'; ?>
 </body>
 </html>

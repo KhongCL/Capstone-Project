@@ -207,6 +207,24 @@ if (isset($_SESSION['user_id'])) {
             margin: 0 auto;
         }
         
+        .footer-links {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .footer-links a {
+            color: #b8c5f0;
+            text-decoration: none;
+            margin: 0 1rem;
+            transition: color 0.3s;
+        }
+        
+        .footer-links a:hover {
+            color: white;
+            text-decoration: underline;
+        }
+        
         /* Responsive Design */
         @media (max-width: 768px) {
             .hero h1 {
@@ -222,6 +240,15 @@ if (isset($_SESSION['user_id'])) {
                 width: 100%;
                 max-width: 300px;
                 text-align: center;
+            }
+            
+            .footer-links {
+                margin-top: 1rem;
+            }
+            
+            .footer-links a {
+                display: block;
+                margin: 0.5rem 0;
             }
         }
     </style>
@@ -287,11 +314,7 @@ if (isset($_SESSION['user_id'])) {
         </div>
     </section>
 
-    <footer>
-        <div class="footer-content">
-            <p>&copy; <?php echo date('Y'); ?> TrafAnalyz. All rights reserved.</p>
-            <p>A complementary web traffic analysis dashboard for modern websites.</p>
-        </div>
-    </footer>
+		<?php include 'footer.php'; ?>
+
 </body>
 </html>
