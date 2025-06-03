@@ -281,8 +281,9 @@ class UploadProgressTracker {
             this.handleError('Upload cancelled by user.');
         });
 
-        // Send to our AJAX handler
+        // Send to our AJAX handler - ADD THE MISSING HEADER
         this.xhr.open('POST', 'upload_handler.php', true);
+        this.xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); // ← ADD THIS LINE
         this.xhr.send(formData);
     }
 
@@ -566,18 +567,30 @@ class UploadProgressTracker {
         
         let response;
         
+        // Clean the response text first - remove PHP warnings/errors
+        let cleanedResponseText = responseText;
+        
+        // Look for the JSON part (starts with { and ends with })
+        const jsonMatch = responseText.match(/\{.*\}/s);
+        if (jsonMatch) {
+            cleanedResponseText = jsonMatch[0];
+            console.log("DEBUG: Cleaned response text:", cleanedResponseText);
+        }
+        
         try {
-            response = JSON.parse(responseText);
+            response = JSON.parse(cleanedResponseText);
             console.log("DEBUG: Parsed response:", response);
             console.log("DEBUG: Response success:", response.success);
             console.log("DEBUG: Response errors:", response.errors);
         } catch (e) {
             console.error("JSON parse error:", e);
-            console.log("Response text:", responseText);
+            console.log("Original response text:", responseText);
+            console.log("Cleaned response text:", cleanedResponseText);
             this.handleError('Invalid server response');
             return;
         }
 
+        // IMPORTANT: Set these BEFORE any other processing
         this.serverResponseReceived = true;
         this.serverResponse = response;
         
@@ -652,11 +665,24 @@ class UploadProgressTracker {
             this.completeStage(3);
             this.updateOverallProgress(100, 'Upload completed successfully!');
             
-            setTimeout(() => {
-                window.location.href = 'overview.php';
-            }, 2000);
+            // Handle redirect if needed
+            if (response.redirect) {
+                setTimeout(() => {
+                    window.location.href = response.redirect;
+                }, 2000);
+            } else {
+                setTimeout(() => {
+                    window.location.href = 'overview.php';
+                }, 2000);
+            }
+        } else {
+            // Error handling
+            if (this.hasStructureErrors()) {
+                this.showErrorAtStructureStage();
+            } else {
+                this.showErrorAtDataProcessingStage();
+            }
         }
-        // Error handling is already done in showErrorAtDataProcessingStage
     }
 
     clearSimulationTimeouts() {
