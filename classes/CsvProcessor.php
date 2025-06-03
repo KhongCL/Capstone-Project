@@ -436,6 +436,7 @@ class CsvProcessor {
         $lines = explode("\n", $content);
         $headerFound = false;
         $rowNumber = 0;
+        $structureErrors = []; // Collect all structure errors
         
         foreach ($lines as $line) {
             $line = trim($line);
@@ -455,14 +456,39 @@ class CsvProcessor {
             
             // Check for unquoted commas within fields (field count mismatch)
             if ($fieldCount > $expectedFieldCount) {
-                // Find problematic field by inspecting the line
-                if (strpos($line, '$1,200') !== false) {
-                    throw new Exception("CSV parsing error at row " . ($rowNumber + 1) . " (Paid Search): Value '$1,200' contains commas which breaks the CSV structure");
-                } else if (strpos($line, '1,000') !== false) {
-                    throw new Exception("CSV parsing error at row " . ($rowNumber + 1) . " (Display): Value '1,000' contains commas which breaks the CSV structure");
-                } else {
-                    throw new Exception("CSV parsing error at row " . ($rowNumber + 1) . ": Row contains more fields than expected ($fieldCount vs $expectedFieldCount)");
+                // Find problematic field by inspecting the line for known patterns
+                $rowName = "Row " . ($rowNumber + 1); // Default row identifier
+                
+                // Try to extract the first field as row identifier
+                $firstCommaPos = strpos($line, ',');
+                if ($firstCommaPos !== false) {
+                    $firstField = substr($line, 0, $firstCommaPos);
+                    if (!empty(trim($firstField))) {
+                        $rowName = trim($firstField);
+                    }
                 }
+                
+                // Check for specific problematic values
+                if (strpos($line, '$1,200') !== false) {
+                    $structureErrors[] = "CSV parsing error at row " . ($rowNumber + 1) . " ($rowName): Value '\$1,200' contains commas which breaks the CSV structure";
+                } else if (strpos($line, '1,000') !== false) {
+                    $structureErrors[] = "CSV parsing error at row " . ($rowNumber + 1) . " ($rowName): Value '1,000' contains commas which breaks the CSV structure";
+                } else {
+                    // Generic error for other comma issues
+                    $structureErrors[] = "CSV parsing error at row " . ($rowNumber + 1) . " ($rowName): Row contains more fields than expected ($fieldCount vs $expectedFieldCount) - likely due to unquoted commas in data";
+                }
+            }
+        }
+        
+        // If we found any structure errors, throw an exception with all of them
+        if (!empty($structureErrors)) {
+            if (count($structureErrors) == 1) {
+                // Single error - throw as before for backwards compatibility
+                throw new Exception($structureErrors[0]);
+            } else {
+                // Multiple errors - create a comprehensive error message with proper line breaks
+                $errorMessage = "Multiple CSV parsing errors detected:\n" . implode("\n", $structureErrors);
+                throw new Exception($errorMessage);
             }
         }
     }
