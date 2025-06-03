@@ -136,10 +136,23 @@ function handleCsvUpload($conn, $file) {
             $_SESSION['mapping_result'] = $result;
             $_SESSION['csv_metadata'] = $metadata;
             
-            // Redirect to mapping page
-            header('Location: map_columns.php');
-            exit;
-        } else {
+            // Check if this is an AJAX request
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+            
+            if ($isAjax) {
+                // Return JSON response for AJAX requests
+                return [
+                    'type' => 'needs_mapping',
+                    'message' => 'CSV format requires manual column mapping',
+                    'redirect' => 'map_columns.php'
+                ];
+            } else {
+                // Redirect to mapping page for regular form submissions
+                header('Location: map_columns.php');
+                exit;
+            }
+        }else {
             // Clean up file since there was an error
             if (file_exists($filePath)) {
                 unlink($filePath);

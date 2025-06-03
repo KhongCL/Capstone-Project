@@ -65,6 +65,18 @@ INSERT INTO `column_mapping` (`MappingID`, `FormatID`, `CSVColumnName`, `SystemF
 (9, 1, 'Session key event rate', 'session_key_event_rate'),
 (10, 1, 'Total revenue', 'total_revenue');
 
+-- Use INSERT IGNORE to skip duplicates, or UPDATE existing mappings
+INSERT IGNORE INTO column_mapping (FormatID, CSVColumnName, SystemFieldName) VALUES
+(1, 'Traffic Source', 'traffic_source'),
+(1, 'User Sessions', 'visits'),
+(1, 'Avg Session Time', 'avg_session_duration'),
+(1, 'Events Per Session', 'events_per_session'),
+(1, 'Total Events', 'event_count'),
+(1, 'Conversions', 'key_events'),
+(1, 'Conversion Rate', 'session_key_event_rate'),
+(1, 'Revenue', 'total_revenue'),
+(1, 'Bounce Rate', 'bounce_rate'),
+(1, 'Engaged Sessions', 'engaged_sessions');
 -- --------------------------------------------------------
 
 --
