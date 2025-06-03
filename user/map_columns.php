@@ -243,9 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             </section>
         </main>
         
-        <footer>
-            <p>&copy; <?php echo date('Y'); ?> Web Traffic Analysis Dashboard</p>
-        </footer>
+        <?php include 'user_footer.php'; ?>
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
