@@ -16,6 +16,11 @@ $active_page = isset($active_page) ? $active_page : 'dashboard';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $title; ?></title>
     <link rel="stylesheet" href="../styles.css">
+		<style>
+			h1 {
+				color: darkgray
+			}
+		</style>
     <?php if (isset($additional_styles)): ?>
         <?php echo $additional_styles; ?>
     <?php endif; ?>

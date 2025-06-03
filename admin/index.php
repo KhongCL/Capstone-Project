@@ -242,9 +242,7 @@ function getReportTypes($conn) {
             </section>
         </main>
         
-        <footer>
-            <p>&copy; <?php echo date('Y'); ?> TrafAnalyz - Administrator Dashboard</p>
-        </footer>
+        <?php include 'admin_footer.php'; ?>
     </div>
     
     <script>

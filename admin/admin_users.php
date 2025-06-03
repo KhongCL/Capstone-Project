@@ -238,9 +238,7 @@ if ($result) {
             </section>
         </main>
         
-        <footer>
-            <p>&copy; <?php echo date('Y'); ?> TrafAnalyz - Web Traffic Analysis Dashboard</p>
-        </footer>
+        <?php include 'admin_footer.php'; ?>
     </div>
 </body>
 </html>

@@ -124,9 +124,7 @@ $pagesData = getTopVisitedPages($conn, 10);
       </section>
     </main>
     
-    <footer>
-      <p>&copy; <?php echo date('Y'); ?> Web Traffic Analysis Dashboard</p>
-    </footer>
+    <?php include 'user_footer.php'; ?>
   </div>
 
   <script>
