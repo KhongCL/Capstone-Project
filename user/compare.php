@@ -72,17 +72,17 @@ function processUpload($file, $conn, $userId) {
         return $result;
     }
     
-    // Create upload directory if it doesn't exist
-    $uploadDir = '../uploads/';
+    // Create a temporary upload directory if needed
+    $uploadDir = '../uploads/temp/';
     if (!is_dir($uploadDir)) {
         mkdir($uploadDir, 0755, true);
     }
     
-    // Generate a unique filename
+    // Generate a temporary filename
     $uniqueFileName = time() . '_' . $fileName;
     $targetFile = $uploadDir . $uniqueFileName;
     
-    // Move uploaded file
+    // Move uploaded file temporarily
     if (!move_uploaded_file($file['tmp_name'], $targetFile)) {
         $result['message'] = "Failed to move uploaded file.";
         return $result;
@@ -91,25 +91,48 @@ function processUpload($file, $conn, $userId) {
     // Parse CSV and process data
     $csvData = parseCSV($targetFile);
     if (!$csvData) {
+        unlink($targetFile); // Delete the temporary file
         $result['message'] = "Failed to parse CSV file.";
         return $result;
     }
     
-    // Record the upload in the database
-    $stmt = $conn->prepare("INSERT INTO csv_upload (UserID, FileName, FileLocation, UploadDate) VALUES (?, ?, ?, NOW())");
-    $stmt->bind_param("iss", $userId, $fileName, $targetFile);
+    // Set up global $_FILES array to work with saveTransformedData function
+    $_FILES['csvFile'] = [
+        'name' => $fileName,
+        'tmp_name' => $targetFile,
+        'size' => filesize($targetFile)
+    ];
+
+    $_SESSION['csv_metadata'] = [
+        'account_name' => $fileName, // Use the filename as account name
+        'property_name' => 'GA4 Data ' . date('Y-m-d'),
+        'start_date' => date('Y-m-d'),
+        'end_date' => date('Y-m-d'),
+        'report_type' => 'GA4 Traffic Acquisition'
+    ];
     
-    if (!$stmt->execute()) {
-        $result['message'] = "Failed to record upload in database: " . $conn->error;
+    // Transform and save the data using the existing function
+    $transformResult = saveTransformedData($conn, $csvData);
+    
+    // Delete the temporary file after processing
+    if (file_exists($targetFile)) {
+        unlink($targetFile);
+    }
+    
+    if (!$transformResult) {
+        $result['message'] = "Error processing data";
         return $result;
     }
     
-    $uploadId = $conn->insert_id;
-    
-    // Transform and save the data
-    $transformResult = saveTransformedData($conn, $csvData, $uploadId);
-    if (!$transformResult['success']) {
-        $result['message'] = "Error processing data: " . $transformResult['message'];
+    // Get the latest upload ID for this user
+    $stmt = $conn->prepare("SELECT MAX(UploadID) as upload_id FROM CSV_UPLOAD WHERE UserID = ?");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $uploadResult = $stmt->get_result();
+    if ($row = $uploadResult->fetch_assoc()) {
+        $uploadId = $row['upload_id'];
+    } else {
+        $result['message'] = "Failed to retrieve upload ID";
         return $result;
     }
     
