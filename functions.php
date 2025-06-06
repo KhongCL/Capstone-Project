@@ -209,13 +209,12 @@ function updateUploadProgress($stage, $percent, $message, $rowsProcessed = 0, $t
     error_log("Progress updated: Stage $stage, {$percent}%, $message");
 }
 
-// Get key metrics for the dashboard
 function getKeyMetrics($conn, $uploadId = null) {
     $metrics = [
         'total_page_views' => 0,
         'unique_visitors' => 0,
-        'avg_session_duration' => '00:00:00',
-        'bounce_rate' => '0%'
+        'avg_session_duration' => 0,
+        'bounce_rate' => 65.0
     ];
     
     try {
@@ -651,12 +650,23 @@ function getMetricTypeId($conn, $metricName) {
 
 // Helper function to insert a data point
 function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $dataDate = null) {
-    // Get metric type ID
+    // Get metric type ID - add debug logs
+    error_log("Getting metric type ID for: $metricName");
+    
     $metricTypeId = getMetricTypeId($conn, $metricName);
     
     if (!$metricTypeId) {
-        error_log("Metric type not found: $metricName");
-        return false;
+        error_log("Metric type not found: $metricName, creating it now");
+        
+        // If metric doesn't exist, create it
+        $stmt = $conn->prepare("INSERT INTO METRIC_TYPE (MetricName, Description) VALUES (?, ?)");
+        $description = "Automatically added from CSV import";
+        $stmt->bind_param("ss", $metricName, $description);
+        $stmt->execute();
+        
+        // Get the newly created metric type ID
+        $metricTypeId = $conn->insert_id;
+        error_log("Created new metric type with ID: $metricTypeId for: $metricName");
     }
     
     // Use provided date or current date
@@ -665,30 +675,29 @@ function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $
     // Default period type (can be customized if needed)
     $periodType = 'Daily';
     
-    error_log("Inserting data point: Upload=$uploadId, Source=$sourceTypeId, Metric=$metricTypeId, Value=$value, Date=$dataDate");
+    error_log("Inserting data point: Upload=$uploadId, Source=$sourceTypeId, Metric=$metricTypeId ($metricName), Value=$value, Date=$dataDate");
     
     try {
         $stmt = $conn->prepare("INSERT INTO PROCESSED_DATA_POINT 
-            (UploadID, SourceTypeID, MetricTypeID, DataDate, Value, PeriodType) 
-            VALUES (?, ?, ?, ?, ?, ?)");
+                              (UploadID, SourceTypeID, MetricTypeID, DataDate, Value, PeriodType) 
+                              VALUES (?, ?, ?, ?, ?, ?)");
         
         if (!$stmt) {
-            error_log("Prepare error: " . $conn->error);
+            error_log("Error preparing statement: " . $conn->error);
             return false;
         }
         
         $stmt->bind_param("iiisss", 
-            $uploadId,
-            $sourceTypeId,
-            $metricTypeId,
-            $dataDate,
-            $value,
-            $periodType
-        );
+                         $uploadId, 
+                         $sourceTypeId, 
+                         $metricTypeId, 
+                         $dataDate, 
+                         $value, 
+                         $periodType);
         
         $result = $stmt->execute();
         if (!$result) {
-            error_log("Execute error: " . $stmt->error);
+            error_log("Error executing statement: " . $stmt->error);
         }
         return $result;
     } catch (Exception $e) {
