@@ -10,6 +10,7 @@ $success = '';
 $firstUploadId = null;
 $secondUploadId = null;
 
+
 // Process file uploads if form submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['first_file'], $_FILES['second_file'])) {
     // Process first file upload
@@ -532,6 +533,7 @@ function parseCSV($filePath) {
             }
         });
         
+        
         <?php if ($firstTrafficData && $secondTrafficData): ?>
         // Chart toggling
         document.getElementById('overlayBtn').addEventListener('click', function() {
@@ -553,139 +555,131 @@ function parseCSV($filePath) {
         const firstCtx = document.getElementById('firstChart').getContext('2d');
         const secondCtx = document.getElementById('secondChart').getContext('2d');
         
-        // Overlay chart
-        const overlayChart = new Chart(overlayCtx, {
-            type: 'line',
-            data: {
-                labels: firstTrafficData.map(item => item.time_period),
-                datasets: [
-                    {
-                        label: 'Period 1 - Page Views',
-                        data: firstTrafficData.map(item => parseInt(item.page_views)),
-                        borderColor: '#4c78d0',
-                        backgroundColor: 'rgba(76, 120, 208, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    },
-                    {
-                        label: 'Period 1 - Unique Visitors',
-                        data: firstTrafficData.map(item => parseInt(item.unique_visitors)),
-                        borderColor: '#72b966',
-                        backgroundColor: 'rgba(114, 185, 102, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    },
-                    {
-                        label: 'Period 2 - Page Views',
-                        data: secondTrafficData.map(item => parseInt(item.page_views)),
-                        borderColor: '#e74c3c',
-                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    },
-                    {
-                        label: 'Period 2 - Unique Visitors',
-                        data: secondTrafficData.map(item => parseInt(item.unique_visitors)),
-                        borderColor: '#f39c12',
-                        backgroundColor: 'rgba(243, 156, 18, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-        
-        // First period chart
-        const firstChart = new Chart(firstCtx, {
-            type: 'line',
-            data: {
-                labels: firstTrafficData.map(item => item.time_period),
-                datasets: [
-                    {
-                        label: 'Page Views',
-                        data: firstTrafficData.map(item => parseInt(item.page_views)),
-                        borderColor: '#4c78d0',
-                        backgroundColor: 'rgba(76, 120, 208, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    },
-                    {
-                        label: 'Unique Visitors',
-                        data: firstTrafficData.map(item => parseInt(item.unique_visitors)),
-                        borderColor: '#72b966',
-                        backgroundColor: 'rgba(114, 185, 102, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Period 1 Traffic'
-                    }
+        try {
+            // Overlay chart
+            const overlayChart = new Chart(overlayCtx, {
+                type: 'line',
+                data: {
+                    labels: firstTrafficData.map(item => item.time_period),
+                    datasets: [
+                        {
+                            label: 'Period 1 - Page Views',
+                            data: firstTrafficData.map(item => parseInt(item.page_views)),
+                            borderColor: '#4c78d0',
+                            backgroundColor: 'rgba(76, 120, 208, 0.1)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Period 2 - Page Views',
+                            data: secondTrafficData.map(item => parseInt(item.page_views)),
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
                     }
                 }
-            }
-        });
-        
-        // Second period chart
-        const secondChart = new Chart(secondCtx, {
-            type: 'line',
-            data: {
-                labels: secondTrafficData.map(item => item.time_period),
-                datasets: [
-                    {
-                        label: 'Page Views',
-                        data: secondTrafficData.map(item => parseInt(item.page_views)),
-                        borderColor: '#e74c3c',
-                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    },
-                    {
-                        label: 'Unique Visitors',
-                        data: secondTrafficData.map(item => parseInt(item.unique_visitors)),
-                        borderColor: '#f39c12',
-                        backgroundColor: 'rgba(243, 156, 18, 0.1)',
-                        tension: 0.1,
-                        fill: true
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Period 2 Traffic'
-                    }
+            });
+            
+            // First period chart
+            const firstChart = new Chart(firstCtx, {
+                type: 'line',
+                data: {
+                    labels: firstTrafficData.map(item => item.time_period),
+                    datasets: [
+                        {
+                            label: 'Page Views',
+                            data: firstTrafficData.map(item => parseInt(item.page_views)),
+                            borderColor: '#4c78d0',
+                            backgroundColor: 'rgba(76, 120, 208, 0.1)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Unique Visitors',
+                            data: firstTrafficData.map(item => parseInt(item.unique_visitors)),
+                            borderColor: '#72b966',
+                            backgroundColor: 'rgba(114, 185, 102, 0.1)',
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Period 1 Traffic'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
                     }
                 }
-            }
-        });
+            });
+            
+            // Second period chart
+            const secondChart = new Chart(secondCtx, {
+                type: 'line',
+                data: {
+                    labels: secondTrafficData.map(item => item.time_period),
+                    datasets: [
+                        {
+                            label: 'Page Views',
+                            data: secondTrafficData.map(item => parseInt(item.page_views)),
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.1,
+                            fill: true
+                        },
+                        {
+                            label: 'Unique Visitors',
+                            data: secondTrafficData.map(item => parseInt(item.unique_visitors)),
+                            borderColor: '#f39c12',
+                            backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                            tension: 0.1,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Period 2 Traffic'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error creating chart:', error);
+        }
         <?php endif; ?>
     </script>
+    <script>
+        console.log('First traffic data:', <?= json_encode($firstTrafficData) ?>);
+        console.log('Second traffic data:', <?= json_encode($secondTrafficData) ?>);
+</script>
 </body>
 </html>
