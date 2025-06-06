@@ -77,6 +77,15 @@ INSERT IGNORE INTO column_mapping (FormatID, CSVColumnName, SystemFieldName) VAL
 (1, 'Revenue', 'total_revenue'),
 (1, 'Bounce Rate', 'bounce_rate'),
 (1, 'Engaged Sessions', 'engaged_sessions');
+
+-- Add the missing column mappings to your database
+INSERT IGNORE INTO column_mapping (FormatID, CSVColumnName, SystemFieldName) VALUES
+(1, 'Channel', 'traffic_source'),
+(1, 'Users', 'unique_visitors'),
+(1, 'Page Views', 'page_views'),
+(1, 'Avg Time on Site', 'avg_session_duration'),
+(1, 'Goal Completions', 'key_events'),
+(1, 'Revenue Generated', 'total_revenue');
 -- --------------------------------------------------------
 
 --
@@ -182,6 +191,57 @@ INSERT INTO `metric_type` (`MetricTypeID`, `MetricName`, `Description`) VALUES
 (8, 'Session key event rate', 'Rate of sessions with key events'),
 (9, 'Total revenue', 'Total revenue generated');
 
+-- Add missing metric types if they don't exist
+INSERT IGNORE INTO metric_type (MetricName, Description) VALUES
+('Unique visitors', 'Number of unique users/visitors'),
+('Page views', 'Total number of page views');
+
+-- Add these if they don't exist
+INSERT IGNORE INTO metric_type (MetricName, Description) VALUES
+('Page views', 'Total number of page views'),
+('Unique visitors', 'Number of unique users/visitors'),
+('Visits', 'Number of visits/sessions'),
+('Key events', 'Number of goal completions/conversions'),
+('Average engagement time per session', 'Average time spent on site per session');
+
+-- Add these metric types for the custom analytics format:
+
+INSERT IGNORE INTO metric_type (MetricName, Description) VALUES
+('Users', 'Number of unique users from custom analytics'),
+('Page Views', 'Total page views from custom analytics'),
+('Avg Time on Site', 'Average time spent on site'),
+('Goal Completions', 'Number of goal completions from custom analytics'),
+('Revenue Generated', 'Revenue generated from custom analytics');
+
+
+-- Add the exact metric names that match your CSV headers
+INSERT IGNORE INTO metric_type (MetricName, Description) VALUES
+('Page Views', 'Total page views from custom analytics'),
+('Users', 'Number of unique users from custom analytics'),
+('Visits', 'Number of visits from custom analytics'),
+('Avg Time on Site', 'Average time spent on site'),
+('Goal Completions', 'Number of goal completions from custom analytics'),
+('Revenue Generated', 'Revenue generated from custom analytics');
+
+-- Add the exact metric names that match your CSV headers
+INSERT IGNORE INTO metric_type (MetricName, Description) VALUES
+('Page Views', 'Total page views from custom analytics'),
+('Users', 'Number of unique users from custom analytics'),
+('Visits', 'Number of visits from custom analytics'),
+('Avg Time on Site', 'Average time spent on site'),
+('Goal Completions', 'Number of goal completions from custom analytics'),
+('Revenue Generated', 'Revenue generated from custom analytics'),
+('Channel', 'Traffic source channel');
+
+INSERT IGNORE INTO metric_type (MetricName, Description) VALUES
+('visitors', 'Number of unique visitors'),
+('unique_visitors', 'Number of unique visitors');
+
+INSERT IGNORE INTO metric_type (MetricName, Description) VALUES
+('visitors', 'Number of unique visitors'),
+('Users', 'Number of unique users'),
+('Page Views', 'Number of page views'),
+('Total Sessions', 'Number of sessions/visits');
 -- --------------------------------------------------------
 
 --

@@ -20,8 +20,13 @@
             "Total revenue": "total_revenue"
         },
         "data_types": {
-            "Session primary channel group (Default channel group)": "text",
+            "Source": "text",
+            "Medium": "text",
             "Sessions": "integer",
+            "Users": "integer",
+            "Pageviews": "integer",
+            "Bounce Rate": "percentage",
+            "Avg Session Duration": "time",
             "Engaged sessions": "integer",
             "Engagement rate": "float",
             "Average engagement time per session": "float",
@@ -33,30 +38,55 @@
         }
     },
     "ga4_traffic_acquisition": {
-        "format_detection": ["Traffic Source", "User Sessions", "Engaged Sessions", "Bounce Rate"],
+        "format_detection": [
+            "Sessions",
+            "Engaged sessions",
+            "Engagement rate",
+            "Session primary channel group (Default channel group)"
+        ],
         "column_mappings": {
-            "Traffic Source": "traffic_source",
-            "User Sessions": "visits",
-            "Engaged Sessions": "engaged_sessions",
-            "Bounce Rate": "bounce_rate",
-            "Avg Session Time": "avg_session_duration",
-            "Events Per Session": "events_per_session",
-            "Total Events": "event_count",
-            "Conversions": "key_events",
-            "Conversion Rate": "session_key_event_rate",
-            "Revenue": "total_revenue"
+            "Session primary channel group (Default channel group)": "traffic_source",
+            "Sessions": "visits",
+            "Engaged sessions": "engaged_sessions",
+            "Engagement rate": "bounce_rate",
+            "Average engagement time per session": "avg_session_duration",
+            "Events per session": "events_per_session",
+            "Event count": "event_count",
+            "Key events": "key_events",
+            "Session key event rate": "session_key_event_rate",
+            "Total revenue": "total_revenue"
         },
         "data_types": {
-            "Traffic Source": "string",
-            "User Sessions": "integer",
-            "Engaged Sessions": "integer",
-            "Bounce Rate": "float",
-            "Avg Session Time": "float",
-            "Events Per Session": "float",
-            "Total Events": "integer",
-            "Conversions": "integer",
-            "Conversion Rate": "float",
-            "Revenue": "float"
+            "Session primary channel group (Default channel group)": "text",
+            "Sessions": "integer",
+            "Engaged sessions": "integer",
+            "Engagement rate": "float",
+            "Average engagement time per session": "float",
+            "Events per session": "float",
+            "Event count": "integer",
+            "Key events": "integer",
+            "Session key event rate": "percentage",
+            "Total revenue": "currency"
+        }
+    },     
+    "custom_format": {
+        "format_detection": [
+            "Source",
+            "Medium",
+            "Sessions",
+            "Users"
+        ],
+        "column_mappings": {
+            "Source": "traffic_source",
+            "Medium": "traffic_medium",
+            "Sessions": "visits",
+            "Users": "visitors"
+        },
+        "data_types": {
+            "Source": "string",
+            "Medium": "string",
+            "Sessions": "integer",
+            "Users": "integer"
         }
     }
 }
