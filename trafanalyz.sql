@@ -86,6 +86,9 @@ INSERT IGNORE INTO column_mapping (FormatID, CSVColumnName, SystemFieldName) VAL
 (1, 'Avg Time on Site', 'avg_session_duration'),
 (1, 'Goal Completions', 'key_events'),
 (1, 'Revenue Generated', 'total_revenue');
+
+ALTER TABLE column_mapping 
+ADD COLUMN DataType VARCHAR(50) DEFAULT 'string';
 -- --------------------------------------------------------
 
 --
