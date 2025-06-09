@@ -1,685 +1,561 @@
 <?php
-// filepath: c:\xampp\htdocs\Capstone-Project\user\compare.php
+session_start();
 
-require_once '../auth/user_auth.php';
-require_once '../config.php';
-include '../functions.php';
-
-$error = '';
-$success = '';
-$firstUploadId = null;
-$secondUploadId = null;
-
-
-// Process file uploads if form submitted
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['first_file'], $_FILES['second_file'])) {
-    // Process first file upload
-    if ($_FILES['first_file']['error'] === UPLOAD_ERR_OK) {
-        $firstFileResult = processUpload($_FILES['first_file'], $conn, $_SESSION['user_id']);
-        if ($firstFileResult['success']) {
-            $firstUploadId = $firstFileResult['upload_id'];
-            $success .= "First file uploaded successfully. ";
-        } else {
-            $error .= "First file error: " . $firstFileResult['message'] . " ";
-        }
-    } else {
-        $error .= "Error uploading first file: " . getUploadErrorMessage($_FILES['first_file']['error']) . " ";
-    }
-
-    // Process second file upload
-    if ($_FILES['second_file']['error'] === UPLOAD_ERR_OK) {
-        $secondFileResult = processUpload($_FILES['second_file'], $conn, $_SESSION['user_id']);
-        if ($secondFileResult['success']) {
-            $secondUploadId = $secondFileResult['upload_id'];
-            $success .= "Second file uploaded successfully.";
-        } else {
-            $error .= "Second file error: " . $secondFileResult['message'];
-        }
-    } else {
-        $error .= "Error uploading second file: " . getUploadErrorMessage($_FILES['second_file']['error']);
-    }
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../login.php");
+    exit();
 }
 
-// Fallback to GET parameters if no successful uploads
-if (!$firstUploadId && isset($_GET['first'])) {
-    $firstUploadId = $_GET['first'];
-}
-if (!$secondUploadId && isset($_GET['second'])) {
-    $secondUploadId = $_GET['second'];
-}
+$comparison_results = null;
+$error_message = null;
 
-// Get user uploads for the dropdown fallback
-$stmt = $conn->prepare("SELECT UploadID, FileName, UploadDate FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC");
-$stmt->bind_param("i", $_SESSION['user_id']);
-$stmt->execute();
-$uploads = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-
-// Get data for both uploads
-$firstMetrics = $firstUploadId ? getKeyMetrics($conn, $firstUploadId) : null;
-$secondMetrics = $secondUploadId ? getKeyMetrics($conn, $secondUploadId) : null;
-$firstTrafficData = $firstUploadId ? getTrafficOverTime($conn, 'day', $firstUploadId) : [];
-$secondTrafficData = $secondUploadId ? getTrafficOverTime($conn, 'day', $secondUploadId) : [];
-
-// Helper function to process file upload and return result
-function processUpload($file, $conn, $userId) {
-    $result = ['success' => false, 'message' => '', 'upload_id' => null];
+// Handle file upload and comparison
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isset($_FILES['csv_file2'])) {
+    $file1 = $_FILES['csv_file1'];
+    $file2 = $_FILES['csv_file2'];
     
-    // Check file type
-    $fileName = basename($file['name']);
-    $fileType = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-    
-    if ($fileType != 'csv') {
-        $result['message'] = "Only CSV files are allowed.";
-        return $result;
-    }
-    
-    // Create a temporary upload directory if needed
-    $uploadDir = '../uploads/temp/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
-    }
-    
-    // Generate a temporary filename
-    $uniqueFileName = time() . '_' . $fileName;
-    $targetFile = $uploadDir . $uniqueFileName;
-    
-    // Move uploaded file temporarily
-    if (!move_uploaded_file($file['tmp_name'], $targetFile)) {
-        $result['message'] = "Failed to move uploaded file.";
-        return $result;
-    }
-    
-    // Parse CSV and process data
-    $csvData = parseCSV($targetFile);
-    if (!$csvData) {
-        unlink($targetFile); // Delete the temporary file
-        $result['message'] = "Failed to parse CSV file.";
-        return $result;
-    }
-    
-    // Set up global $_FILES array to work with saveTransformedData function
-    $_FILES['csvFile'] = [
-        'name' => $fileName,
-        'tmp_name' => $targetFile,
-        'size' => filesize($targetFile)
-    ];
-
-    $_SESSION['csv_metadata'] = [
-        'account_name' => $fileName, // Use the filename as account name
-        'property_name' => 'GA4 Data ' . date('Y-m-d'),
-        'start_date' => date('Y-m-d'),
-        'end_date' => date('Y-m-d'),
-        'report_type' => 'GA4 Traffic Acquisition'
-    ];
-    
-    // Transform and save the data using the existing function
-    $transformResult = saveTransformedData($conn, $csvData);
-    
-    // Delete the temporary file after processing
-    if (file_exists($targetFile)) {
-        unlink($targetFile);
-    }
-    
-    if (!$transformResult) {
-        $result['message'] = "Error processing data";
-        return $result;
-    }
-    
-    // Get the latest upload ID for this user
-    $stmt = $conn->prepare("SELECT MAX(UploadID) as upload_id FROM CSV_UPLOAD WHERE UserID = ?");
-    $stmt->bind_param("i", $userId);
-    $stmt->execute();
-    $uploadResult = $stmt->get_result();
-    if ($row = $uploadResult->fetch_assoc()) {
-        $uploadId = $row['upload_id'];
-    } else {
-        $result['message'] = "Failed to retrieve upload ID";
-        return $result;
-    }
-    
-    $result['success'] = true;
-    $result['upload_id'] = $uploadId;
-    return $result;
-}
-
-// Function to parse CSV file
-function parseCSV($filePath) {
-    if (!file_exists($filePath)) {
-        return false;
-    }
-    
-    $data = [];
-    if (($handle = fopen($filePath, "r")) !== false) {
-        // Get headers
-        $headers = fgetcsv($handle);
+    // Validate files
+    if ($file1['error'] === UPLOAD_ERR_OK && $file2['error'] === UPLOAD_ERR_OK) {
+        $allowed_types = ['text/csv', 'application/csv', 'text/plain'];
         
-        // Process rows
-        while (($row = fgetcsv($handle)) !== false) {
-            if (count($headers) === count($row)) {
+        if (in_array($file1['type'], $allowed_types) && in_array($file2['type'], $allowed_types)) {
+            try {
+                $comparison_results = compareCSVFiles($file1['tmp_name'], $file2['tmp_name']);
+            } catch (Exception $e) {
+                $error_message = "Error comparing files: " . $e->getMessage();
+            }
+        } else {
+            $error_message = "Please upload valid CSV files only.";
+        }
+    } else {
+        $error_message = "Error uploading files. Please try again.";
+    }
+}
+
+function compareCSVFiles($file1_path, $file2_path) {
+    $data1 = parseCSV($file1_path);
+    $data2 = parseCSV($file2_path);
+    
+    if (empty($data1) || empty($data2)) {
+        throw new Exception("One or both CSV files are empty or invalid.");
+    }
+    
+    $headers1 = array_keys($data1[0]);
+    $headers2 = array_keys($data2[0]);
+    
+    // Define analytics metrics to look for
+    $analytics_metrics = [
+        'sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
+        'events_per_session', 'event_count', 'key_events', 'session_key_event_rate',
+        'total_revenue', 'total_page_views', 'unique_visitors', 'average_session_duration',
+        'bounce_rate'
+    ];
+    
+    $comparison = [
+        'basic_metrics' => [
+            'file1_rows' => count($data1),
+            'file2_rows' => count($data2),
+            'file1_columns' => count($headers1),
+            'file2_columns' => count($headers2),
+            'row_difference' => count($data1) - count($data2),
+            'column_difference' => count($headers1) - count($headers2)
+        ],
+        'headers' => [
+            'file1_headers' => $headers1,
+            'file2_headers' => $headers2,
+            'common_headers' => array_intersect($headers1, $headers2),
+            'unique_to_file1' => array_diff($headers1, $headers2),
+            'unique_to_file2' => array_diff($headers2, $headers1)
+        ],
+        'analytics_metrics' => [],
+        'summary_comparison' => [],
+        'data_sample' => [
+            'file1_sample' => array_slice($data1, 0, 5),
+            'file2_sample' => array_slice($data2, 0, 5)
+        ]
+    ];
+    
+    // Analyze analytics metrics
+    $common_headers = $comparison['headers']['common_headers'];
+    foreach ($analytics_metrics as $metric) {
+        // Find matching column (case-insensitive, flexible naming)
+        $found_column = findMetricColumn($common_headers, $metric);
+        
+        if ($found_column) {
+            $values1 = array_column($data1, $found_column);
+            $values2 = array_column($data2, $found_column);
+            
+            // Clean and convert to numeric
+            $numeric1 = cleanNumericValues($values1);
+            $numeric2 = cleanNumericValues($values2);
+            
+            if (count($numeric1) > 0 && count($numeric2) > 0) {
+                $stats1 = calculateStats($numeric1);
+                $stats2 = calculateStats($numeric2);
+                
+                $comparison['analytics_metrics'][$metric] = [
+                    'column_name' => $found_column,
+                    'file1_stats' => $stats1,
+                    'file2_stats' => $stats2,
+                    'comparison' => [
+                        'total_diff' => $stats1['sum'] - $stats2['sum'],
+                        'avg_diff' => $stats1['mean'] - $stats2['mean'],
+                        'percent_change' => $stats2['mean'] != 0 ? round((($stats1['mean'] - $stats2['mean']) / $stats2['mean']) * 100, 2) : 0,
+                        'improvement' => determineImprovement($metric, $stats1['mean'], $stats2['mean'])
+                    ]
+                ];
+            }
+        }
+    }
+    
+    // Calculate summary totals for key metrics
+    $comparison['summary_comparison'] = calculateSummaryComparison($data1, $data2, $comparison['analytics_metrics']);
+    
+    return $comparison;
+}
+
+function findMetricColumn($headers, $metric) {
+    $metric_variations = [
+        'sessions' => ['Sessions', 'sessions', 'session', 'total_sessions'],
+        'engaged_sessions' => ['Engaged sessions', 'engaged_sessions', 'engaged sessions', 'engagedsessions'],
+        'engagement_rate' => ['Engagement rate', 'engagement_rate', 'engagement rate', 'engagementrate'],
+        'average_engagement_time_per_session' => ['Average engagement time per session', 'average_engagement_time_per_session', 'avg_engagement_time', 'engagement_time'],
+        'events_per_session' => ['Events per session', 'events_per_session', 'events per session', 'eventspersession'],
+        'event_count' => ['Event count', 'event_count', 'events', 'total_events'],
+        'key_events' => ['Key events', 'key_events', 'key events', 'keyevents'],
+        'session_key_event_rate' => ['Session key event rate', 'session_key_event_rate', 'key_event_rate', 'conversion_rate'],
+        'total_revenue' => ['Total revenue', 'total_revenue', 'revenue', 'total revenue'],
+        'total_page_views' => ['total_page_views', 'page_views', 'pageviews', 'Views', 'Page views'],
+        'unique_visitors' => ['unique_visitors', 'unique visitors', 'users', 'Users', 'Total users'],
+        'average_session_duration' => ['average_session_duration', 'avg_session_duration', 'session_duration', 'Average session duration'],
+        'bounce_rate' => ['bounce_rate', 'bounce rate', 'bouncerate', 'Bounce rate']
+    ];
+    
+    $variations = $metric_variations[$metric] ?? [$metric];
+    
+    foreach ($variations as $variation) {
+        foreach ($headers as $header) {
+            if (strcasecmp(trim($header), trim($variation)) === 0) {
+                return $header;
+            }
+        }
+    }
+    
+    return null;
+}
+
+function cleanNumericValues($values) {
+    $cleaned = [];
+    foreach ($values as $value) {
+        // Remove common formatting characters
+        $cleaned_value = preg_replace('/[,$%]/', '', trim($value));
+        if (is_numeric($cleaned_value)) {
+            $cleaned[] = floatval($cleaned_value);
+        }
+    }
+    return $cleaned;
+}
+
+function determineImprovement($metric, $value1, $value2) {
+    // For metrics where higher is better
+    $higher_is_better = ['sessions', 'engaged_sessions', 'events_per_session', 'event_count', 
+                        'key_events', 'total_revenue', 'total_page_views', 'unique_visitors', 
+                        'average_session_duration', 'engagement_rate', 'session_key_event_rate'];
+    
+    // For metrics where lower is better
+    $lower_is_better = ['bounce_rate'];
+    
+    if (in_array($metric, $higher_is_better)) {
+        return $value1 > $value2 ? 'improved' : ($value1 < $value2 ? 'declined' : 'unchanged');
+    } elseif (in_array($metric, $lower_is_better)) {
+        return $value1 < $value2 ? 'improved' : ($value1 > $value2 ? 'declined' : 'unchanged');
+    }
+    
+    return 'neutral';
+}
+
+function calculateSummaryComparison($data1, $data2, $analytics_metrics) {
+    $summary = [];
+    
+    foreach ($analytics_metrics as $metric => $data) {
+        $summary[$metric] = [
+            'file1_total' => $data['file1_stats']['sum'],
+            'file2_total' => $data['file2_stats']['sum'],
+            'difference' => $data['comparison']['total_diff'],
+            'percent_change' => $data['comparison']['percent_change'],
+            'status' => $data['comparison']['improvement']
+        ];
+    }
+    
+    return $summary;
+}
+
+function parseCSV($file_path) {
+    $data = [];
+    if (($handle = fopen($file_path, "r")) !== FALSE) {
+        $headers = null;
+        $row_number = 0;
+        
+        while (($row = fgetcsv($handle)) !== FALSE) {
+            $row_number++;
+            
+            // Skip metadata rows that start with # or are empty
+            if (empty($row[0]) || strpos($row[0], '#') === 0) {
+                continue;
+            }
+            
+            // First non-metadata row should be headers
+            if ($headers === null) {
+                $headers = $row;
+                continue;
+            }
+            
+            // Process data rows
+            if (count($row) === count($headers)) {
                 $data[] = array_combine($headers, $row);
             }
         }
         fclose($handle);
-        return $data;
     }
-    return false;
+    return $data;
+}
+
+function calculateStats($values) {
+    if (empty($values)) return null;
+    
+    sort($values);
+    $count = count($values);
+    $sum = array_sum($values);
+    $mean = $sum / $count;
+    
+    $median = $count % 2 === 0 
+        ? ($values[$count/2 - 1] + $values[$count/2]) / 2 
+        : $values[floor($count/2)];
+    
+    return [
+        'count' => $count,
+        'sum' => round($sum, 2),
+        'mean' => round($mean, 2),
+        'median' => round($median, 2),
+        'min' => min($values),
+        'max' => max($values),
+        'range' => max($values) - min($values)
+    ];
 }
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compare Periods - Web Traffic Analysis Dashboard</title>
-  <link rel="stylesheet" href="../styles.css">
-  <link rel="stylesheet" href="user_style.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    .compare-container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-    
-    .upload-selector {
-      margin-bottom: 20px;
-      padding: 15px;
-      background-color: #f5f5f5;
-      border-radius: 8px;
-    }
-    
-    .metrics-comparison {
-      margin-bottom: 30px;
-    }
-    
-    .metric-difference {
-      font-size: 14px;
-      font-weight: bold;
-      margin-top: 5px;
-    }
-    
-    .increase {
-      color: green;
-    }
-    
-    .decrease {
-      color: red;
-    }
-    
-    .chart-toggle {
-      margin-bottom: 15px;
-      text-align: center;
-    }
-    
-    .chart-container {
-      height: 400px;
-      width: 100%;
-    }
-    
-    .btn {
-      background-color: #4a6baf;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-      margin-top: 10px;
-    }
-    
-    .btn:hover {
-      background-color: #3a5a9f;
-    }
-    
-    .btn.btn-sm {
-      padding: 5px 10px;
-      font-size: 12px;
-    }
-    
-    .btn.active {
-      background-color: #1e3c72;
-    }
-    
-    .metric-card {
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      padding: 15px;
-      margin-bottom: 15px;
-    }
-    
-    .metric-card h4 {
-      margin-top: 0;
-      margin-bottom: 10px;
-      color: #1e3c72;
-    }
-    
-    .message-box {
-      background-color: #f8f9fa;
-      border-left: 4px solid #4a6baf;
-      padding: 15px;
-      margin: 20px 0;
-    }
-    
-    .error-box {
-      background-color: #fff3f3;
-      border-left: 4px solid #e74c3c;
-      padding: 15px;
-      margin: 20px 0;
-    }
-    
-    .success-box {
-      background-color: #f0fff0;
-      border-left: 4px solid #2ecc71;
-      padding: 15px;
-      margin: 20px 0;
-    }
-    
-    .file-upload {
-      margin-bottom: 15px;
-    }
-    
-    .file-upload label {
-      display: block;
-      margin-bottom: 5px;
-      font-weight: 500;
-    }
-    
-    .file-upload input[type="file"] {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
-    
-    .upload-methods {
-      margin-bottom: 20px;
-    }
-    
-    .method-tab {
-      display: inline-block;
-      padding: 8px 16px;
-      margin-right: 5px;
-      background-color: #f2f2f2;
-      border-radius: 4px 4px 0 0;
-      cursor: pointer;
-    }
-    
-    .method-tab.active {
-      background-color: #4a6baf;
-      color: white;
-    }
-    
-    .upload-method {
-      display: none;
-      padding: 15px;
-      background-color: #f5f5f5;
-      border-radius: 0 0 8px 8px;
-    }
-    
-    .upload-method.active {
-      display: block;
-    }
-    
-    select {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      margin-bottom: 10px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics CSV Comparison</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .comparison-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .metric-box {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 10px;
+            border: 1px solid #e9ecef;
+        }
+        .improved { color: #28a745; }
+        .declined { color: #dc3545; }
+        .unchanged { color: #6c757d; }
+        .neutral { color: #17a2b8; }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .metric-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+        }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1>Web Traffic Analysis Dashboard</h1>
-            <nav>
-                <ul>
-                    <li><a href="index.php">Home</a></li>
-                    <li><a href="overview.php">Overview</a></li>
-                    <li><a href="traffic_sources.php">Traffic Sources</a></li>
-                    <li><a href="pages.php">Pages</a></li>
-                    <li><a href="compare.php" class="active">Compare</a></li>
-                </ul>
-            </nav>
-        </header>
-
-        <main>
-            <h2>Compare Traffic Periods</h2>
-            
-            <!-- Error/Success Messages -->
-            <?php if ($error): ?>
-                <div class="error-box">
-                    <p><?= htmlspecialchars($error) ?></p>
-                </div>
-            <?php endif; ?>
-            
-            <?php if ($success): ?>
-                <div class="success-box">
-                    <p><?= htmlspecialchars($success) ?></p>
-                </div>
-            <?php endif; ?>
-            
-            <!-- Upload Method Selection -->
-            <div class="upload-methods">
-                <div id="uploadTab" class="method-tab active">Upload New Files</div>
-                <div id="selectTab" class="method-tab">Select Existing Files</div>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>Analytics Comparison Tool
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="dashboard.php">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+                <a class="nav-link" href="../logout.php">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </a>
             </div>
-            
-            <!-- Upload New Files -->
-            <div id="uploadMethod" class="upload-method active">
-                <form action="compare.php" method="post" enctype="multipart/form-data">
-                    <div class="compare-container">
-                        <div class="file-upload">
-                            <h3>First Period</h3>
-                            <label for="first_file">Upload CSV for First Period:</label>
-                            <input type="file" name="first_file" id="first_file" accept=".csv" required>
-                            <small>Only CSV files are allowed</small>
-                        </div>
-                        <div class="file-upload">
-                            <h3>Second Period</h3>
-                            <label for="second_file">Upload CSV for Second Period:</label>
-                            <input type="file" name="second_file" id="second_file" accept=".csv" required>
-                            <small>Only CSV files are allowed</small>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="mb-4">
+                    <i class="fas fa-balance-scale text-primary me-2"></i>
+                    Analytics CSV Comparison
+                </h2>
+                <p class="text-muted mb-4">Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
+
+                <!-- Upload Form -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-upload me-2"></i>Upload Analytics CSV Files
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <?php if ($error_message): ?>
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i><?php echo htmlspecialchars($error_message); ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <form method="post" enctype="multipart/form-data">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="csv_file1" class="form-label">First Period CSV File</label>
+                                    <input type="file" class="form-control" id="csv_file1" name="csv_file1" accept=".csv" required>
+                                    <small class="text-muted">Upload your first analytics period data</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="csv_file2" class="form-label">Second Period CSV File</label>
+                                    <input type="file" class="form-control" id="csv_file2" name="csv_file2" accept=".csv" required>
+                                    <small class="text-muted">Upload your second analytics period data</small>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-chart-bar me-2"></i>Compare Analytics Data
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Comparison Results -->
+                <?php if ($comparison_results): ?>
+                    <!-- Debug Information -->
+                    <div class="alert alert-info mb-4">
+                        <h6><i class="fas fa-bug me-2"></i>Debug Information</h6>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <strong>Detected Headers:</strong><br>
+                                <small><?php echo implode(' | ', $comparison_results['headers']['common_headers']); ?></small>
+                            </div>
+                            <div class="col-md-12 mt-2">
+                                <strong>Analytics Metrics Found:</strong><br>
+                                <small style="color: green;">
+                                    <?php 
+                                    if (!empty($comparison_results['analytics_metrics'])) {
+                                        echo count($comparison_results['analytics_metrics']) . ' metrics detected: ' . implode(', ', array_keys($comparison_results['analytics_metrics']));
+                                    } else {
+                                        echo "No analytics metrics detected - checking column matching...";
+                                    }
+                                    ?>
+                                </small>
+                            </div>
                         </div>
                     </div>
-                    <button type="submit" class="btn">Upload & Compare Data</button>
-                </form>
-            </div>
-            
-            <!-- Select Existing Files -->
-            <div id="selectMethod" class="upload-method">
-                <form id="compareForm">
-                    <div class="compare-container">
-                        <div>
-                            <h3>First Period</h3>
-                            <select name="first" id="firstUpload" required>
-                                <option value="">Select a CSV upload</option>
-                                <?php foreach ($uploads as $upload): ?>
-                                    <option value="<?= $upload['UploadID'] ?>" <?= $firstUploadId == $upload['UploadID'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($upload['FileName']) ?> (<?= date('Y-m-d', strtotime($upload['UploadDate'])) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+
+                    <!-- Analytics Metrics Summary -->
+                    <?php if (!empty($comparison_results['summary_comparison'])): ?>
+                        <div class="metric-summary mb-4">
+                            <h4 class="mb-3"><i class="fas fa-tachometer-alt me-2"></i>Performance Overview</h4>
+                            <div class="row">
+                                <?php 
+                                $key_metrics = ['sessions', 'engagement_rate', 'total_revenue', 'bounce_rate'];
+                                foreach ($key_metrics as $metric): 
+                                    if (isset($comparison_results['summary_comparison'][$metric])):
+                                        $data = $comparison_results['summary_comparison'][$metric];
+                                ?>
+                                    <div class="col-md-3 mb-3">
+                                        <div class="text-center">
+                                            <h5><?php echo number_format($data['file1_total']); ?></h5>
+                                            <small><?php echo ucwords(str_replace('_', ' ', $metric)); ?></small>
+                                            <div class="mt-1">
+                                                <span class="badge <?php echo $data['status'] === 'improved' ? 'bg-success' : ($data['status'] === 'declined' ? 'bg-danger' : 'bg-secondary'); ?>">
+                                                    <?php echo $data['percent_change']; ?>%
+                                                    <i class="fas <?php echo $data['percent_change'] > 0 ? 'fa-arrow-up' : ($data['percent_change'] < 0 ? 'fa-arrow-down' : 'fa-minus'); ?>"></i>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php 
+                                    endif;
+                                endforeach; 
+                                ?>
+                            </div>
                         </div>
-                        <div>
-                            <h3>Second Period</h3>
-                            <select name="second" id="secondUpload" required>
-                                <option value="">Select a CSV upload</option>
-                                <?php foreach ($uploads as $upload): ?>
-                                    <option value="<?= $upload['UploadID'] ?>" <?= $secondUploadId == $upload['UploadID'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($upload['FileName']) ?> (<?= date('Y-m-d', strtotime($upload['UploadDate'])) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                    <?php endif; ?>
+
+                    <!-- Detailed Analytics Metrics -->
+                    <?php if (!empty($comparison_results['analytics_metrics'])): ?>
+                        <div class="comparison-card">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-chart-bar me-2"></i>Detailed Analytics Comparison
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <?php foreach ($comparison_results['analytics_metrics'] as $metric => $analysis): ?>
+                                        <div class="col-lg-6 mb-4">
+                                            <div class="card h-100">
+                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                    <strong><?php echo ucwords(str_replace('_', ' ', $metric)); ?></strong>
+                                                    <span class="badge <?php echo $analysis['comparison']['improvement'] === 'improved' ? 'bg-success' : ($analysis['comparison']['improvement'] === 'declined' ? 'bg-danger' : 'bg-secondary'); ?>">
+                                                        <?php echo $analysis['comparison']['percent_change']; ?>%
+                                                    </span>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row text-center">
+                                                        <div class="col-6">
+                                                            <h6 class="text-primary">Period 1</h6>
+                                                            <p class="mb-1"><strong>Total:</strong> <?php echo number_format($analysis['file1_stats']['sum']); ?></p>
+                                                            <p class="mb-0"><strong>Average:</strong> <?php echo number_format($analysis['file1_stats']['mean'], 2); ?></p>
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <h6 class="text-info">Period 2</h6>
+                                                            <p class="mb-1"><strong>Total:</strong> <?php echo number_format($analysis['file2_stats']['sum']); ?></p>
+                                                            <p class="mb-0"><strong>Average:</strong> <?php echo number_format($analysis['file2_stats']['mean'], 2); ?></p>
+                                                        </div>
+                                                    </div>
+                                                    <hr>
+                                                    <div class="text-center">
+                                                        <small class="<?php echo $analysis['comparison']['improvement']; ?>">
+                                                            <strong>Change:</strong> 
+                                                            <?php echo $analysis['comparison']['total_diff'] > 0 ? '+' : ''; ?>
+                                                            <?php echo number_format($analysis['comparison']['total_diff']); ?>
+                                                            (<?php echo $analysis['comparison']['percent_change']; ?>%)
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Basic File Information -->
+                    <div class="comparison-card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>File Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="metric-box">
+                                        <h4><?php echo $comparison_results['basic_metrics']['file1_rows']; ?></h4>
+                                        <small>Period 1 Records</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-box">
+                                        <h4><?php echo $comparison_results['basic_metrics']['file2_rows']; ?></h4>
+                                        <small>Period 2 Records</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-box">
+                                        <h4><?php echo $comparison_results['basic_metrics']['file1_columns']; ?></h4>
+                                        <small>Columns</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-box">
+                                        <h4><?php echo count($comparison_results['headers']['common_headers']); ?></h4>
+                                        <small>Common Metrics</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <button type="submit" class="btn">Compare Data</button>
-                </form>
-            </div>
-            
-            <!-- Comparison Section for All Metrics -->
-            <?php if ($firstMetrics && $secondMetrics): ?>
-              <section class="metrics-comparison">
-                <h3>Key Metrics Comparison</h3>
-                <div class="compare-container">
-                  <?php
-                    $allMetrics = [
-                      'total_page_views' => 'Total Page Views',
-                      'unique_visitors' => 'Unique Visitors',
-                      'avg_session_duration' => 'Average Session Duration',
-                      'bounce_rate' => 'Bounce Rate'
-                    ];
-                  ?>
-                  <?php foreach ($allMetrics as $key => $label): ?>
-                    <div class="metric-card">
-                      <h4><?= htmlspecialchars($label) ?></h4>
-                      <div class="compare-container">
-                        <div>Period 1: <?= isset($firstMetrics[$key]) ? htmlspecialchars($firstMetrics[$key]) : 'N/A' ?><?= ($key == 'bounce_rate' || $key == 'engagement_rate') && !str_contains($firstMetrics[$key] ?? '', '%') ? '%' : '' ?><?= $key == 'avg_session_duration' ? 's' : '' ?></div>
-                        <div>Period 2: <?= isset($secondMetrics[$key]) ? htmlspecialchars($secondMetrics[$key]) : 'N/A' ?><?= ($key == 'bounce_rate' || $key == 'engagement_rate') && !str_contains($secondMetrics[$key] ?? '', '%') ? '%' : '' ?><?= $key == 'avg_session_duration' ? 's' : '' ?></div>
-                      </div>
-                      <?php
-                        $val1 = is_numeric($firstMetrics[$key] ?? null) ? (float)$firstMetrics[$key] : null;
-                        $val2 = is_numeric($secondMetrics[$key] ?? null) ? (float)$secondMetrics[$key] : null;
-                        if ($val1 !== null && $val2 !== null):
-                          $diff = $val2 - $val1;
-                          $percent = $val1 > 0 ? round(($diff / $val1) * 100, 2) : 0;
-                        
-                          // For bounce rate, lower is better, so reverse the class
-                          if ($key == 'bounce_rate') {
-                            $diffClass = $percent <= 0 ? 'increase' : 'decrease';
-                          } else {
-                            $diffClass = $percent >= 0 ? 'increase' : 'decrease';
-                          }
 
-                          $diffSign = $percent >= 0 ? '+' : '';
-                      ?>
-                        <div class="metric-difference <?= $diffClass ?>">
-                          <?= $diffSign . $percent ?>% (<?= $diff > 0 ? '+' : '' ?><?= number_format($diff, 2) ?><?= $key == 'bounce_rate' || $key == 'engagement_rate' ? ' points' : '' ?>)
+                    <!-- Data Samples -->
+                    <div class="comparison-card">
+                        <div class="card-header bg-secondary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-eye me-2"></i>Data Preview (First 5 Records)
+                            </h5>
                         </div>
-                      <?php endif; ?>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Period 1 Sample</h6>
+                                    <div class="table-container">
+                                        <table class="table table-sm table-striped">
+                                            <?php if (!empty($comparison_results['data_sample']['file1_sample'])): ?>
+                                                <thead>
+                                                    <tr>
+                                                        <?php foreach (array_keys($comparison_results['data_sample']['file1_sample'][0]) as $header): ?>
+                                                            <th><?php echo htmlspecialchars($header); ?></th>
+                                                        <?php endforeach; ?>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($comparison_results['data_sample']['file1_sample'] as $row): ?>
+                                                        <tr>
+                                                            <?php foreach ($row as $value): ?>
+                                                                <td><?php echo htmlspecialchars($value); ?></td>
+                                                            <?php endforeach; ?>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            <?php endif; ?>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Period 2 Sample</h6>
+                                    <div class="table-container">
+                                        <table class="table table-sm table-striped">
+                                            <?php if (!empty($comparison_results['data_sample']['file2_sample'])): ?>
+                                                <thead>
+                                                    <tr>
+                                                        <?php foreach (array_keys($comparison_results['data_sample']['file2_sample'][0]) as $header): ?>
+                                                            <th><?php echo htmlspecialchars($header); ?></th>
+                                                        <?php endforeach; ?>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($comparison_results['data_sample']['file2_sample'] as $row): ?>
+                                                        <tr>
+                                                            <?php foreach ($row as $value): ?>
+                                                                <td><?php echo htmlspecialchars($value); ?></td>
+                                                            <?php endforeach; ?>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            <?php endif; ?>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                  <?php endforeach; ?>
-                </div>
-              </section>
-              
-              <!-- Charts Section -->
-              <section class="chart-section">
-                <h3>Traffic Comparison</h3>
-                <div class="chart-toggle">
-                  <button id="overlayBtn" class="btn btn-sm active">Overlay Chart</button>
-                  <button id="sideBySideBtn" class="btn btn-sm">Side-by-Side</button>
-                </div>
-                
-                <div id="overlayChartContainer" class="chart-container">
-                  <canvas id="overlayChart"></canvas>
-                </div>
-                
-                <div id="sideBySideContainer" class="compare-container" style="display:none;">
-                  <div class="chart-container">
-                    <canvas id="firstChart"></canvas>
-                  </div>
-                  <div class="chart-container">
-                    <canvas id="secondChart"></canvas>
-                  </div>
-                </div>
-              </section>
-            <?php elseif ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_GET['first']) || isset($_GET['second'])): ?>
-              <div class="message-box">
-                <p>Comparison data could not be loaded. Please ensure both files contain valid traffic data.</p>
-              </div>
-            <?php else: ?>
-              <div class="message-box">
-                <p>Upload or select two CSV files to compare their traffic data.</p>
-              </div>
-            <?php endif; ?>
-        </main>
-
-        <?php include 'user_footer.php'; ?>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 
-    <script>
-        // Convert PHP data to JavaScript
-        const firstTrafficData = <?= json_encode($firstTrafficData) ?>;
-        const secondTrafficData = <?= json_encode($secondTrafficData) ?>;
-        
-        // Tab switching
-        document.getElementById('uploadTab').addEventListener('click', function() {
-            document.getElementById('uploadMethod').classList.add('active');
-            document.getElementById('selectMethod').classList.remove('active');
-            document.getElementById('uploadTab').classList.add('active');
-            document.getElementById('selectTab').classList.remove('active');
-        });
-        
-        document.getElementById('selectTab').addEventListener('click', function() {
-            document.getElementById('selectMethod').classList.add('active');
-            document.getElementById('uploadMethod').classList.remove('active');
-            document.getElementById('selectTab').classList.add('active');
-            document.getElementById('uploadTab').classList.remove('active');
-        });
-        
-        // Form submission handler for existing files
-        document.getElementById('compareForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const firstId = document.getElementById('firstUpload').value;
-            const secondId = document.getElementById('secondUpload').value;
-            
-            if (firstId && secondId) {
-                window.location.href = `compare.php?first=${firstId}&second=${secondId}`;
-            } else {
-                alert('Please select two uploads to compare');
-            }
-        });
-        
-        
-        <?php if ($firstTrafficData && $secondTrafficData): ?>
-        // Chart toggling
-        document.getElementById('overlayBtn').addEventListener('click', function() {
-            document.getElementById('overlayChartContainer').style.display = 'block';
-            document.getElementById('sideBySideContainer').style.display = 'none';
-            this.classList.add('active');
-            document.getElementById('sideBySideBtn').classList.remove('active');
-        });
-        
-        document.getElementById('sideBySideBtn').addEventListener('click', function() {
-            document.getElementById('overlayChartContainer').style.display = 'none';
-            document.getElementById('sideBySideContainer').style.display = 'grid';
-            this.classList.add('active');
-            document.getElementById('overlayBtn').classList.remove('active');
-        });
-        
-        // Initialize the charts
-        const overlayCtx = document.getElementById('overlayChart').getContext('2d');
-        const firstCtx = document.getElementById('firstChart').getContext('2d');
-        const secondCtx = document.getElementById('secondChart').getContext('2d');
-        
-        try {
-            // Overlay chart
-            const overlayChart = new Chart(overlayCtx, {
-                type: 'line',
-                data: {
-                    labels: firstTrafficData.map(item => item.time_period),
-                    datasets: [
-                        {
-                            label: 'Period 1 - Page Views',
-                            data: firstTrafficData.map(item => parseInt(item.page_views)),
-                            borderColor: '#4c78d0',
-                            backgroundColor: 'rgba(76, 120, 208, 0.1)',
-                            tension: 0.1,
-                            fill: true
-                        },
-                        {
-                            label: 'Period 2 - Page Views',
-                            data: secondTrafficData.map(item => parseInt(item.page_views)),
-                            borderColor: '#e74c3c',
-                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                            tension: 0.1,
-                            fill: true
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-            
-            // First period chart
-            const firstChart = new Chart(firstCtx, {
-                type: 'line',
-                data: {
-                    labels: firstTrafficData.map(item => item.time_period),
-                    datasets: [
-                        {
-                            label: 'Page Views',
-                            data: firstTrafficData.map(item => parseInt(item.page_views)),
-                            borderColor: '#4c78d0',
-                            backgroundColor: 'rgba(76, 120, 208, 0.1)',
-                            tension: 0.1,
-                            fill: true
-                        },
-                        {
-                            label: 'Unique Visitors',
-                            data: firstTrafficData.map(item => parseInt(item.unique_visitors)),
-                            borderColor: '#72b966',
-                            backgroundColor: 'rgba(114, 185, 102, 0.1)',
-                            tension: 0.1,
-                            fill: true
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Period 1 Traffic'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-            
-            // Second period chart
-            const secondChart = new Chart(secondCtx, {
-                type: 'line',
-                data: {
-                    labels: secondTrafficData.map(item => item.time_period),
-                    datasets: [
-                        {
-                            label: 'Page Views',
-                            data: secondTrafficData.map(item => parseInt(item.page_views)),
-                            borderColor: '#e74c3c',
-                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                            tension: 0.1,
-                            fill: true
-                        },
-                        {
-                            label: 'Unique Visitors',
-                            data: secondTrafficData.map(item => parseInt(item.unique_visitors)),
-                            borderColor: '#f39c12',
-                            backgroundColor: 'rgba(243, 156, 18, 0.1)',
-                            tension: 0.1,
-                            fill: true
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Period 2 Traffic'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        } catch (error) {
-            console.error('Error creating chart:', error);
-        }
-        <?php endif; ?>
-    </script>
-    <script>
-        console.log('First traffic data:', <?= json_encode($firstTrafficData) ?>);
-        console.log('Second traffic data:', <?= json_encode($secondTrafficData) ?>);
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
