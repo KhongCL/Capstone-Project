@@ -94,15 +94,24 @@ function compareCSVFiles($file1_path, $file2_path) {
                 $stats1 = calculateStats($numeric1);
                 $stats2 = calculateStats($numeric2);
                 
+                // Fixed percentage calculation
+                $percent_change = 0;
+                if ($stats1['mean'] != 0) {
+                    $percent_change = round((($stats2['mean'] - $stats1['mean']) / $stats1['mean']) * 100, 2);
+                } elseif ($stats2['mean'] > 0) {
+                    // If Period 1 is 0 but Period 2 has value, it's a 100% increase
+                    $percent_change = 100;
+                }
+                
                 $comparison['analytics_metrics'][$metric] = [
                     'column_name' => $found_column,
                     'file1_stats' => $stats1,
                     'file2_stats' => $stats2,
                     'comparison' => [
-                        'total_diff' => $stats1['sum'] - $stats2['sum'],
-                        'avg_diff' => $stats1['mean'] - $stats2['mean'],
-                        'percent_change' => $stats2['mean'] != 0 ? round((($stats1['mean'] - $stats2['mean']) / $stats2['mean']) * 100, 2) : 0,
-                        'improvement' => determineImprovement($metric, $stats1['mean'], $stats2['mean'])
+                        'total_diff' => $stats2['sum'] - $stats1['sum'],
+                        'avg_diff' => $stats2['mean'] - $stats1['mean'],
+                        'percent_change' => $percent_change,
+                        'improvement' => determineImprovement($metric, $stats2['mean'], $stats1['mean'])
                     ]
                 ];
             }
@@ -157,19 +166,20 @@ function cleanNumericValues($values) {
     return $cleaned;
 }
 
-function determineImprovement($metric, $value1, $value2) {
+function determineImprovement($metric, $value2, $value1) {
     // For metrics where higher is better
     $higher_is_better = ['sessions', 'engaged_sessions', 'events_per_session', 'event_count', 
                         'key_events', 'total_revenue', 'total_page_views', 'unique_visitors', 
-                        'average_session_duration', 'engagement_rate', 'session_key_event_rate'];
+                        'average_session_duration', 'engagement_rate', 'session_key_event_rate',
+                        'average_engagement_time_per_session']; // Added this metric
     
     // For metrics where lower is better
     $lower_is_better = ['bounce_rate'];
     
     if (in_array($metric, $higher_is_better)) {
-        return $value1 > $value2 ? 'improved' : ($value1 < $value2 ? 'declined' : 'unchanged');
+        return $value2 > $value1 ? 'improved' : ($value2 < $value1 ? 'declined' : 'unchanged');
     } elseif (in_array($metric, $lower_is_better)) {
-        return $value1 < $value2 ? 'improved' : ($value1 > $value2 ? 'declined' : 'unchanged');
+        return $value2 < $value1 ? 'improved' : ($value2 > $value1 ? 'declined' : 'unchanged');
     }
     
     return 'neutral';
@@ -257,6 +267,117 @@ function calculateStats($values) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .comparison-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background: white;
+            padding: 20px;
+        }
+        .metric-box {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 10px;
+            border: 1px solid #e9ecef;
+        }
+        .improved { color: #28a745; }
+        .declined { color: #dc3545; }
+        .unchanged { color: #6c757d; }
+        .neutral { color: #17a2b8; }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .metric-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .upload-form {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .file-input-group {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .file-input-group > div {
+            flex: 1;
+        }
+        .file-input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .file-input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .file-input-group small {
+            color: #666;
+            font-size: 12px;
+        }
+        .btn-submit {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn-submit:hover {
+            background: #0056b3;
+        }
+        .alert {
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .metric-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .metric-header {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+        }
+        .metric-header.success { background: #28a745; color: white; }
+        .metric-header.primary { background: #007bff; color: white; }
+        .metric-header.secondary { background: #6c757d; color: white; }
+    </style>
 </head>
 <body>
     <div class="container user-compare-container" id="dashboard">
@@ -309,7 +430,7 @@ function calculateStats($values) {
             <!-- Comparison Results -->
             <?php if ($comparison_results): ?>
                 <!-- Debug Information -->
-                <div class="user-alert user-alert-info">
+                <div class="alert alert-info">
                     <h4><i class="fas fa-bug"></i> Debug Information</h4>
                     <p><strong>Detected Headers:</strong><br>
                     <small><?php echo implode(' | ', $comparison_results['headers']['common_headers']); ?></small></p>
@@ -317,19 +438,19 @@ function calculateStats($values) {
                     <small style="color: green;">
                         <?php 
                         if (!empty($comparison_results['analytics_metrics'])) {
-                            echo count($comparison_results['analytics_metrics']) . ' metrics detected: ' . implode(', ', array_keys($comparison_results['analytics_metrics']));
+                            echo count($comparison_results['analytics_metrics']) . ' metrics (' . implode(', ', array_keys($comparison_results['analytics_metrics'])) . ')';
                         } else {
-                            echo "No analytics metrics detected - checking column matching...";
+                            echo "No standard analytics metrics detected";
                         }
                         ?>
-                    </small></p>
+                    </p>
                 </div>
 
-                <!-- Analytics Metrics Summary -->
+                <!-- Performance Overview -->
                 <?php if (!empty($comparison_results['summary_comparison'])): ?>
-                    <div class="user-metric-summary">
+                    <div class="metric-summary">
                         <h3><i class="fas fa-tachometer-alt"></i> Performance Overview</h3>
-                        <div class="user-stats-grid">
+                        <div class="stats-grid">
                             <?php 
                             $key_metrics = ['sessions', 'engagement_rate', 'total_revenue', 'bounce_rate'];
                             foreach ($key_metrics as $metric): 
@@ -340,7 +461,7 @@ function calculateStats($values) {
                                     <h4><?php echo number_format($data['file1_total']); ?></h4>
                                     <small><?php echo ucwords(str_replace('_', ' ', $metric)); ?></small>
                                     <div style="margin-top: 5px;">
-                                        <span class="<?php echo $data['status'] === 'improved' ? 'user-improved' : ($data['status'] === 'declined' ? 'user-declined' : 'user-unchanged'); ?>">
+                                        <span class="<?php echo $data['status'] === 'improved' ? 'improved' : ($data['status'] === 'declined' ? 'declined' : 'unchanged'); ?>">
                                             <?php echo $data['percent_change']; ?>%
                                             <i class="fas <?php echo $data['percent_change'] > 0 ? 'fa-arrow-up' : ($data['percent_change'] < 0 ? 'fa-arrow-down' : 'fa-minus'); ?>"></i>
                                         </span>
@@ -354,18 +475,18 @@ function calculateStats($values) {
                     </div>
                 <?php endif; ?>
 
-                <!-- Detailed Analytics Metrics -->
+                <!-- Detailed Analytics Comparison -->
                 <?php if (!empty($comparison_results['analytics_metrics'])): ?>
-                    <div class="user-comparison-card">
-                        <div class="user-metric-header user-success">
+                    <div class="comparison-card">
+                        <div class="metric-header success">
                             <i class="fas fa-chart-bar"></i> Detailed Analytics Comparison
                         </div>
                         <div class="user-stats-grid">
                             <?php foreach ($comparison_results['analytics_metrics'] as $metric => $analysis): ?>
-                                <div class="user-metric-card">
+                                <div class="metric-card">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                         <strong><?php echo ucwords(str_replace('_', ' ', $metric)); ?></strong>
-                                        <span class="<?php echo $analysis['comparison']['improvement'] === 'improved' ? 'user-improved' : ($analysis['comparison']['improvement'] === 'declined' ? 'user-declined' : 'user-unchanged'); ?>">
+                                        <span class="<?php echo $analysis['comparison']['improvement'] === 'improved' ? 'improved' : ($analysis['comparison']['improvement'] === 'declined' ? 'declined' : 'unchanged'); ?>">
                                             <?php echo $analysis['comparison']['percent_change']; ?>%
                                         </span>
                                     </div>
@@ -375,20 +496,23 @@ function calculateStats($values) {
                                             <p><strong>Total:</strong> <?php echo number_format($analysis['file1_stats']['sum']); ?></p>
                                             <p><strong>Average:</strong> <?php echo number_format($analysis['file1_stats']['mean'], 2); ?></p>
                                         </div>
-                                        <div>
-                                            <h5 style="color: #17a2b8;">Period 2</h5>
-                                            <p><strong>Total:</strong> <?php echo number_format($analysis['file2_stats']['sum']); ?></p>
-                                            <p><strong>Average:</strong> <?php echo number_format($analysis['file2_stats']['mean'], 2); ?></p>
+                                        
+                                        <div class="vs-divider">VS</div>
+                                        
+                                        <div class="period-data">
+                                            <h6>Period 2</h6>
+                                            <div class="value"><?php echo number_format($analysis['file2_stats']['sum']); ?></div>
+                                            <small>Avg: <?php echo number_format($analysis['file2_stats']['mean'], 1); ?></small>
                                         </div>
                                     </div>
-                                    <hr>
-                                    <div style="text-align: center;">
-                                        <small class="<?php echo $analysis['comparison']['improvement']; ?>">
-                                            <strong>Change:</strong> 
-                                            <?php echo $analysis['comparison']['total_diff'] > 0 ? '+' : ''; ?>
-                                            <?php echo number_format($analysis['comparison']['total_diff']); ?>
-                                            (<?php echo $analysis['comparison']['percent_change']; ?>%)
-                                        </small>
+                                    
+                                    <div class="change-summary">
+                                        <span class="<?php echo $analysis['comparison']['improvement']; ?>">
+                                            <strong>
+                                                <?php echo $analysis['comparison']['percent_change'] > 0 ? '+' : ''; ?>
+                                                <?php echo $analysis['comparison']['percent_change']; ?>% Change
+                                            </strong>
+                                        </span>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -397,8 +521,8 @@ function calculateStats($values) {
                 <?php endif; ?>
 
                 <!-- Basic File Information -->
-                <div class="user-comparison-card">
-                    <div class="user-metric-header user-primary">
+                <div class="comparison-card">
+                    <div class="metric-header primary">
                         <i class="fas fa-info-circle"></i> File Information
                     </div>
                     <div class="user-stats-grid">
@@ -412,30 +536,30 @@ function calculateStats($values) {
                         </div>
                         <div class="user-metric-box">
                             <h4><?php echo $comparison_results['basic_metrics']['file1_columns']; ?></h4>
-                            <small>Columns</small>
+                            <small>Total Columns</small>
                         </div>
                         <div class="user-metric-box">
                             <h4><?php echo count($comparison_results['headers']['common_headers']); ?></h4>
-                            <small>Common Metrics</small>
+                            <small>Common Columns</small>
                         </div>
                     </div>
                 </div>
 
                 <!-- Data Samples -->
-                <div class="user-comparison-card">
-                    <div class="user-metric-header user-secondary">
+                <div class="comparison-card">
+                    <div class="metric-header secondary">
                         <i class="fas fa-eye"></i> Data Preview (First 5 Records)
                     </div>
-                    <div style="display: flex; gap: 20px;">
-                        <div style="flex: 1;">
+                    <div class="data-preview-section">
+                        <div class="preview-column">
                             <h4>Period 1 Sample</h4>
-                            <div class="user-table-container">
+                            <div class="table-container">
                                 <table style="width: 100%; border-collapse: collapse;">
                                     <?php if (!empty($comparison_results['data_sample']['file1_sample'])): ?>
                                         <thead>
-                                            <tr style="background: #f8f9fa;">
+                                            <tr>
                                                 <?php foreach (array_keys($comparison_results['data_sample']['file1_sample'][0]) as $header): ?>
-                                                    <th style="padding: 8px; border: 1px solid #ddd;"><?php echo htmlspecialchars($header); ?></th>
+                                                    <th><?php echo htmlspecialchars($header); ?></th>
                                                 <?php endforeach; ?>
                                             </tr>
                                         </thead>
@@ -443,7 +567,7 @@ function calculateStats($values) {
                                             <?php foreach ($comparison_results['data_sample']['file1_sample'] as $row): ?>
                                                 <tr>
                                                     <?php foreach ($row as $value): ?>
-                                                        <td style="padding: 8px; border: 1px solid #ddd;"><?php echo htmlspecialchars($value); ?></td>
+                                                        <td><?php echo htmlspecialchars($value); ?></td>
                                                     <?php endforeach; ?>
                                                 </tr>
                                             <?php endforeach; ?>
@@ -452,15 +576,16 @@ function calculateStats($values) {
                                 </table>
                             </div>
                         </div>
-                        <div style="flex: 1;">
+                        
+                        <div class="preview-column">
                             <h4>Period 2 Sample</h4>
-                            <div class="user-table-container">
+                            <div class="table-container">
                                 <table style="width: 100%; border-collapse: collapse;">
                                     <?php if (!empty($comparison_results['data_sample']['file2_sample'])): ?>
                                         <thead>
-                                            <tr style="background: #f8f9fa;">
+                                            <tr>
                                                 <?php foreach (array_keys($comparison_results['data_sample']['file2_sample'][0]) as $header): ?>
-                                                    <th style="padding: 8px; border: 1px solid #ddd;"><?php echo htmlspecialchars($header); ?></th>
+                                                    <th><?php echo htmlspecialchars($header); ?></th>
                                                 <?php endforeach; ?>
                                             </tr>
                                         </thead>
@@ -468,7 +593,7 @@ function calculateStats($values) {
                                             <?php foreach ($comparison_results['data_sample']['file2_sample'] as $row): ?>
                                                 <tr>
                                                     <?php foreach ($row as $value): ?>
-                                                        <td style="padding: 8px; border: 1px solid #ddd;"><?php echo htmlspecialchars($value); ?></td>
+                                                        <td><?php echo htmlspecialchars($value); ?></td>
                                                     <?php endforeach; ?>
                                                 </tr>
                                             <?php endforeach; ?>
