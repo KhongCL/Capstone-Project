@@ -19,8 +19,6 @@ session_start();
         </a>
         <nav>
             <ul>
-                <li><a href="login.php">Login</a></li>
-                <li><a href="register.php">Register</a></li>
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <?php if ($_SESSION['role'] === 'Admin'): ?>
                         <li><a href="admin/index.php">Admin Dashboard</a></li>
@@ -28,6 +26,9 @@ session_start();
                         <li><a href="user/index.php">Dashboard</a></li>
                     <?php endif; ?>
                     <li><a href="logout.php">Logout</a></li>
+                <?php else: ?>
+                    <li><a href="login.php">Login</a></li>
+                    <li><a href="register.php">Register</a></li>
                 <?php endif; ?>
             </ul>
         </nav>
