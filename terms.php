@@ -17,8 +17,6 @@ session_start();
         </a>
         <nav>
             <ul>
-                <li><a href="login.php">Login</a></li>
-                <li><a href="register.php">Register</a></li>
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <?php if ($_SESSION['role'] === 'Admin'): ?>
                         <li><a href="admin/index.php">Admin Dashboard</a></li>
@@ -26,6 +24,9 @@ session_start();
                         <li><a href="user/index.php">Dashboard</a></li>
                     <?php endif; ?>
                     <li><a href="logout.php">Logout</a></li>
+                <?php else: ?>
+                    <li><a href="login.php">Login</a></li>
+                    <li><a href="register.php">Register</a></li>
                 <?php endif; ?>
             </ul>
         </nav>
@@ -55,19 +56,19 @@ session_start();
             <p>The materials on TrafAnalyz are provided on an 'as is' basis. TrafAnalyz makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.</p>
 
             <h2>4. Limitations</h2>
-            <p>In no event shall TrafAnalyz or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use TrafAnalyz, even if TrafAnalyz or an authorized representative has been notified orally or in writing of the possibility of such damage.</p>
+            <p>In no event shall TrafAnalyz or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on TrafAnalyz, even if TrafAnalyz or an authorized representative has been notified orally or in writing of the possibility of such damage.</p>
 
-            <h2>5. Privacy Policy</h2>
-            <p>Your privacy is important to us. Please review our Privacy Policy, which also governs your use of the service, to understand our practices.</p>
+            <h2>5. Accuracy of Materials</h2>
+            <p>The materials appearing on TrafAnalyz could include technical, typographical, or photographic errors. TrafAnalyz does not warrant that any of the materials on its website are accurate, complete, or current.</p>
 
-            <h2>6. User Accounts</h2>
-            <p>When you create an account with us, you must provide information that is accurate, complete, and current at all times. You are responsible for safeguarding the password and for all activities that occur under your account.</p>
+            <h2>6. Links</h2>
+            <p>TrafAnalyz has not reviewed all of the sites linked to our website and is not responsible for the contents of any such linked site. The inclusion of any link does not imply endorsement by TrafAnalyz of the site.</p>
 
-            <h2>7. Data Upload and Processing</h2>
-            <p>Users are responsible for ensuring they have the right to upload and analyze data through TrafAnalyz. Users must comply with all applicable data protection laws and regulations when using our service.</p>
+            <h2>7. Modifications</h2>
+            <p>TrafAnalyz may revise these terms of service for its website at any time without notice. By using this website you are agreeing to be bound by the then current version of these terms of service.</p>
 
-            <h2>8. Service Modifications</h2>
-            <p>TrafAnalyz reserves the right to modify or discontinue the service at any time without prior notice. We shall not be liable to you or any third party for any modification, suspension, or discontinuance of the service.</p>
+            <h2>8. Privacy Policy</h2>
+            <p>Your privacy is important to us. Please review our Privacy Policy, which also governs your use of the website, to understand our practices.</p>
 
             <h2>9. Governing Law</h2>
             <p>These terms and conditions are governed by and construed in accordance with the laws of Malaysia and you irrevocably submit to the exclusive jurisdiction of the courts in that State or location.</p>

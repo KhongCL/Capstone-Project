@@ -31,7 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Process login if no errors
     if (empty($errors)) {
-        $stmt = $conn->prepare("SELECT UserID, Username, Password, Role, AccountStatus FROM user WHERE Username = ?");
+        // FIXED: Use correct column name PasswordHash
+        $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ?");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -39,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user = $result->fetch_assoc()) {
             if ($user['AccountStatus'] === 'Suspended') {
                 $errors['general'] = 'Your account has been suspended. Please contact support.';
-            } elseif (password_verify($password, $user['Password'])) {
+            } elseif (password_verify($password, $user['PasswordHash'])) { // FIXED: Use PasswordHash
                 $_SESSION['user_id'] = $user['UserID'];
                 $_SESSION['username'] = $user['Username'];
                 $_SESSION['role'] = $user['Role'];
@@ -156,8 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
                 <div class="form-group">
                     <label for="usernameInput">Username</label>
-                    <input type="text" id="usernameInput" name="username" placeholder="Enter your username" 
-                           value="<?php echo htmlspecialchars($username ?? ''); ?>" required>
+                    <input type="text" id="usernameInput" name="username" placeholder="Enter your username" required>
                 </div>
 
                 <div class="form-group">
@@ -180,9 +180,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <div class="sign-up">
                 Don't have an account? <a href="register.php">Create Account</a>
-            </div>
-            <div class="sign-up" style="margin-top: 10px;">
-                <a href="admin_login.php?key=trafanalyz">Admin Login</a>
             </div>
         </div>
         <div class="auth-image"></div>

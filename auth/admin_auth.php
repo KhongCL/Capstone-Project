@@ -18,12 +18,6 @@ function displayAccessDeniedMessage() {
             <p>Access denied. Admin area requires proper authorization.</p>
             <a href="../index.php">Return to Homepage</a>
         </div>
-        <script>
-            // Redirect to homepage after 5 seconds
-            setTimeout(function() {
-                window.location.href = "../index.php";
-            }, 5000);
-        </script>
     </body>
     </html>';
     exit();

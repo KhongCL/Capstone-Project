@@ -720,7 +720,8 @@ function getAllUsers($conn) {
     $users = [];
     
     try {
-        $query = "SELECT UserID, Username, FullName, Email, Role, AccountStatus, CreatedAt 
+        // FIXED: Remove FullName since it doesn't exist in your schema
+        $query = "SELECT UserID, Username, Email, Role, AccountStatus, CreatedAt 
                  FROM user 
                  ORDER BY UserID";
         
