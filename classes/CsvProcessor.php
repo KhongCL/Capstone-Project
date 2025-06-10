@@ -504,23 +504,6 @@ class CsvProcessor {
         
         error_log("Detecting format for headers: " . implode(", ", $headers));
         
-        // Check for your test CSV format first (ga4_traffic_acquisition)
-        $testCsvHeaders = ['Traffic Source', 'User Sessions', 'Engaged Sessions', 'Bounce Rate'];
-        $testMatches = 0;
-        foreach ($testCsvHeaders as $testHeader) {
-            if (in_array($testHeader, $headers)) {
-                $testMatches++;
-                error_log("Found test CSV header: $testHeader");
-            }
-        }
-        
-        // If we find 3+ matches, it's the ga4_traffic_acquisition format
-        if ($testMatches >= 3) {
-            error_log("Detected ga4_traffic_acquisition format with $testMatches matches");
-            $this->detectedFormat = 'ga4_traffic_acquisition';
-            return 'ga4_traffic_acquisition';
-        }
-        
         // Continue with existing format detection for other formats
         foreach ($this->mappings as $format => $config) {
             if (!isset($config['format_detection'])) continue;

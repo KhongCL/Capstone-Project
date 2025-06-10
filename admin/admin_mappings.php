@@ -120,7 +120,12 @@ if (!file_exists($mappingsFile)) {
     // Create default mappings if file doesn't exist
     $defaultMappings = [
         "ga4_traffic_acquisition" => [
-            "format_detection" => ["Sessions", "Engaged sessions", "Engagement rate", "Session primary channel group (Default channel group)"],
+            "format_detection" => [
+                "Session primary channel group (Default channel group)",
+                "Sessions", 
+                "Engaged sessions", 
+                "Engagement rate"
+            ],
             "column_mappings" => [
                 "Session primary channel group (Default channel group)" => "traffic_source",
                 "Sessions" => "visits",
@@ -128,7 +133,10 @@ if (!file_exists($mappingsFile)) {
                 "Engagement rate" => "bounce_rate",
                 "Average engagement time per session" => "avg_session_duration",
                 "Events per session" => "events_per_session",
-                "Event count" => "event_count"
+                "Event count" => "event_count",
+                "Key events" => "key_events",
+                "Session key event rate" => "session_key_event_rate",
+                "Total revenue" => "total_revenue"
             ],
             "data_types" => [
                 "Session primary channel group (Default channel group)" => "string",
@@ -137,7 +145,10 @@ if (!file_exists($mappingsFile)) {
                 "Engagement rate" => "float",
                 "Average engagement time per session" => "float",
                 "Events per session" => "float",
-                "Event count" => "integer"
+                "Event count" => "integer",
+                "Key events" => "integer",
+                "Session key event rate" => "float",
+                "Total revenue" => "currency"
             ]
         ]
     ];
