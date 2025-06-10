@@ -35,19 +35,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
     error_log("Upload result: " . json_encode($uploadMessage));
     
     if (is_array($uploadMessage)) {
+        error_log("UPLOAD_HANDLER: Upload message type: " . $uploadMessage['type']);
         if ($uploadMessage['type'] === 'success') {
             $response['success'] = true;
             $response['message'] = $uploadMessage['message'];
             $response['stage'] = 4; // Completed
+            error_log("UPLOAD_HANDLER: Success response prepared");
         } else if ($uploadMessage['type'] === 'needs_mapping') {
             // Handle column mapping scenario
             $response['success'] = true;
             $response['message'] = $uploadMessage['message'];
             $response['redirect'] = $uploadMessage['redirect'];
             $response['stage'] = 4; // Completed processing, ready for mapping
+            error_log("UPLOAD_HANDLER: Manual mapping response prepared");
+            error_log("UPLOAD_HANDLER: Redirect URL: " . $uploadMessage['redirect']);
         } else {
             $response['success'] = false;
             $response['message'] = $uploadMessage['message'];
+            error_log("UPLOAD_HANDLER: Error response prepared: " . $uploadMessage['message']);
             
             // Enhanced error parsing for validation errors
             if (strpos($uploadMessage['message'], 'Data validation errors found:') !== false) {
@@ -92,6 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
                 $response['stage'] = 1; // Failed during basic validation
             }
         }
+        error_log("UPLOAD_HANDLER: Final response: " . json_encode($response));
     } else {
         $response['success'] = false;
         $response['message'] = 'Invalid response from upload handler';
