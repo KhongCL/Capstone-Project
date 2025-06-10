@@ -68,10 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($result->fetch_assoc()) {
             $errors['general'] = 'Username or email already exists';
         } else {
-            // Create the admin account
+            // Create the admin account - FIXED: Removed FirstName and LastName from INSERT
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("INSERT INTO user (FirstName, LastName, Username, Email, Password, Role, AccountStatus) VALUES (?, ?, ?, ?, ?, 'Admin', 'Active')");
-            $stmt->bind_param("sssss", $firstname, $lastname, $username, $email, $hashedPassword);
+            $stmt = $conn->prepare("INSERT INTO user (Username, Email, PasswordHash, Role, AccountStatus) VALUES (?, ?, ?, 'Admin', 'Active')");
+            $stmt->bind_param("sss", $username, $email, $hashedPassword);
             
             if ($stmt->execute()) {
                 $success = true;

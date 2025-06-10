@@ -34,15 +34,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Process login if no errors
     if (empty($errors)) {
-        $stmt = $conn->prepare("SELECT UserID, Username, Password, Role, AccountStatus FROM user WHERE Username = ? AND Role = 'Admin'");
-        $stmt->bind_param("s", $username);
+        $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ? AND Role = 'Admin'");$stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
-        
+				
         if ($user = $result->fetch_assoc()) {
             if ($user['AccountStatus'] === 'Suspended') {
                 $errors['general'] = 'Your admin account has been suspended.';
-            } elseif (password_verify($password, $user['Password'])) {
+            } elseif (password_verify($password, $user['PasswordHash'])) { // FIXED: Use PasswordHash
                 $_SESSION['user_id'] = $user['UserID'];
                 $_SESSION['username'] = $user['Username'];
                 $_SESSION['role'] = $user['Role'];
