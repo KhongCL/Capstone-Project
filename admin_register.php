@@ -1,13 +1,34 @@
 <?php
 session_start();
-require_once 'auth/admin_auth.php';
 require_once 'config.php';
 
 // Check for admin key
 $admin_key = $_GET['key'] ?? '';
 if ($admin_key !== 'trafanalyz') {
-    header("Location: index.php");
-    exit();
+    displayAccessDeniedMessage();
+}
+
+if (isset($_SESSION['role']) && $_SESSION['role'] === 'End-User') {
+		displayAccessDeniedMessage();		
+}
+
+function displayAccessDeniedMessage() {
+		echo '<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Access Denied</title>
+    </head>
+    <body>
+        <div class="access-denied">
+            <h2>Access Denied</h2>
+            <p>Access denied. Admin area requires proper authorization.</p>
+            <a href="../index.php">Return to Homepage</a>
+        </div>
+    </body>
+    </html>';
+		exit();
 }
 
 // Initialize variables
@@ -239,8 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" placeholder="Choose a username" 
-                           value="<?php echo htmlspecialchars($username ?? ''); ?>" required>
+                    <input type="text" id="username" name="username" placeholder="Choose a username" required>
                 </div>
 
                 <div class="form-group">
