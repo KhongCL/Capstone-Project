@@ -27,69 +27,6 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Overview - Web Traffic Analysis Dashboard</title>
   <link rel="stylesheet" href="../styles.css" />
-  <style>
-    .export-controls {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .export-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.6rem 1.2rem;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .export-btn.csv {
-      background-color: #4CAF50;
-      color: white;
-    }
-    
-    .export-btn.pdf {
-      background-color: #f44336;
-      color: white;
-    }
-    
-    .export-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    
-    .export-btn:active {
-      transform: translateY(0);
-    }
-    
-    .export-btn .icon {
-      font-size: 1.2rem;
-    }
-
-    .chart-container {
-        position: relative;
-        height: 400px;
-        width: 100%;
-        margin: 20px 0;
-    }
-
-    .chart-container {
-        position: relative;
-        height: 400px !important; /* Force height */
-        width: 100%;
-        margin: 20px 0;
-    }
-    
-    #trafficChart {
-        width: 100% !important;
-        height: 100% !important;
-    }
-  </style>
-	<link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="user_style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
@@ -97,7 +34,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-  <div class="container" id="dashboard">
+  <div class="container user-overview-container" id="dashboard">
     <header>
       <h1>Web Traffic Analysis Dashboard</h1>
       <nav>
@@ -113,57 +50,63 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 
     <main>
       <h2>Overview Dashboard</h2>
-      <div class="export-controls">
-        <button class="export-btn csv" onclick="exportToCSV()">
+      <div class="user-export-controls">
+        <button class="user-export-btn csv" onclick="exportToCSV()">
           <span class="icon">📊</span>
           <span class="text">Export to CSV</span>
         </button>
-        <button class="export-btn pdf" onclick="exportToPDF()">
+        <button class="user-export-btn pdf" onclick="exportToPDF()">
           <span class="icon">📄</span>
           <span class="text">Export to PDF</span>
         </button>
       </div>
 
-      <section class="metrics-grid" id="metricsSection">
-        <div class="metric-card">
+      <section class="user-metrics-grid" id="metricsSection">
+        <div class="user-metric-card">
           <h3>Total Page Views</h3>
-          <p class="metric-value"><?php echo number_format($metrics['total_page_views']); ?></p>
+          <p class="user-metric-value"><?php echo number_format($metrics['total_page_views']); ?></p>
         </div>
-        <div class="metric-card">
+        <div class="user-metric-card">
           <h3>Unique Visitors</h3>
-          <p class="metric-value"><?php echo number_format($metrics['unique_visitors']); ?></p>
+          <p class="user-metric-value"><?php echo number_format($metrics['unique_visitors']); ?></p>
         </div>
-        <div class="metric-card">
+        <div class="user-metric-card">
           <h3>Avg. Session Duration</h3>
-          <p class="metric-value"><?php echo $metrics['avg_session_duration']; ?></p>
+          <p class="user-metric-value"><?php echo $metrics['avg_session_duration']; ?></p>
         </div>
-        <div class="metric-card">
+        <div class="user-metric-card">
           <h3>Bounce Rate</h3>
-          <p class="metric-value"><?php echo $metrics['bounce_rate']; ?></p>
+          <p class="user-metric-value"><?php echo $metrics['bounce_rate']; ?></p>
         </div>
       </section>
 
-      <section class="chart-section" id="chartSection">
+      <section class="user-chart-section" id="chartSection">
         <h3>Website Traffic Over Time</h3>
-        <div class="chart-container">
+        <div class="user-chart-container">
           <canvas id="trafficChart"></canvas>
         </div>
-        <div class="chart-controls">
+        <div class="user-chart-controls">
           <button class="btn btn-sm" data-interval="day">Daily</button>
           <button class="btn btn-sm" data-interval="month">Monthly</button>
         </div>
       </section>
 
-      <section>
+      <section class="user-annotation-section">
         <h3>📝 Annotations</h3>
-        <form id="annotationForm">
+        <form id="annotationForm" class="user-annotation-form">
           <input type="hidden" id="annotationId" />
-          <label>Date: <input type="date" id="annotationDate" required /></label>
-          <label>Note: <input type="text" id="annotationNote" required /></label>
+          <label>
+            Date:
+            <input type="date" id="annotationDate" required />
+          </label>
+          <label>
+            Note:
+            <input type="text" id="annotationNote" required placeholder="Enter annotation note..." />
+          </label>
           <button type="submit">Save Annotation</button>
           <button type="button" onclick="resetForm()">Clear</button>
         </form>
-        <div id="annotationsList"></div>
+        <div id="annotationsList" class="user-annotations-list"></div>
       </section>
     </main>
 
@@ -233,7 +176,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 
 
     // Interval Switcher
-    document.querySelectorAll('.chart-controls .btn').forEach(button => {
+    document.querySelectorAll('.user-chart-controls .btn').forEach(button => {
       button.addEventListener('click', function () {
         const interval = this.dataset.interval;
         fetch(`get_traffic_data.php?interval=${interval}`)
@@ -246,7 +189,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
             renderAnnotationsList();
           });
 
-        document.querySelectorAll('.chart-controls .btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.user-chart-controls .btn').forEach(btn => btn.classList.remove('active'));
         this.classList.add('active');
       });
     });
@@ -288,9 +231,16 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
       Object.entries(annotationsByDate).forEach(([date, items]) => {
           items.forEach((item, index) => {
               const div = document.createElement('div');
-              div.innerHTML = `<strong>${item.date} (${index + 1}/5)</strong>: ${item.note}
-                  <button onclick="editAnnotation(${item.id})">Edit</button>
-                  <button onclick="deleteAnnotation(${item.id})">Delete</button>`;
+              div.className = 'user-annotation-item';
+              div.innerHTML = `
+                  <div>
+                      <strong>${item.date} (${index + 1}/5)</strong>: ${item.note}
+                  </div>
+                  <div class="user-annotation-actions">
+                      <button class="user-annotation-edit" onclick="editAnnotation(${item.id})">Edit</button>
+                      <button class="user-annotation-delete" onclick="deleteAnnotation(${item.id})">Delete</button>
+                  </div>
+              `;
               list.appendChild(div);
           });
       });
@@ -405,7 +355,14 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
         }
     });
 
-    renderAnnotationsList();
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set first button as active
+        document.querySelector('.user-chart-controls .btn').classList.add('active');
+        
+        // Initialize annotations
+        renderAnnotationsList();
+    });
 
     // ========== Export Functions ==========
 

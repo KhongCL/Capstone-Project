@@ -111,41 +111,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Map CSV Columns - Web Traffic Analysis Dashboard</title>
     <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="user_style.css">
 </head>
 <body>
-    <div class="container">
+    <div class="container user-map-columns-container">
         <header>
             <h1>Web Traffic Analysis Dashboard</h1>
             <nav>
                 <ul>
                     <li><a href="index.php">Home</a></li>
-                    <li><a href="#" class="active">Map Columns</a></li>
+                    <li><a href="overview.php">Overview</a></li>
+                    <li><a href="traffic_sources.php">Traffic Sources</a></li>
+                    <li><a href="pages.php">Pages</a></li>
+                    <li><a href="compare.php">Compare</a></li>
                 </ul>
             </nav>
         </header>
         
         <main>
-            <section class="mapping-section">
+            <section class="user-mapping-section">
                 <h2>Map CSV Columns</h2>
                 <?php if (isset($error_message)): ?>
-                    <div class="alert">
+                    <div class="user-alert user-alert-danger">
                         <?php echo $error_message; ?>
                     </div>
                 <?php endif; ?>
                 
                 <?php if ($mappingResult['status'] === 'needs_mapping'): ?>
-                    <div class="alert">
-                        This CSV format wasn't automatically recognized. Please review and confirm the column mappings below.
+                    <div class="user-alert user-alert-info">
+                        This CSV format was not automatically recognized. Please review and confirm the column mappings below.
                     </div>
                 <?php elseif ($mappingResult['status'] === 'success'): ?>
-                    <div class="success">
+                    <div class="user-alert user-alert-success">
                         CSV format detected: <strong><?php echo ucfirst(str_replace('_', ' ', $mappingResult['format'])); ?></strong>
                         <p>Please confirm the column mappings below:</p>
                     </div>
                 <?php endif; ?>
                 
                 <form action="" method="post">
-                    <table class="mapping-table">
+                    <table class="user-mapping-table">
                         <thead>
                             <tr>
                                 <th>CSV Column</th>
@@ -181,14 +185,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                                 <td><?php echo htmlspecialchars($column); ?></td>
                                 <td><?php echo htmlspecialchars($sampleValue); ?></td>
                                 <td>
-                                <select name="mapping[<?php echo htmlspecialchars($column); ?>]" class="field-select">
+                                <select name="mapping[<?php echo htmlspecialchars($column); ?>]" class="user-field-select">
                                     <option value="">-- Ignore this column --</option>
                                     <?php foreach ($systemFields as $field): ?>
                                         <?php 
                                         $selected = '';
                                         if ($targetField === $field['value']) {
                                             $selected = 'selected'; 
-                                        } elseif (empty($targetField) && $column === $field['default_column']) {
+                                        } elseif (empty($targetField) && isset($field['default_column']) && $column === $field['default_column']) {
                                             $selected = 'selected';
                                         }
                                         ?>
@@ -200,8 +204,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                                 </td>
                                 <td>
                                     <?php if ($confidence !== null): ?>
-                                        <div class="confidence-bar">
-                                            <div class="confidence-fill" style="width: <?php echo $confidence; ?>%"></div>
+                                        <div class="user-confidence-bar">
+                                            <div class="user-confidence-fill" style="width: <?php echo $confidence; ?>%"></div>
                                             <span><?php echo round($confidence); ?>%</span>
                                         </div>
                                     <?php endif; ?>
@@ -211,16 +215,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                         </tbody>
                     </table>
                     
-                    <div class="form-actions">
-                        <button type="submit" name="confirm_mapping" class="btn">Confirm Mapping & Import Data</button>
-                        <a href="index.php" class="btn btn-secondary">Cancel</a>
+                    <div class="user-form-actions">
+                        <button type="submit" name="confirm_mapping" class="user-btn-primary">Confirm Mapping & Import Data</button>
+                        <a href="index.php" class="user-btn-secondary">Cancel</a>
                     </div>
                 </form>
                 
-                <div class="sample-data">
+                <div class="user-sample-data">
                     <h3>Sample Data Preview</h3>
-                    <div class="table-container">
-                        <table class="data-table">
+                    <div class="user-table-container">
+                        <table class="user-data-table">
                             <thead>
                                 <tr>
                                     <?php foreach ($header as $column): ?>
@@ -247,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const fieldSelects = document.querySelectorAll('.field-select');
+            const fieldSelects = document.querySelectorAll('.user-field-select');
             
             // Function to update available options
             function updateAvailableOptions() {

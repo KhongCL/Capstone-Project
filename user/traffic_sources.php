@@ -13,57 +13,14 @@ $sourcesData = getTrafficSourcesDistribution($conn);
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Traffic Sources - Web Traffic Analysis Dashboard</title>
-	<link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="user_style.css">
-  <style>
-    .export-controls {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .export-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.6rem 1.2rem;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .export-btn.csv {
-      background-color: #4CAF50;
-      color: white;
-    }
-    
-    .export-btn.pdf {
-      background-color: #f44336;
-      color: white;
-    }
-    
-    .export-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    
-    .export-btn:active {
-      transform: translateY(0);
-    }
-    
-    .export-btn .icon {
-      font-size: 1.2rem;
-    }
-  </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-  <div class="container">
+  <div class="container user-traffic-sources-container">
     <header>
       <h1>Web Traffic Analysis Dashboard</h1>
       <nav>
@@ -80,48 +37,50 @@ $sourcesData = getTrafficSourcesDistribution($conn);
     <main>
       <h2>Traffic Sources Dashboard</h2>
 
-      <section class="chart-section">
+      <section class="user-chart-section">
         <h3>Traffic Sources Distribution</h3>
-        <div class="chart-container" id="chartContainer">
+        <div class="user-sources-chart-container" id="chartContainer">
           <canvas id="sourcesChart"></canvas>
         </div>
-        <div class="chart-type-toggle">
+        <div class="user-chart-type-toggle">
           <button class="btn btn-sm active" data-chart-type="pie">Pie Chart</button>
           <button class="btn btn-sm" data-chart-type="bar">Bar Chart</button>
         </div>
-        <div style="margin-top: 10px;">
-          <button onclick="exportChartToPDF()" class="export-btn pdf">
+        <div class="user-export-controls">
+          <button onclick="exportChartToPDF()" class="user-export-btn pdf">
             <span class="icon">📄</span>
             <span class="text">Export Chart to PDF</span>
-         </button>
+          </button>
         </div>
       </section>
 
-      <section class="data-table-section">
+      <section class="user-data-table-section">
         <h3>Traffic Sources Breakdown</h3>
-        <table class="data-table" id="sourcesTable">
-          <thead>
-            <tr>
-              <th>Source</th>
-              <th>Visits</th>
-              <th>Percentage</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($sourcesData as $source): ?>
+        <div class="user-sources-table-container">
+          <table class="user-data-table" id="sourcesTable">
+            <thead>
               <tr>
-                <td><?php echo htmlspecialchars($source['traffic_source']); ?></td>
-                <td><?php echo number_format($source['visit_count']); ?></td>
-                <td><?php echo $source['percentage']; ?>%</td>
+                <th>Source</th>
+                <th>Visits</th>
+                <th>Percentage</th>
               </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-        <div style="margin-top: 10px;">
-          <button onclick="exportTableToCSV()" class="export-btn csv">
-          <span class="icon">📊</span>
-          <span class="text">Export Table to CSV</span>
-         </button>
+            </thead>
+            <tbody>
+              <?php foreach ($sourcesData as $source): ?>
+                <tr>
+                  <td><?php echo htmlspecialchars($source['traffic_source']); ?></td>
+                  <td><?php echo number_format($source['visit_count']); ?></td>
+                  <td><?php echo $source['percentage']; ?>%</td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+        <div class="user-export-controls">
+          <button onclick="exportTableToCSV()" class="user-export-btn csv">
+            <span class="icon">📊</span>
+            <span class="text">Export Table to CSV</span>
+          </button>
         </div>
       </section>
     </main>
@@ -171,6 +130,7 @@ $sourcesData = getTrafficSourcesDistribution($conn);
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: { position: type === 'pie' ? 'right' : 'top' },
             title: {
@@ -205,18 +165,19 @@ $sourcesData = getTrafficSourcesDistribution($conn);
     }
 
     // Chart type toggle
-    document.querySelectorAll('.chart-type-toggle .btn').forEach(button => {
+    document.querySelectorAll('.user-chart-type-toggle .btn').forEach(button => {
       button.addEventListener('click', function() {
         // Get chart type
         const chartType = this.dataset.chartType;
         // Create new chart with the selected type
         createChart(chartType);
         // Update active button state
-        document.querySelectorAll('.chart-type-toggle .btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.user-chart-type-toggle .btn').forEach(btn => btn.classList.remove('active'));
         this.classList.add('active');
       });
     });
 
+    // Initialize with pie chart
     createChart('pie');
 
     // Export table to CSV

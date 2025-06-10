@@ -13,57 +13,14 @@ $pagesData = getTopVisitedPages($conn, 10);
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Top Pages - Web Traffic Analysis Dashboard</title>
-	<link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="user_style.css">
-  <style>
-    .export-controls {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    .export-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.6rem 1.2rem;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .export-btn.csv {
-      background-color: #4CAF50;
-      color: white;
-    }
-    
-    .export-btn.pdf {
-      background-color: #f44336;
-      color: white;
-    }
-    
-    .export-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    
-    .export-btn:active {
-      transform: translateY(0);
-    }
-    
-    .export-btn .icon {
-      font-size: 1.2rem;
-    }
-  </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-  <div class="container">
+  <div class="container user-pages-container">
     <header>
       <h1>Web Traffic Analysis Dashboard</h1>
       <nav>
@@ -80,9 +37,9 @@ $pagesData = getTopVisitedPages($conn, 10);
     <main>
       <h2>Top Pages Dashboard</h2>
       
-      <section class="chart-section">
+      <section class="user-chart-section">
         <h3>Most Visited Pages</h3>
-        <div class="chart-container" id="chartContainer">
+        <div class="user-chart-container" id="chartContainer">
           <canvas id="pagesChart"></canvas>
         </div>
         <div style="margin-top: 10px;">
@@ -93,9 +50,9 @@ $pagesData = getTopVisitedPages($conn, 10);
         </div>
       </section>
       
-      <section class="data-table-section">
+      <section class="user-data-table-section">
         <h3>Top Pages Detail</h3>
-        <table class="data-table" id="pagesTable">
+        <table class="user-data-table" id="pagesTable">
           <thead>
             <tr>
               <th>Page URL</th>
@@ -123,7 +80,7 @@ $pagesData = getTopVisitedPages($conn, 10);
         </div>
       </section>
     </main>
-    
+
     <?php include 'user_footer.php'; ?>
   </div>
 
@@ -192,29 +149,47 @@ $pagesData = getTopVisitedPages($conn, 10);
         let cols = Array.from(row.cells).map(cell => `"${cell.innerText}"`);
         csv.push(cols.join(","));
       }
-      const blob = new Blob([csv.join("\n")], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "top_pages_table.csv";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      
+      const csvContent = "data:text/csv;charset=utf-8," + csv.join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "top_pages.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     // Export chart to PDF
-    async function exportChartToPDF() {
-      const chartContainer = document.getElementById("chartContainer");
-      const canvasImage = await html2canvas(chartContainer);
-      const imageData = canvasImage.toDataURL("image/png");
-
+    function exportChartToPDF() {
+      const canvas = document.getElementById('pagesChart');
       const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF();
-      const imgProps = pdf.getImageProperties(imageData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      pdf.addImage(imageData, "PNG", 10, 10, pdfWidth - 20, pdfHeight);
-      pdf.save("top_pages_chart.pdf");
+      
+      html2canvas(canvas).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF();
+        const imgWidth = 210;
+        const pageHeight = 295;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+        
+        let position = 0;
+        
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+        
+        pdf.save('pages_chart.pdf');
+      }).catch(err => {
+        console.error('Error generating PDF:', err);
+        alert('Error generating PDF. Please try again.');
+      });
     }
   </script>
 </body>

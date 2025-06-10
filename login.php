@@ -457,7 +457,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <input type="checkbox" name="remember">
                         Remember me
                     </label>
-                    <a href="admin_login.php?key=trafanalyz" class="admin-login-link">Admin Login</a>
                 </div>
 
                 <button type="submit" class="sign-in-btn">Sign In</button>
