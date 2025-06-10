@@ -17,15 +17,16 @@ session_start();
         </a>
         <nav>
             <ul>
-                <li><a href="login.php">Login</a></li>
-                <li><a href="register.php">Register</a></li>
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <?php if ($_SESSION['role'] === 'Admin'): ?>
                         <li><a href="admin/index.php">Admin Dashboard</a></li>
                     <?php else: ?>
-                        <li><a href="user/index.php">User Dashboard</a></li>
+                        <li><a href="user/index.php">Dashboard</a></li>
                     <?php endif; ?>
                     <li><a href="logout.php">Logout</a></li>
+                <?php else: ?>
+                    <li><a href="login.php">Login</a></li>
+                    <li><a href="register.php">Register</a></li>
                 <?php endif; ?>
             </ul>
         </nav>
@@ -52,28 +53,21 @@ session_start();
             <div class="faq-item">
                 <h3 class="faq-question">What file formats are supported?</h3>
                 <div class="faq-answer">
-                    <p>Currently, we support CSV files from various analytics platforms including Google Analytics, Adobe Analytics, and other standard web analytics tools.</p>
+                    <p>We currently support CSV files exported from Google Analytics 4 (GA4) and other major analytics platforms. Our system can automatically detect and map common CSV formats.</p>
                 </div>
             </div>
 
             <div class="faq-item">
                 <h3 class="faq-question">Is my data secure?</h3>
                 <div class="faq-answer">
-                    <p>Yes, we take data security seriously. All data is encrypted in transit and at rest, and we follow industry best practices for data protection.</p>
+                    <p>Yes, we take data security seriously. All uploaded data is encrypted and stored securely. We never share your analytics data with third parties.</p>
                 </div>
             </div>
 
             <div class="faq-item">
-                <h3 class="faq-question">Can I export my reports?</h3>
+                <h3 class="faq-question">Can I export my analysis results?</h3>
                 <div class="faq-answer">
-                    <p>Absolutely! You can export your analytics reports in various formats including PDF and CSV for presentations and further analysis.</p>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <h3 class="faq-question">How often can I upload new data?</h3>
-                <div class="faq-answer">
-                    <p>You can upload new data as frequently as needed. There are no restrictions on upload frequency for regular users.</p>
+                    <p>Absolutely! You can export your charts, reports, and data tables in various formats including PDF, CSV, and image formats.</p>
                 </div>
             </div>
 

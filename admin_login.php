@@ -5,8 +5,30 @@ require_once 'config.php';
 // Check for admin key
 $admin_key = $_GET['key'] ?? '';
 if ($admin_key !== 'trafanalyz') {
-    header("Location: index.php");
-    exit();
+    displayAccessDeniedMessage();
+}
+
+if (isset($_SESSION['role']) && $_SESSION['role'] === 'End-User') {
+		displayAccessDeniedMessage();		
+}
+
+function displayAccessDeniedMessage() {
+		echo '<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Access Denied</title>
+    </head>
+    <body>
+        <div class="access-denied">
+            <h2>Access Denied</h2>
+            <p>Access denied. Admin area requires proper authorization.</p>
+            <a href="../index.php">Return to Homepage</a>
+        </div>
+    </body>
+    </html>';
+		exit();
 }
 
 // Initialize variables
@@ -34,15 +56,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Process login if no errors
     if (empty($errors)) {
-        $stmt = $conn->prepare("SELECT UserID, Username, Password, Role, AccountStatus FROM user WHERE Username = ? AND Role = 'Admin'");
-        $stmt->bind_param("s", $username);
+        $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ? AND Role = 'Admin'");$stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
-        
+				
         if ($user = $result->fetch_assoc()) {
             if ($user['AccountStatus'] === 'Suspended') {
                 $errors['general'] = 'Your admin account has been suspended.';
-            } elseif (password_verify($password, $user['Password'])) {
+            } elseif (password_verify($password, $user['PasswordHash'])) { // FIXED: Use PasswordHash
                 $_SESSION['user_id'] = $user['UserID'];
                 $_SESSION['username'] = $user['Username'];
                 $_SESSION['role'] = $user['Role'];
@@ -154,8 +175,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>?key=<?php echo $admin_key; ?>">
                 <div class="form-group">
                     <label for="usernameInput">Admin Username</label>
-                    <input type="text" id="usernameInput" name="username" placeholder="Enter admin username" 
-                           value="<?php echo htmlspecialchars($username ?? ''); ?>" required>
+                    <input type="text" id="usernameInput" name="username" placeholder="Enter admin username" required>
                 </div>
 
                 <div class="form-group">
