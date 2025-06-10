@@ -241,10 +241,12 @@ function getKeyMetrics($conn, $uploadId = null) {
             $metrics['total_page_views'] = $row['total_views'] ?: 0;
         }
         
-        // Count distinct source types as unique visitors
-        $query = "SELECT COUNT(DISTINCT SourceTypeID) as unique_visitors 
-                 FROM PROCESSED_DATA_POINT 
-                 WHERE UploadID = ?";
+        // Option A: Use total engaged sessions as proxy for unique visitors
+        $query = "SELECT SUM(pdp.Value) as unique_visitors 
+                FROM PROCESSED_DATA_POINT pdp
+                JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                WHERE mt.MetricName = 'Engaged sessions'
+                AND pdp.UploadID = ?";
         $stmt = $conn->prepare($query);
         $stmt->bind_param("i", $uploadId);
         $stmt->execute();
