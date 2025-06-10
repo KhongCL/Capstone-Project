@@ -180,6 +180,45 @@ function handleCsvUpload($conn, $file) {
     }
 }
 
+function saveComparison($conn, $uploadId1, $uploadId2) {
+    try {
+        // Begin transaction
+        $conn->begin_transaction();
+        
+        $userId = $_SESSION['user_id'] ?? 1;
+        $comparisonName = "Comparison " . date('Y-m-d H:i:s');
+        
+        // Create comparison record
+        $stmt = $conn->prepare("INSERT INTO saved_comparison 
+                              (UserID, ComparisonName) 
+                              VALUES (?, ?)");
+        $stmt->bind_param("is", $userId, $comparisonName);
+        $stmt->execute();
+        $comparisonId = $conn->insert_id;
+        
+        // Link first file
+        $stmt = $conn->prepare("INSERT INTO comparison_file_link 
+                              (ComparisonID, UploadID, FileOrder) 
+                              VALUES (?, ?, 1)");
+        $stmt->bind_param("ii", $comparisonId, $uploadId1);
+        $stmt->execute();
+        
+        // Link second file
+        $stmt = $conn->prepare("INSERT INTO comparison_file_link 
+                              (ComparisonID, UploadID, FileOrder) 
+                              VALUES (?, ?, 2)");
+        $stmt->bind_param("ii", $comparisonId, $uploadId2);
+        $stmt->execute();
+        
+        $conn->commit();
+        return true;
+    } catch (Exception $e) {
+        $conn->rollback();
+        error_log("Error saving comparison: " . $e->getMessage());
+        return false;
+    }
+}
+
 function updateUploadProgress($stage, $percent, $message, $rowsProcessed = 0, $totalRows = 0) {
     if (session_status() == PHP_SESSION_NONE) {
         session_start();
