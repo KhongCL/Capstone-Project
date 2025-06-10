@@ -1,6 +1,12 @@
-/* General Styles */
+/* TrafAnalyz - Main Stylesheet */
+/* Consolidated styles for all root pages and common components */
+
+/* =====================================================
+   CSS CUSTOM PROPERTIES (VARIABLES)
+   ===================================================== */
 :root {
     --primary-color: #4c78d0;
+    --primary-dark: #3a5fb0;
     --secondary-color: #72b966;
     --accent-color: #f5a623;
     --text-color: #333333;
@@ -9,8 +15,15 @@
     --dark-gray: #6c757d;
     --white: #ffffff;
     --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    --success: #28a745;
+    --warning: #ffc107;
+    --danger: #dc3545;
+    --info: #17a2b8;
 }
 
+/* =====================================================
+   GLOBAL RESET AND BASE STYLES
+   ===================================================== */
 * {
     margin: 0;
     padding: 0;
@@ -30,33 +43,13 @@ body {
     padding: 20px;
 }
 
+/* =====================================================
+   TYPOGRAPHY
+   ===================================================== */
 h1, h2, h3, h4, h5, h6 {
     margin-bottom: 1rem;
     color: var(--text-color);
     font-weight: 600;
-}
-
-p {
-    margin-bottom: 1rem;
-}
-
-a {
-    color: var(--primary-color);
-    text-decoration: none;
-    transition: color 0.3s;
-}
-
-a:hover {
-    color: #3a5fb0;
-}
-
-/* Header and Navigation */
-header {
-    background-color: var(--white);
-    padding: 1rem;
-    border-radius: 10px;
-    box-shadow: var(--shadow);
-    margin-bottom: 20px;
 }
 
 h1 {
@@ -64,10 +57,71 @@ h1 {
     margin-bottom: 1rem;
 }
 
+p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--primary-dark);
+}
+
+/* =====================================================
+   HEADER AND NAVIGATION
+   ===================================================== */
+header {
+    background-color: var(--white);
+    padding: 1rem;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Logo Styling */
+.logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: var(--text-color);
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    border-radius: 8px;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.logo:hover {
+    color: var(--primary-color);
+}
+
+/* Navigation */
 nav ul {
     display: flex;
     list-style: none;
     gap: 10px;
+    margin: 0;
+    padding: 0;
 }
 
 nav a {
@@ -76,14 +130,18 @@ nav a {
     border-radius: 5px;
     font-weight: 500;
     color: var(--text-color);
+    transition: all 0.3s ease;
 }
 
-nav a:hover, nav a.active {
+nav a:hover, 
+nav a.active {
     background-color: var(--primary-color);
     color: var(--white);
 }
 
-/* Main Content */
+/* =====================================================
+   MAIN CONTENT AREAS
+   ===================================================== */
 main {
     margin-bottom: 30px;
 }
@@ -96,98 +154,579 @@ section {
     box-shadow: var(--shadow);
 }
 
-/* Form Styles */
+/* =====================================================
+   FORM ELEMENTS
+   ===================================================== */
 .form-group {
     margin-bottom: 15px;
+    position: relative;
 }
 
 label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-weight: 500;
+    color: var(--text-color);
 }
 
 input[type="file"],
 input[type="text"],
 input[type="email"],
 input[type="password"],
+input[type="date"],
 textarea,
 select {
     width: 100%;
-    padding: 10px;
+    padding: 12px 15px;
     border: 1px solid var(--medium-gray);
-    border-radius: 5px;
+    border-radius: 8px;
     font-size: 1rem;
     font-family: inherit;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="date"]:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(76, 120, 208, 0.1);
+}
+
+/* =====================================================
+   BUTTONS
+   ===================================================== */
 .btn {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     background-color: var(--primary-color);
     color: var(--white);
-    padding: 10px 20px;
+    padding: 12px 24px;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     font-size: 1rem;
-    cursor: pointer;
-    transition: background-color 0.3s;
     font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    text-align: center;
+    justify-content: center;
 }
 
 .btn:hover {
-    background-color: #3a5fb0;
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 120, 208, 0.3);
+    color: var(--white);
+    text-decoration: none;
+}
+
+.btn:active {
+    transform: translateY(0);
 }
 
 .btn-sm {
-    padding: 5px 10px;
+    padding: 8px 16px;
     font-size: 0.875rem;
 }
 
 .btn.active {
-    background-color: #3a5fb0;
+    background-color: var(--primary-dark);
 }
 
-/* Footer */
-footer {
-    background-color: var(--white);
-    padding: 15px;
+/* Button Variants */
+.btn-secondary {
+    background-color: var(--dark-gray);
+}
+
+.btn-secondary:hover {
+    background-color: #545b62;
+}
+
+.btn-success {
+    background-color: var(--success);
+}
+
+.btn-success:hover {
+    background-color: #218838;
+}
+
+.btn-danger {
+    background-color: var(--danger);
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+.btn-warning {
+    background-color: var(--warning);
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+    color: #212529;
+}
+
+.btn-info {
+    background-color: var(--info);
+}
+
+.btn-info:hover {
+    background-color: #138496;
+}
+
+/* =====================================================
+   LANDING PAGE STYLES (index.php)
+   ===================================================== */
+.hero {
+    background: linear-gradient(135deg, #4a6baf 0%, #1e3c72 100%);
+    color: white;
+    padding: 5rem 2rem;
     text-align: center;
-    border-radius: 10px;
-    color: var(--dark-gray);
-    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+    margin-bottom: 0;
 }
 
-/* Message styles */
-.message {
-    padding: 15px;
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('images/loginbg.png');
+    background-size: cover;
+    background-position: center;
+    opacity: 0.15;
+    z-index: 0;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.hero h1 {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+    color: white;
+}
+
+.hero p {
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+}
+
+.cta-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.cta-button {
+    display: inline-block;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 30px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 2px solid white;
+}
+
+.login-btn {
+    background-color: white;
+    color: #1e3c72;
+}
+
+.login-btn:hover {
+    background-color: transparent;
+    color: white;
+}
+
+.register-btn {
+    background-color: transparent;
+    color: white;
+}
+
+.register-btn:hover {
+    background-color: white;
+    color: #1e3c72;
+}
+
+/* Features Section */
+.features {
+    padding: 4rem 2rem;
+    background-color: #f8f9fa;
+    border-radius: 0;
+    margin-bottom: 0;
+}
+
+.features h2 {
+    text-align: center;
+    margin-bottom: 3rem;
+    color: #333;
+    font-size: 2.5rem;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.feature-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+}
+
+.feature-card i {
+    font-size: 3rem;
+    color: #4a6baf;
+    margin-bottom: 1rem;
+}
+
+.feature-card h3 {
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.feature-card p {
+    color: #666;
+    line-height: 1.6;
+}
+
+/* =====================================================
+   AUTHENTICATION PAGES (login.php, register.php, admin_login.php, admin_register.php)
+   ===================================================== */
+.auth-container {
+    display: flex;
+    background-color: white;
+    border-radius: 20px;
+    overflow: hidden;
+    width: 90%;
+    max-width: 1200px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    margin: 2rem auto;
+}
+
+.auth-form {
+    flex: 1;
+    padding: 60px;
+    display: flex;
+    flex-direction: column;
+}
+
+.auth-image {
+    flex: 1;
+    background-image: url('images/loginbg.png');
+    background-size: cover;
+    background-position: center;
+    min-height: 500px;
+}
+
+/* Auth Logo */
+.auth-container .logo {
+    margin-bottom: 40px;
+}
+
+.auth-container .logo-icon {
+    background-color: #9333ea;
+}
+
+.logo-text {
+    color: #333;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.admin-badge {
+    display: inline-block;
+    background-color: #9333ea;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: 14px;
+    margin-left: 10px;
+}
+
+/* Auth Form Styling */
+.auth-form h1 {
+    font-size: 42px;
+    font-weight: 700;
+    color: #222;
+    margin-bottom: 10px;
+}
+
+.auth-form .welcome-text,
+.auth-form .subtitle {
+    color: #666;
+    margin-bottom: 40px;
+    font-size: 16px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+/* Password Field */
+.password-field {
+    position: relative;
+}
+
+.toggle-password,
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    user-select: none;
+    font-size: 16px;
+}
+
+.toggle-password:hover,
+.password-toggle:hover {
+    color: #333;
+}
+
+/* Remember Me and Forgot Password */
+.remember-forgot {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.remember {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.remember input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    accent-color: #9333ea;
+}
+
+/* Auth Button */
+.auth-btn {
+    background-color: #9333ea;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
     margin-bottom: 20px;
-    border-radius: 5px;
+    width: 100%;
+}
+
+.auth-btn:hover {
+    background-color: #7e22ce;
+}
+
+/* Sign up/Sign in links */
+.sign-up,
+.sign-in {
+    text-align: center;
+    color: #666;
+    margin-top: 20px;
+}
+
+.sign-up a,
+.sign-in a {
+    color: #9333ea;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.sign-up a:hover,
+.sign-in a:hover {
+    text-decoration: underline;
+}
+
+/* Form Note */
+.form-note {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    color: #666;
+    font-size: 14px;
+    line-height: 1.5;
+    border-left: 4px solid #9333ea;
+}
+
+/* =====================================================
+   ERROR HANDLING AND VALIDATION
+   ===================================================== */
+.error-bubble {
+    position: absolute;
+    background-color: #ff4444;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-top: 5px;
+    z-index: 100;
+    max-width: 250px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.error-bubble::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 10px;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-bottom: 6px solid #ff4444;
+}
+
+.input-error {
+    border-color: #ff4444 !important;
+    background-color: #fff5f5;
+}
+
+/* Success Popup */
+.success-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.7);
+    background: white;
+    padding: 30px 40px;
+    border-radius: 15px;
+    box-shadow: 0 5px 30px rgba(0,0,0,0.2);
+    text-align: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.success-popup.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.success-popup img {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 20px;
+    animation: bounce 0.6s ease;
+}
+
+.success-popup h2 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    z-index: 999;
+}
+
+.overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* =====================================================
+   MESSAGE STYLES
+   ===================================================== */
+.message {
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
 }
 
 .message:empty {
     display: none;
 }
 
-/* Success message styling */
 .message.success {
     background-color: #d4edda;
-    border: 1px solid #c3e6cb;
+    border-color: #c3e6cb;
     color: #155724;
 }
 
 .message.success:before {
     content: "✓ ";
+    font-weight: bold;
 }
 
-/* Error message styling */
 .message.error {
     background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
+    border-color: #f5c6cb;
     color: #721c24;
 }
 
 .message.error:before {
     content: "⚠️ ";
+}
+
+.message.warning {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+
+.message.info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
 }
 
 /* Enhanced error message styling */
@@ -205,14 +744,622 @@ footer {
     margin-bottom: 8px;
 }
 
-/* Responsive Design */
+/* =====================================================
+   CONTACT US PAGE (contact_us.php)
+   ===================================================== */
+#contact-us {
+    padding: 50px 20px;
+    background-color: #f9f9f9;
+    border-radius: 0;
+    margin-bottom: 0;
+}
+
+#contact-us .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+#contact-us h2 {
+    font-size: 2.5em;
+    color: #333;
+    margin-bottom: 40px;
+}
+
+#contact-block {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 30px;
+}
+
+.contact-box {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 30px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    flex: 1;
+    min-width: 280px;
+    max-width: 350px;
+    text-align: center;
+    transition: transform 0.3s ease-in-out;
+}
+
+.contact-box:hover {
+    transform: translateY(-10px);
+}
+
+.contact-box h3 {
+    font-size: 1.5em;
+    color: #007bff;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.contact-box .icon {
+    font-size: 1.8em;
+    margin-right: 10px;
+    color: #007bff;
+}
+
+.contact-box p {
+    font-size: 1.1em;
+    color: #555;
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.contact-box p:last-child {
+    margin-bottom: 0;
+}
+
+.contact-box a {
+    color: #007bff;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.contact-box a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+/* =====================================================
+   CONTENT PAGES (about.php, terms.php, privacy.php, faq.php)
+   ===================================================== */
+.content-page {
+    min-height: calc(100vh - 200px);
+    padding: 2rem 0;
+}
+
+.content-section {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.content-section h1,
+.content-section h2 {
+    color: #1e3c72;
+    margin-bottom: 1.5rem;
+}
+
+.content-section p {
+    line-height: 1.6;
+    margin-bottom: 1rem;
+    color: #555;
+}
+
+.content-section ul,
+.content-section ol {
+    margin-bottom: 1.5rem;
+    padding-left: 2rem;
+}
+
+.content-section li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+/* Terms and Privacy Pages */
+.terms-content,
+.privacy-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    line-height: 1.6;
+}
+
+.terms-content h1,
+.privacy-content h1 {
+    color: #1e3c72;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.terms-content h2,
+.privacy-content h2 {
+    color: #4a6baf;
+    margin: 2rem 0 1rem 0;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 0.5rem;
+}
+
+.terms-content h3,
+.privacy-content h3 {
+    color: #333;
+    margin: 1.5rem 0 0.5rem 0;
+}
+
+.terms-content p,
+.privacy-content p {
+    margin-bottom: 1rem;
+    color: #555;
+}
+
+.terms-content ul,
+.privacy-content ul {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+}
+
+.terms-content li,
+.privacy-content li {
+    margin-bottom: 0.5rem;
+    color: #555;
+}
+
+.effective-date {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    border-left: 4px solid #4a6baf;
+}
+
+/* FAQ Specific Styles */
+.faq-item {
+    margin-bottom: 2rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.faq-question {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    margin: 0;
+    font-weight: 600;
+    color: #1e3c72;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.3s ease;
+}
+
+.faq-question:hover {
+    background-color: #e9ecef;
+}
+
+.faq-answer {
+    padding: 1rem;
+    background-color: white;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* =====================================================
+   CONTACT FORM STYLES
+   ===================================================== */
+.contact-form {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    margin-top: 2rem;
+}
+
+.contact-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.contact-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.contact-form input,
+.contact-form textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.contact-form textarea {
+    height: 120px;
+    resize: vertical;
+}
+
+.contact-form button {
+    background-color: #4a6baf;
+    color: white;
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.contact-form button:hover {
+    background-color: #3a5fb0;
+}
+
+/* =====================================================
+   FOOTER STYLES
+   ===================================================== */
+footer {
+    background-color: #1e3c72;
+    color: white;
+    padding: 2rem;
+    text-align: center;
+    margin-top: 2rem;
+    border-radius: 0;
+}
+
+.footer-content {
+    color: white;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.footer-content p {
+    margin-bottom: 0.5rem;
+}
+
+.footer-links {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.footer-links a {
+    color: rgb(235, 235, 235);
+    text-decoration: none;
+    margin: 0 0.5rem;
+    transition: color 0.3s;
+}
+
+.footer-links a:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
+
+/* =====================================================
+   ANIMATION KEYFRAMES
+   ===================================================== */
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-30px);
+    }
+    60% {
+        transform: translateY(-15px);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+/* =====================================================
+   RESPONSIVE DESIGN
+   ===================================================== */
+@media (max-width: 1024px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .auth-container {
+        width: 95%;
+    }
+    
+    .auth-form {
+        padding: 40px;
+    }
+}
+
 @media (max-width: 768px) {
+    /* Header and Navigation */
+    header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    
     nav ul {
         flex-wrap: wrap;
+        justify-content: center;
     }
     
     nav a {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+    
+    /* Hero Section */
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+    
+    .hero p {
+        font-size: 1.1rem;
+    }
+    
+    .cta-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .cta-button {
         width: 100%;
+        max-width: 300px;
         text-align: center;
     }
+    
+    /* Features Grid */
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    /* Auth Container */
+    .auth-container {
+        flex-direction: column;
+        width: 95%;
+    }
+
+    .auth-form {
+        padding: 30px 20px;
+    }
+
+    .auth-image {
+        min-height: 200px;
+        order: -1;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+    
+    /* Contact Us */
+    #contact-block {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .contact-box {
+        width: 90%;
+        max-width: 400px;
+    }
+    
+    /* Content Pages */
+    .content-section {
+        padding: 0 1rem;
+    }
+    
+    .terms-content,
+    .privacy-content {
+        padding: 1rem;
+    }
 }
+
+@media (max-width: 480px) {
+    /* Base Adjustments */
+    .container {
+        padding: 10px;
+    }
+    
+    /* Typography */
+    h1 {
+        font-size: 1.8rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+    
+    /* Hero Section */
+    .hero {
+        padding: 3rem 1rem;
+    }
+    
+    .hero h1 {
+        font-size: 2rem;
+    }
+    
+    .hero p {
+        font-size: 1rem;
+    }
+    
+    /* Features */
+    .features h2 {
+        font-size: 2rem;
+    }
+    
+    .features {
+        padding: 2rem 1rem;
+    }
+    
+    /* Auth Form */
+    .auth-form h1 {
+        font-size: 2rem;
+    }
+    
+    .auth-form {
+        padding: 20px 15px;
+    }
+    
+    /* Contact Us */
+    #contact-us h2 {
+        font-size: 2em;
+    }
+
+    .contact-box h3 {
+        font-size: 1.3em;
+    }
+
+    .contact-box p {
+        font-size: 1em;
+    }
+    
+    /* Buttons */
+    .btn {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+    }
+    
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+}
+
+/* =====================================================
+   UTILITY CLASSES
+   ===================================================== */
+.text-center {
+    text-align: center;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+.mt-4 { margin-top: 2rem; }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mb-4 { margin-bottom: 2rem; }
+
+.p-0 { padding: 0; }
+.p-1 { padding: 0.5rem; }
+.p-2 { padding: 1rem; }
+.p-3 { padding: 1.5rem; }
+.p-4 { padding: 2rem; }
+
+.d-none { display: none; }
+.d-block { display: block; }
+.d-flex { display: flex; }
+.d-grid { display: grid; }
+
+.w-100 { width: 100%; }
+.h-100 { height: 100%; }
+
+/* =====================================================
+   PRINT STYLES
+   ===================================================== */
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    body {
+        background: white;
+        color: black;
+    }
+    
+    .container {
+        max-width: none;
+        padding: 0;
+    }
+    
+    header,
+    footer,
+    nav {
+        display: none;
+    }
+    
+    section {
+        box-shadow: none;
+        border: 1px solid #ddd;
+        break-inside: avoid;
+    }
+}
+
+/* =====================================================
+   ACCESSIBILITY ENHANCEMENTS
+   ===================================================== */
+/* Focus indicators */
+*:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    :root {
+        --primary-color: #0000ff;
+        --text-color: #000000;
+        --white: #ffffff;
+    }
+    
+    .btn {
+        border: 2px solid currentColor;
+    }
+}
+
+/* =====================================================
+   COMPONENT-SPECIFIC OVERRIDES
+   ===================================================== */
+/* Ensure specific pages don't conflict with general styles */
+.useful-links-page {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Any other page-specific overrides can be added here */
