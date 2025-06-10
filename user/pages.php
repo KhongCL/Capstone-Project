@@ -13,7 +13,7 @@ $pagesData = getTopVisitedPages($conn, 10);
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Top Pages - Web Traffic Analysis Dashboard</title>
-    <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="user_style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
