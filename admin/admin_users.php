@@ -6,7 +6,6 @@ require_once '../functions.php';
 $message = '';
 $messageType = '';
 
-
 // Process user account actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && isset($_POST['user_id'])) {
@@ -73,93 +72,14 @@ if ($result) {
     <title>User Management - TrafAnalyz Admin</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="admin_style.css">
-    <style>
-        .container {
-            padding: 20px;
-        }
-        .user-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        .user-table th, .user-table td {
-            padding: 10px;
-            border: 1px solid #ddd;
-            text-align: left;
-        }
-        .user-table th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-        }
-        .user-table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        .actions {
-            display: flex;
-            gap: 5px;
-        }
-        .btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .btn-suspend {
-            background-color: #ffc107;
-            color: #212529;
-        }
-        .btn-restore {
-            background-color: #28a745;
-            color: #fff;
-        }
-        .btn-delete {
-            background-color: #dc3545;
-            color: #fff;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-        }
-        .status-active {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .status-suspended {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .message {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-        }
-        .message.success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .debug-info {
-            background-color: #e9ecef;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            font-family: monospace;
-        }
-    </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container admin-user-management-container">
         <?php 
-					$title = "User Management";
-					$active_page = "users";
-					include 'header.php';
-				?>
+            $title = "User Management";
+            $active_page = "users";
+            include 'header.php';
+        ?>
         
         <main>
             <section>
@@ -172,15 +92,17 @@ if ($result) {
                 <?php endif; ?>
                 
                 <!-- Debug information -->
-                <div class="debug-info">
+                <div class="admin-debug-info">
                     <p>Database query found: <?php echo $debugCount; ?> user(s)</p>
                     <p>PHP array contains: <?php echo count($users); ?> user(s)</p>
                 </div>
                 
                 <?php if (empty($users)): ?>
-                    <p>No users found in the database.</p>
+                    <div class="admin-no-users-message">
+                        <p>No users found in the database.</p>
+                    </div>
                 <?php else: ?>
-                    <table class="user-table">
+                    <table class="admin-user-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -200,31 +122,31 @@ if ($result) {
                                 <td><?php echo htmlspecialchars($user['Email']); ?></td>
                                 <td><?php echo $user['Role']; ?></td>
                                 <td>
-                                    <span class="status-badge status-<?php echo strtolower($user['AccountStatus']); ?>">
+                                    <span class="admin-status-badge admin-status-<?php echo strtolower($user['AccountStatus']); ?>">
                                         <?php echo $user['AccountStatus']; ?>
                                     </span>
                                 </td>
                                 <td><?php echo date('Y-m-d', strtotime($user['CreatedAt'])); ?></td>
-                                <td class="actions">
-                                    <form method="post" style="display:inline">
+                                <td class="admin-user-actions">
+                                    <form method="post">
                                         <input type="hidden" name="user_id" value="<?php echo $user['UserID']; ?>">
                                         <?php if ($user['AccountStatus'] === 'Active'): ?>
                                             <input type="hidden" name="action" value="suspend">
-                                            <button type="submit" class="btn btn-suspend" 
+                                            <button type="submit" class="admin-btn-suspend" 
                                                     onclick="return confirm('Are you sure you want to suspend this user?')">
                                                 Suspend
                                             </button>
                                         <?php else: ?>
                                             <input type="hidden" name="action" value="restore">
-                                            <button type="submit" class="btn btn-restore">
+                                            <button type="submit" class="admin-btn-restore">
                                                 Restore
                                             </button>
                                         <?php endif; ?>
                                     </form>
-                                    <form method="post" style="display:inline">
+                                    <form method="post">
                                         <input type="hidden" name="user_id" value="<?php echo $user['UserID']; ?>">
                                         <input type="hidden" name="action" value="delete">
-                                        <button type="submit" class="btn btn-delete" 
+                                        <button type="submit" class="admin-btn-delete" 
                                                 onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.')">
                                             Delete
                                         </button>
