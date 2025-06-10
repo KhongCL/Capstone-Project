@@ -592,6 +592,96 @@ function calculateStats($values) {
             font-size: 0.7em; /* Reduced from 0.8em */
             font-weight: 500;
         }
+
+        .data-preview-section {
+            display: block;
+        }
+        
+        .preview-column {
+            margin-bottom: 25px;
+        }
+        
+        .preview-column h4 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+        
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+            margin: 0;
+        }
+        
+        .preview-table th {
+            background: #f8f9fa;
+            color: #495057;
+            font-weight: 600;
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 2px solid #dee2e6;
+            border-right: 1px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .preview-table th:last-child {
+            border-right: none;
+        }
+        
+        .preview-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #f1f3f4;
+            border-right: 1px solid #f1f3f4;
+            color: #495057;
+        }
+        
+        .preview-table td:last-child {
+            border-right: none;
+        }
+        
+        .preview-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .preview-table tbody tr:nth-child(even) {
+            background-color: #fdfdfd;
+        }
+        
+        .preview-table tbody tr:nth-child(even):hover {
+            background-color: #f8f9fa;
+        }
+        
+        /* Responsive table scroll */
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
     </style>
 </head>
 <body>
@@ -789,7 +879,7 @@ function calculateStats($values) {
                         <div class="preview-column">
                             <h4>Period 1 Sample</h4>
                             <div class="table-container">
-                                <table style="width: 100%; border-collapse: collapse;">
+                                <table class="preview-table">
                                     <?php if (!empty($comparison_results['data_sample']['file1_sample'])): ?>
                                         <thead>
                                             <tr>
@@ -811,11 +901,11 @@ function calculateStats($values) {
                                 </table>
                             </div>
                         </div>
-                        
+                                                    
                         <div class="preview-column">
                             <h4>Period 2 Sample</h4>
                             <div class="table-container">
-                                <table style="width: 100%; border-collapse: collapse;">
+                                <table class="preview-table">
                                     <?php if (!empty($comparison_results['data_sample']['file2_sample'])): ?>
                                         <thead>
                                             <tr>
