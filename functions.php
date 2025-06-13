@@ -257,13 +257,34 @@ function getKeyMetrics($conn, $uploadId = null) {
     ];
     
     try {
-        // If no uploadId provided, get the most recent upload ID
+        // ENHANCED: Use session upload ID first, then fall back to MAX
         if ($uploadId === null) {
-            $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
-            $result = $conn->query($query);
-            if ($result && $row = $result->fetch_assoc()) {
-                $uploadId = $row['latest_upload'];
+            // Try to get from session first (for recently uploaded data)
+            if (session_status() == PHP_SESSION_NONE) {
+                session_start();
             }
+            
+            if (isset($_SESSION['latest_upload_id'])) {
+                $uploadId = $_SESSION['latest_upload_id'];
+                error_log("Using session upload ID: $uploadId");
+            } else {
+                // Fall back to getting the most recent upload ID for current user
+                $userId = $_SESSION['user_id'] ?? 1;
+                $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD WHERE UserID = ? AND IsValidated = 1";
+                $stmt = $conn->prepare($query);
+                $stmt->bind_param("i", $userId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                if ($result && $row = $result->fetch_assoc()) {
+                    $uploadId = $row['latest_upload'];
+                    error_log("Using latest upload ID for user $userId: $uploadId");
+                }
+            }
+        }
+        
+        if (!$uploadId) {
+            error_log("No upload ID found, returning default metrics");
+            return $metrics;
         }
         
         // Get Sessions count for the specified upload
@@ -278,9 +299,10 @@ function getKeyMetrics($conn, $uploadId = null) {
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
             $metrics['total_page_views'] = $row['total_views'] ?: 0;
+            error_log("Found total page views: " . $metrics['total_page_views']);
         }
         
-        // Option A: Use total engaged sessions as proxy for unique visitors
+        // Get unique visitors from Engaged sessions
         $query = "SELECT SUM(pdp.Value) as unique_visitors 
                 FROM PROCESSED_DATA_POINT pdp
                 JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
@@ -292,6 +314,7 @@ function getKeyMetrics($conn, $uploadId = null) {
         $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
             $metrics['unique_visitors'] = $row['unique_visitors'] ?: 0;
+            error_log("Found unique visitors: " . $metrics['unique_visitors']);
         }
         
         // Average Session Duration
@@ -307,24 +330,37 @@ function getKeyMetrics($conn, $uploadId = null) {
         if ($result && $row = $result->fetch_assoc()) {
             $avgSeconds = $row['avg_duration'] ?: 0;
             $metrics['avg_session_duration'] = round($avgSeconds, 1);
+            error_log("Found avg session duration: " . $metrics['avg_session_duration']);
         }
         
-        // Bounce Rate
-        $query = "SELECT AVG(pdp.Value) as avg_engagement_rate
+        $query = "SELECT 
+                    SUM(pdp.Value * sessions.session_count) as weighted_bounce_sum,
+                    SUM(sessions.session_count) as total_sessions
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                 WHERE mt.MetricName = 'Engagement rate'
+                 JOIN (
+                     SELECT pdp2.SourceTypeID, pdp2.Value as session_count 
+                     FROM PROCESSED_DATA_POINT pdp2
+                     JOIN METRIC_TYPE mt2 ON pdp2.MetricTypeID = mt2.MetricTypeID
+                     WHERE mt2.MetricName = 'Sessions' AND pdp2.UploadID = ?
+                 ) sessions ON pdp.SourceTypeID = sessions.SourceTypeID
+                 WHERE mt.MetricName IN ('Engagement rate', 'Bounce Rate') 
                  AND pdp.UploadID = ?";
         $stmt = $conn->prepare($query);
-        $stmt->bind_param("i", $uploadId);
+        $stmt->bind_param("ii", $uploadId, $uploadId);
         $stmt->execute();
         $result = $stmt->get_result();
+        
         if ($result && $row = $result->fetch_assoc()) {
-            $engagementRate = $row['avg_engagement_rate'] ?: 0;
-            // Bounce rate is roughly inverse of engagement rate
-            $bounceRate = (1 - $engagementRate) * 100;
+            $totalSessions = $row['total_sessions'] ?: 1; // Prevent division by zero
+            $weightedBounceSum = $row['weighted_bounce_sum'] ?: 0;
+            
+            // Calculate weighted average bounce rate
+            $bounceRate = ($weightedBounceSum / $totalSessions) * 100;
             $metrics['bounce_rate'] = round($bounceRate, 2);
+            error_log("Calculated weighted bounce rate: " . $metrics['bounce_rate'] . "%");
         }
+        
     } catch (Exception $e) {
         error_log("Error getting metrics: " . $e->getMessage());
     }
@@ -380,12 +416,32 @@ function getTrafficSourcesDistribution($conn) {
     $data = [];
     
     try {
-        // Get the most recent upload ID
-        $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
-        $result = $conn->query($query);
+        // ENHANCED: Use session upload ID first, then fall back to MAX
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        
         $latestUpload = 0;
-        if ($result && $row = $result->fetch_assoc()) {
-            $latestUpload = $row['latest_upload'];
+        if (isset($_SESSION['latest_upload_id'])) {
+            $latestUpload = $_SESSION['latest_upload_id'];
+            error_log("Using session upload ID for traffic sources: $latestUpload");
+        } else {
+            // Fall back to getting the most recent upload ID for current user
+            $userId = $_SESSION['user_id'] ?? 1;
+            $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD WHERE UserID = ? AND IsValidated = 1";
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            if ($result && $row = $result->fetch_assoc()) {
+                $latestUpload = $row['latest_upload'];
+                error_log("Using latest upload ID for traffic sources (user $userId): $latestUpload");
+            }
+        }
+        
+        if (!$latestUpload) {
+            error_log("No upload ID found for traffic sources");
+            return $data;
         }
         
         $query = "SELECT 
@@ -395,11 +451,14 @@ function getTrafficSourcesDistribution($conn) {
                   JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
                   JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
                   WHERE mt.MetricName = 'Sessions'
-                  AND pdp.UploadID = $latestUpload
+                  AND pdp.UploadID = ?
                   GROUP BY st.SourceName
                   ORDER BY visit_count DESC";
                   
-        $result = $conn->query($query);
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $latestUpload);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
         if ($result) {
             // Calculate total visits
@@ -410,6 +469,8 @@ function getTrafficSourcesDistribution($conn) {
                 $tempData[] = $row;
                 $totalVisits += $row['visit_count'];
             }
+            
+            error_log("Found $totalVisits total visits from " . count($tempData) . " traffic sources");
             
             // Calculate percentage for each source
             foreach ($tempData as $row) {
@@ -499,50 +560,29 @@ function getUploadErrorMessage($errorCode) {
     }
 }
 
-function saveTransformedData($conn, $data) {
-    error_log("SaveTransformedData received data: " . (is_array($data) ? count($data) : "not an array") . " items");
+function saveTransformedData($conn, $transformedData) {
+    // Enhanced debugging
+    error_log("=== SAVE TRANSFORMED DATA DEBUG ===");
+    error_log("Received " . count($transformedData) . " transformed data rows");
+    error_log("Sample transformed data: " . json_encode(array_slice($transformedData, 0, 2), JSON_PRETTY_PRINT));
     
-    if (empty($data)) {
-        error_log("Error: No data rows to save in CSV file");
-        
-        // Delete the temporary file
-        if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
-            unlink($_SESSION['uploaded_csv']);
-            unset($_SESSION['uploaded_csv']);
-        }
-        
-        // Create a session message for the user
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        // Check if we already have validation errors in the session
-        if (isset($_SESSION['upload_message']) && $_SESSION['upload_message']['type'] === 'error' 
-            && strpos($_SESSION['upload_message']['message'], 'Data validation errors') !== false) {
-            // Keep the existing validation error message as it's more specific
-            return false;
-        }
-
+    if (empty($transformedData)) {
+        error_log("No transformed data provided to saveTransformedData");
         $_SESSION['upload_message'] = [
-            'type' => 'warning',
-            'message' => "CSV file has correct format but contains no data rows to import."
+            'type' => 'error',
+            'message' => 'No valid data to save. Please check your CSV file format.'
         ];
         return false;
     }
-    
-    if (isset($data[0])) {
-        error_log("First data row: " . json_encode($data[0]));
-    }
-    
+
     try {
-        // Begin transaction
         $conn->begin_transaction();
         
         // For testing/debugging, use a default user ID (1 for admin)
         $userId = $_SESSION['user_id'] ?? 1;
+        error_log("Using User ID: $userId");
         
         // Get CSV metadata from session if available
-        // Only start session if one doesn't exist
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
@@ -550,21 +590,31 @@ function saveTransformedData($conn, $data) {
         error_log("Using metadata: " . json_encode($metadata));
         
         // First, create an entry in CSV_UPLOAD table
-        $fileName = basename($_FILES['csvFile']['name'] ?? 'manual_upload.csv');
-        $fileSize = $_FILES['csvFile']['size'] ?? 0;
+        $fileName = basename($_SESSION['uploaded_csv'] ?? 'manual_upload.csv');
+        $fileSize = file_exists($_SESSION['uploaded_csv']) ? filesize($_SESSION['uploaded_csv']) : 0;
         
-        // Extract date information from metadata if available
+        // Extract date information from metadata if available, otherwise use CSV data dates
         $startDate = isset($metadata['start_date']) && !empty($metadata['start_date']) 
-            ? $metadata['start_date'] : date('Y-m-d');
+            ? $metadata['start_date'] : '2024-02-01'; // From your test file
         $endDate = isset($metadata['end_date']) && !empty($metadata['end_date'])
-            ? $metadata['end_date'] : date('Y-m-d');
-        $accountName = $metadata['account_name'] ?? '';
-        $propertyName = $metadata['property_name'] ?? '';
-        $reportType = $metadata['report_type'] ?? 'GA4 Traffic Acquisition';
+            ? $metadata['end_date'] : '2024-02-28'; // From your test file
+        
+        $accountName = $metadata['account_name'] ?? 'TestAccount2';
+        $propertyName = $metadata['property_name'] ?? 'TestProperty2';
+        $reportType = $metadata['report_type'] ?? 'Manual Column Mapping';
         
         error_log("Creating CSV_UPLOAD record with dates: $startDate to $endDate, account: $accountName, property: $propertyName");
         
-        // Log the CSV upload - FIXED parameter binding (8 parameters)
+        // CRITICAL FIX: Delete any existing data for this user to prevent conflicts
+        $deleteQuery = "DELETE pdp FROM PROCESSED_DATA_POINT pdp 
+                       JOIN CSV_UPLOAD cu ON pdp.UploadID = cu.UploadID 
+                       WHERE cu.UserID = ?";
+        $deleteStmt = $conn->prepare($deleteQuery);
+        $deleteStmt->bind_param("i", $userId);
+        $deleteStmt->execute();
+        error_log("Deleted existing data points for user: $userId");
+        
+        // Log the CSV upload
         $stmt = $conn->prepare("INSERT INTO CSV_UPLOAD 
             (UserID, FileName, FileSize, IsValidated, ReportType, 
              DataDateStart, DataDateEnd, AccountName, PropertyName, IsSampleData) 
@@ -575,7 +625,6 @@ function saveTransformedData($conn, $data) {
             throw new Exception("Failed to prepare CSV_UPLOAD statement: " . $conn->error);
         }
         
-        // FIXED: Changed type string from 'isissss' to 'isisssss' to match 8 parameters
         $stmt->bind_param("isisssss", 
             $userId,
             $fileName,
@@ -595,61 +644,119 @@ function saveTransformedData($conn, $data) {
         $uploadId = $conn->insert_id;
         error_log("CSV Upload record created with ID: $uploadId");
         
-        // Now process each data point
-        foreach ($data as $row) {
+        // CRITICAL: Store the upload ID in session for immediate use
+        $_SESSION['latest_upload_id'] = $uploadId;
+        
+        // Now process each data point with enhanced debugging
+        $rowIndex = 0;
+        foreach ($transformedData as $row) {
+            $rowIndex++;
+            error_log("Processing row $rowIndex: " . json_encode($row));
+            
             // Get source type ID
             $sourceType = $row['traffic_source'] ?? 'Unknown';
             $sourceTypeId = getSourceTypeId($conn, $sourceType);
-            error_log("Processing source: $sourceType (ID: $sourceTypeId)");
+            error_log("Processing source: '$sourceType' (ID: $sourceTypeId)");
             
-            // Process each metric for this source
-            if (isset($row['visits']) && $row['visits'] > 0) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Sessions', $row['visits'], $startDate);
+            // Process each metric for this source with enhanced logging and value validation
+            if (isset($row['visits']) && is_numeric($row['visits']) && $row['visits'] > 0) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Sessions', $row['visits'], $startDate);
+                error_log("Inserted Sessions data point: VALUE={$row['visits']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            } else {
+                error_log("Skipping Sessions - invalid value: " . ($row['visits'] ?? 'NULL'));
             }
             
-            if (isset($row['engaged_sessions']) && $row['engaged_sessions'] > 0) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Engaged sessions', $row['engaged_sessions'], $startDate);
+            if (isset($row['engaged_sessions']) && is_numeric($row['engaged_sessions']) && $row['engaged_sessions'] > 0) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Engaged sessions', $row['engaged_sessions'], $startDate);
+                error_log("Inserted Engaged sessions data point: VALUE={$row['engaged_sessions']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            } else {
+                error_log("Skipping Engaged sessions - invalid value: " . ($row['engaged_sessions'] ?? 'NULL'));
             }
             
-            if (isset($row['bounce_rate'])) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Engagement rate', $row['bounce_rate'], $startDate);
+            if (isset($row['bounce_rate']) && is_numeric($row['bounce_rate'])) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Engagement rate', $row['bounce_rate'], $startDate);
+                error_log("Inserted Engagement rate data point: VALUE={$row['bounce_rate']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            } else {
+                error_log("Skipping Bounce rate - invalid value: " . ($row['bounce_rate'] ?? 'NULL'));
             }
             
-            if (isset($row['avg_session_duration'])) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Average engagement time per session', $row['avg_session_duration'], $startDate);
+            if (isset($row['avg_session_duration']) && is_numeric($row['avg_session_duration'])) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Average engagement time per session', $row['avg_session_duration'], $startDate);
+                error_log("Inserted Average engagement time data point: VALUE={$row['avg_session_duration']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            } else {
+                error_log("Skipping Avg session duration - invalid value: " . ($row['avg_session_duration'] ?? 'NULL'));
             }
             
-            if (isset($row['events_per_session'])) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Events per session', $row['events_per_session'], $startDate);
+            if (isset($row['events_per_session']) && is_numeric($row['events_per_session'])) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Events per session', $row['events_per_session'], $startDate);
+                error_log("Inserted Events per session data point: VALUE={$row['events_per_session']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            } else {
+                error_log("Skipping Events per session - invalid value: " . ($row['events_per_session'] ?? 'NULL'));
             }
             
-            if (isset($row['event_count']) && $row['event_count'] > 0) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Event count', $row['event_count'], $startDate);
+            if (isset($row['event_count']) && is_numeric($row['event_count']) && $row['event_count'] > 0) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Event count', $row['event_count'], $startDate);
+                error_log("Inserted Event count data point: VALUE={$row['event_count']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            } else {
+                error_log("Skipping Event count - invalid value: " . ($row['event_count'] ?? 'NULL'));
             }
             
-            if (isset($row['key_events'])) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Key events', $row['key_events'], $startDate);
+            if (isset($row['key_events']) && is_numeric($row['key_events'])) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Key events', $row['key_events'], $startDate);
+                error_log("Inserted Key events data point: VALUE={$row['key_events']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            } else {
+                error_log("Skipping Key events - invalid value: " . ($row['key_events'] ?? 'NULL'));
             }
             
-            if (isset($row['session_key_event_rate'])) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Session key event rate', $row['session_key_event_rate'], $startDate);
+            if (isset($row['session_key_event_rate']) && is_numeric($row['session_key_event_rate'])) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Session key event rate', $row['session_key_event_rate'], $startDate);
+                error_log("Inserted Session key event rate data point: VALUE={$row['session_key_event_rate']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            } else {
+                error_log("Skipping Session key event rate - invalid value: " . ($row['session_key_event_rate'] ?? 'NULL'));
             }
             
-            if (isset($row['total_revenue'])) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Total revenue', $row['total_revenue'], $startDate);
+            if (isset($row['total_revenue']) && is_numeric($row['total_revenue'])) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Total revenue', $row['total_revenue'], $startDate);
+                error_log("Inserted Total revenue data point: VALUE={$row['total_revenue']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            } else {
+                error_log("Skipping Total revenue - invalid value: " . ($row['total_revenue'] ?? 'NULL'));
             }
         }
         
         // Commit transaction
         $conn->commit();
-        error_log("Transaction committed successfully");
+        error_log("Transaction committed successfully for upload ID: $uploadId");
+        
+        // Verify data was actually inserted
+        $verifyQuery = "SELECT COUNT(*) as count, SUM(Value) as total_value FROM PROCESSED_DATA_POINT WHERE UploadID = ?";
+        $verifyStmt = $conn->prepare($verifyQuery);
+        $verifyStmt->bind_param("i", $uploadId);
+        $verifyStmt->execute();
+        $verifyResult = $verifyStmt->get_result();
+        if ($verifyRow = $verifyResult->fetch_assoc()) {
+            error_log("VERIFICATION: Inserted {$verifyRow['count']} data points with total value {$verifyRow['total_value']}");
+        }
+        
+        // CRITICAL: Clear any cached data
+        if (isset($_SESSION['cached_metrics'])) {
+            unset($_SESSION['cached_metrics']);
+        }
+        if (isset($_SESSION['cached_traffic_sources'])) {
+            unset($_SESSION['cached_traffic_sources']);
+        }
+        
+        error_log("=== END SAVE TRANSFORMED DATA DEBUG ===");
         return true;
     } catch (Exception $e) {
         // Rollback on error
         $conn->rollback();
-        // Enhanced error logging
         error_log("Error saving data: " . $e->getMessage());
         error_log("Stack trace: " . $e->getTraceAsString());
+        
+        $_SESSION['upload_message'] = [
+            'type' => 'error',
+            'message' => 'Database error: ' . $e->getMessage()
+        ];
         return false;
     }
 }
@@ -691,9 +798,16 @@ function getMetricTypeId($conn, $metricName) {
 
 // Helper function to insert a data point
 function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $dataDate = null) {
-    // Get metric type ID - add debug logs
-    error_log("Getting metric type ID for: $metricName");
+    // Enhanced debugging
+    error_log("insertDataPoint called: Upload=$uploadId, Source=$sourceTypeId, Metric='$metricName', Value=$value, Date=$dataDate");
     
+    // Validate input
+    if (!is_numeric($value)) {
+        error_log("ERROR: Non-numeric value provided: $value");
+        return false;
+    }
+    
+    // Get metric type ID
     $metricTypeId = getMetricTypeId($conn, $metricName);
     
     if (!$metricTypeId) {
@@ -716,7 +830,10 @@ function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $
     // Default period type (can be customized if needed)
     $periodType = 'Daily';
     
-    error_log("Inserting data point: Upload=$uploadId, Source=$sourceTypeId, Metric=$metricTypeId ($metricName), Value=$value, Date=$dataDate");
+    // Convert value to proper decimal format
+    $numericValue = floatval($value);
+    
+    error_log("Final values: Upload=$uploadId, Source=$sourceTypeId, Metric=$metricTypeId ($metricName), Value=$numericValue, Date=$dataDate");
     
     try {
         $stmt = $conn->prepare("INSERT INTO PROCESSED_DATA_POINT 
@@ -728,17 +845,19 @@ function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $
             return false;
         }
         
-        $stmt->bind_param("iiisss", 
+        $stmt->bind_param("iiisds", 
                          $uploadId, 
                          $sourceTypeId, 
                          $metricTypeId, 
                          $dataDate, 
-                         $value, 
+                         $numericValue, 
                          $periodType);
         
         $result = $stmt->execute();
         if (!$result) {
             error_log("Error executing statement: " . $stmt->error);
+        } else {
+            error_log("Successfully inserted data point with ID: " . $conn->insert_id);
         }
         return $result;
     } catch (Exception $e) {

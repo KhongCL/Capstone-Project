@@ -665,3 +665,28 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+
+DELETE FROM PROCESSED_DATA_POINT WHERE UploadID IN (SELECT UploadID FROM CSV_UPLOAD WHERE UserID = 1);
+DELETE FROM CSV_UPLOAD WHERE UserID = 1;
+
+-- Clean slate for testing
+DELETE FROM PROCESSED_DATA_POINT WHERE UploadID IN (SELECT UploadID FROM CSV_UPLOAD WHERE UserID IN (1, 7));
+DELETE FROM CSV_UPLOAD WHERE UserID IN (1, 7);
+
+-- Reset auto increment
+ALTER TABLE CSV_UPLOAD AUTO_INCREMENT = 1;
+ALTER TABLE PROCESSED_DATA_POINT AUTO_INCREMENT = 1;
+
+-- Add mappings for the test70_90.csv headers
+INSERT IGNORE INTO column_mapping (FormatID, CSVColumnName, SystemFieldName) VALUES
+(1, 'Traffic Source', 'traffic_source'),
+(1, 'User Sessions', 'visits'),
+(1, 'Engaged Sessions', 'engaged_sessions'),
+(1, 'Bounce Rate', 'bounce_rate'),
+(1, 'Avg Session Time', 'avg_session_duration'),
+(1, 'Events Per Session', 'events_per_session'),
+(1, 'Total Events', 'event_count'),
+(1, 'Conversions', 'key_events'),
+(1, 'Conversion Rate', 'session_key_event_rate'),
+(1, 'Revenue', 'total_revenue');

@@ -6,6 +6,14 @@ include '../functions.php';
 
 session_start();
 
+// Enhanced debugging for form submission
+error_log("=== MAP_COLUMNS.PHP DEBUG ===");
+error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
+error_log("POST data: " . print_r($_POST, true));
+error_log("Session uploaded_csv: " . ($_SESSION['uploaded_csv'] ?? 'NOT SET'));
+error_log("Session mapping_result: " . (isset($_SESSION['mapping_result']) ? 'SET' : 'NOT SET'));
+error_log("Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+
 // If no uploaded file in session, redirect
 if (!isset($_SESSION['uploaded_csv'])) {
     header('Location: index.php');
@@ -70,55 +78,88 @@ foreach ($allSystemFields as $field => $label) {
 
 // Handle form submission for manual mapping
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
+    error_log("=== PROCESSING FORM SUBMISSION ===");
+    
     $columnMapping = [];
     foreach ($_POST['mapping'] as $sourceCol => $targetCol) {
         if (!empty($targetCol)) {
             $columnMapping[$sourceCol] = $targetCol;
+            error_log("Mapped: $sourceCol -> $targetCol");
         }
     }
+    
+    error_log("Total mappings: " . count($columnMapping));
     
     // Check if at least one column is mapped
     if (empty($columnMapping)) {
         $error_message = "Please map at least one column before proceeding.";
+        error_log("ERROR: No columns mapped");
     } else {
+        error_log("Starting data transformation...");
+        
         // For manual mapping cases, we need to determine the format
         $format = null;
         if (isset($mappingResult['format']) && $mappingResult['format']) {
             // Format was detected but needed confirmation
             $format = $mappingResult['format'];
+            error_log("Using detected format: $format");
         } else {
             // Manual mapping - try to detect format based on column mappings
-            // Check if the mappings match ga4_traffic_acquisition pattern
             $ga4RequiredFields = ['traffic_source', 'visits', 'engaged_sessions', 'bounce_rate'];
             $mappedFields = array_values($columnMapping);
             $ga4MatchCount = count(array_intersect($ga4RequiredFields, $mappedFields));
             
             if ($ga4MatchCount >= 3) {
                 $format = 'ga4_traffic_acquisition';
-                error_log("Detected GA4 format based on manual mappings");
+                error_log("Detected GA4 format based on manual mappings (matches: $ga4MatchCount)");
+            } else {
+                error_log("Could not detect format automatically, using manual mapping");
             }
         }
 
         error_log("Using format for transformation: " . ($format ?? 'null'));
-        $transformedData = $processor->transformData($_SESSION['uploaded_csv'], $columnMapping, $format);
         
-        // Save transformed data to database
-        if (saveTransformedData($conn, $transformedData)) {
-            $_SESSION['message'] = 'Data successfully imported and mapped.';
-            unset($_SESSION['mapping_result']);
-            unset($_SESSION['uploaded_csv']);
-            header('Location: overview.php');
-            exit;
-        } else {
-            // Check if we have a specific message from saveTransformedData
-            if (isset($_SESSION['upload_message'])) {
-                $error_message = $_SESSION['upload_message']['message'];
-                unset($_SESSION['upload_message']);
+        try {
+            $transformedData = $processor->transformData($_SESSION['uploaded_csv'], $columnMapping, $format);
+            error_log("Transformation completed. Rows: " . count($transformedData));
+            
+            if (empty($transformedData)) {
+                error_log("ERROR: No data returned from transformation");
+                $error_message = 'No valid data found after transformation. Please check your CSV file.';
             } else {
-                $error_message = 'Error saving data to database.';
+                error_log("Sample transformed data: " . json_encode($transformedData[0] ?? []));
+                
+                // Save transformed data to database
+                if (saveTransformedData($conn, $transformedData)) {
+                    error_log("Data successfully saved to database");
+                    $_SESSION['message'] = 'Data successfully imported and mapped.';
+                    
+                    // CRITICAL: Clear mapping session data
+                    unset($_SESSION['mapping_result']);
+                    unset($_SESSION['uploaded_csv']);
+                    unset($_SESSION['csv_metadata']);
+                    
+                    error_log("Redirecting to overview.php");
+                    header('Location: overview.php');
+                    exit;
+                } else {
+                    error_log("ERROR: Failed to save data to database");
+                    // Check if we have a specific message from saveTransformedData
+                    if (isset($_SESSION['upload_message'])) {
+                        $error_message = $_SESSION['upload_message']['message'];
+                        unset($_SESSION['upload_message']);
+                    } else {
+                        $error_message = 'Error saving data to database.';
+                    }
+                }
             }
+        } catch (Exception $e) {
+            error_log("ERROR: Exception during transformation: " . $e->getMessage());
+            $error_message = 'Error processing data: ' . $e->getMessage();
         }
     }
+    
+    error_log("=== END FORM PROCESSING ===");
 }
 ?>
 
@@ -435,12 +476,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             const form = document.querySelector('form');
             const progressDiv = document.getElementById('mappingProgress');
             let formSubmitted = false;
-            let animationComplete = false;
             
             form.addEventListener('submit', function(e) {
-                // CRITICAL: Prevent the default form submission
-                e.preventDefault();
-                
                 if (formSubmitted) return; // Prevent multiple submissions
                 formSubmitted = true;
                 
@@ -448,138 +485,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 progressDiv.style.display = 'block';
                 form.style.display = 'none';
                 
-                // Start the animation sequence
+                // Start the animation sequence but DON'T prevent form submission
                 runProgressAnimation();
+                
+                // CRITICAL: Let the form submit normally after showing animation
+                // Don't prevent default here - let PHP handle the processing
+                setTimeout(() => {
+                    // The form will submit naturally since we didn't prevent default
+                    console.log('Form processing completed, PHP will handle redirect');
+                }, 1000);
             });
             
             function runProgressAnimation() {
-                // Stage 3: Data Validation - Slower progression with more steps
+                // Stage 3: Data Validation - Faster progression
                 setTimeout(() => {
                     updateMappingProgress(3, 20, 'Initializing data validation...');
-                }, 500);
+                }, 200);
                 
                 setTimeout(() => {
-                    updateMappingProgress(3, 40, 'Checking data types...');
-                }, 1200);
+                    updateMappingProgress(3, 50, 'Checking data types...');
+                }, 400);
                 
                 setTimeout(() => {
-                    updateMappingProgress(3, 60, 'Validating data values...');
-                }, 2000);
-                
-                setTimeout(() => {
-                    updateMappingProgress(3, 80, 'Verifying data integrity...');
-                }, 2800);
+                    updateMappingProgress(3, 80, 'Validating data values...');
+                }, 600);
                 
                 setTimeout(() => {
                     updateMappingProgress(3, 100, 'Data validation completed ✓');
                     completeStage(3);
                     updateProcessingStatus('Validation Complete', 'Database Operations');
-                }, 3500);
+                }, 800);
                 
-                // Stage 4: Database Saving - More detailed progression
+                // Stage 4: Database Saving
                 setTimeout(() => {
                     activateStage(4);
-                    updateMappingProgress(4, 15, 'Preparing database transaction...');
+                    updateMappingProgress(4, 25, 'Preparing database transaction...');
                     updateProcessingStatus('In Progress', 'Database Saving');
-                }, 4000);
+                }, 900);
                 
                 setTimeout(() => {
-                    updateMappingProgress(4, 35, 'Creating data records...');
-                }, 4700);
+                    updateMappingProgress(4, 50, 'Creating data records...');
+                }, 1000);
                 
                 setTimeout(() => {
-                    updateMappingProgress(4, 55, 'Inserting traffic data...');
-                }, 5400);
-                
-                setTimeout(() => {
-                    updateMappingProgress(4, 75, 'Building database indexes...');
-                }, 6100);
-                
-                setTimeout(() => {
-                    updateMappingProgress(4, 90, 'Finalizing transaction...');
-                }, 6800);
+                    updateMappingProgress(4, 75, 'Inserting traffic data...');
+                }, 1100);
                 
                 setTimeout(() => {
                     updateMappingProgress(4, 100, 'Data saved successfully! ✓');
                     completeStage(4);
                     updateOverallProgress(100, 'Import completed successfully! 🎉');
                     updateProcessingStatus('Complete', 'Ready');
-                }, 7500);
-                
-                // Extended buffer time to show completion
-                setTimeout(() => {
-                    updateOverallProgress(100, 'Redirecting to dashboard...');
-                }, 8500);
-                
-                // CRITICAL: Only submit the form AFTER animation completes
-                setTimeout(() => {
-                    animationComplete = true;
-                    console.log('Animation complete, submitting form...');
-                    
-                    // Create a new form submission with the original data
-                    const formData = new FormData(form);
-                    
-                    // Submit via fetch to process the PHP
-                    fetch(window.location.href, {
-                        method: 'POST',
-                        body: formData,
-                        redirect: 'manual' // Handle redirects manually
-                    })
-                    .then(response => {
-                        console.log('Response status:', response.status);
-                        console.log('Response redirected:', response.redirected);
-                        
-                        // Check for redirect response
-                        if (response.status === 302 || response.status === 301 || response.type === 'opaqueredirect') {
-                            // Get the redirect location from headers
-                            const location = response.headers.get('Location') || 'overview.php';
-                            console.log('Redirect location:', location);
-                            window.location.href = location;
-                            return;
-                        }
-                        
-                        // Check if response is ok
-                        if (response.ok) {
-                            return response.text();
-                        } else {
-                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                        }
-                    })
-                    .then(data => {
-                        if (data) {
-                            // Check if the response contains a redirect meta tag or JavaScript redirect
-                            if (data.includes('header("Location:') || data.includes('window.location')) {
-                                // Force redirect to overview page
-                                window.location.href = 'overview.php';
-                                return;
-                            }
-                            
-                            // If there's no redirect but we have data, check for errors
-                            if (data.includes('error') || data.includes('Error')) {
-                                // Re-render the page with errors
-                                document.open();
-                                document.write(data);
-                                document.close();
-                            } else {
-                                // Successful processing, redirect to overview
-                                window.location.href = 'overview.php';
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error submitting form:', error);
-                        
-                        // Fallback: Try direct redirect to overview
-                        // Most likely the form submission succeeded but redirect detection failed
-                        console.log('Attempting fallback redirect to overview.php');
-                        window.location.href = 'overview.php';
-                        
-                        // If that fails, submit the form normally as last resort
-                        setTimeout(() => {
-                            form.submit();
-                        }, 1000);
-                    });
-                }, 9500);
+                }, 1200);
             }
             
             function updateMappingProgress(stage, percent, message) {
@@ -590,7 +547,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 if (progressFill) {
                     progressFill.style.width = `${percent}%`;
                     
-                    // Add visual feedback for completion
                     if (percent === 100) {
                         progressFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
                         progressFill.style.boxShadow = '0 2px 8px rgba(40, 167, 69, 0.4)';
@@ -600,7 +556,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     progressText.textContent = `${percent}%`;
                 }
                 
-                // Calculate overall progress (stages 1&2 = 50%, stage 3 = 25%, stage 4 = 25%)
+                // Calculate overall progress
                 let overallPercent = 50; // Start from 50% (stages 1&2 completed)
                 if (stage === 3) {
                     overallPercent += (percent * 0.25);
@@ -619,12 +575,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 if (overallFill) {
                     overallFill.style.width = `${Math.round(percent)}%`;
                     
-                    // Enhanced visual feedback for completion
                     if (percent >= 100) {
                         overallFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
                         overallFill.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.5)';
-                        
-                        // Add success animation
                         overallFill.style.animation = 'pulse-success 1.5s infinite';
                     }
                 }
@@ -664,8 +617,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 
                 const icon = stageElement.querySelector('.stage-icon');
                 icon.textContent = '⚙️';
-                
-                // Add pulsing animation to active stage
                 icon.style.animation = 'pulse 2s infinite';
             }
             
@@ -696,7 +647,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         // Handle browser back button to prevent stuck state
         window.addEventListener('pageshow', function(event) {
             if (event.persisted) {
-                // Page was loaded from cache, reset form visibility
                 const form = document.querySelector('form');
                 const progressDiv = document.getElementById('mappingProgress');
                 
