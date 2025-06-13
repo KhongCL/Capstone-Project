@@ -12,9 +12,18 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
+$userID = $_SESSION['user_id']; // Make sure userID is defined
+
 $comparison_results = null;
 $error_message = null;
 $success_message = null;
+
+// Get user's validated CSV uploads using MySQLi
+$stmt = $conn->prepare("SELECT UploadID, FileName, UploadDate FROM csv_upload WHERE UserID = ? AND IsValidated = 1 ORDER BY UploadDate DESC");
+$stmt->bind_param("i", $userID);
+$stmt->execute();
+$result = $stmt->get_result();
+$uploads = $result->fetch_all(MYSQLI_ASSOC);
 
 // Handle file upload and comparison
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isset($_FILES['csv_file2'])) {
@@ -53,6 +62,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         $error_message = "Error uploading files. Please try again.";
     }
 }
+
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['compare'])) {
+    $upload1 = $_POST['upload1'];
+    $upload2 = $_POST['upload2'];
+    $comparisonName = trim($_POST['comparisonName']);
+
+    // Insert into saved_comparison
+    $stmt = $conn->prepare("INSERT INTO saved_comparison (UserID, ComparisonName) VALUES (?, ?)");
+    $stmt->bind_param("is", $userID, $comparisonName);
+    $stmt->execute();
+    $comparisonID = $conn->insert_id;
+
+    // Insert the two files into comparison_file_link
+    $stmt = $conn->prepare("INSERT INTO comparison_file_link (ComparisonID, UploadID, FileOrder) VALUES (?, ?, ?)");
+    $stmt->bind_param("iii", $comparisonID, $upload1, 1);
+    $stmt->execute();
+    $stmt->bind_param("iii", $comparisonID, $upload2, 2);
+    $stmt->execute();
+
+    echo "<p>✅ Comparison saved successfully as '<strong>$comparisonName</strong>'!</p>";
+}
+
 
 
 function compareCSVFiles($file1_path, $file2_path) {
@@ -765,6 +797,7 @@ function calculateStats($values) {
                     </button>
                 </form>
             </div>
+
 
             <!-- Comparison Results -->
             <?php if ($comparison_results): ?>
