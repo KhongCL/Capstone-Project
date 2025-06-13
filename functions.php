@@ -721,6 +721,15 @@ function saveTransformedData($conn, $transformedData) {
             } else {
                 error_log("Skipping Total revenue - invalid value: " . ($row['total_revenue'] ?? 'NULL'));
             }
+            if (isset($row['unique_visitors']) && is_numeric($row['unique_visitors']) && $row['unique_visitors'] > 0) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Users', $row['unique_visitors'], $startDate);
+                error_log("Inserted Users data point: VALUE={$row['unique_visitors']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            }
+            
+            if (isset($row['page_views']) && is_numeric($row['page_views']) && $row['page_views'] > 0) {
+                $result = insertDataPoint($conn, $uploadId, $sourceTypeId, 'Page Views', $row['page_views'], $startDate);
+                error_log("Inserted Page Views data point: VALUE={$row['page_views']}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
+            }
         }
         
         // Commit transaction

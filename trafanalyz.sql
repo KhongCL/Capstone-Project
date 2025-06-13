@@ -690,3 +690,65 @@ INSERT IGNORE INTO column_mapping (FormatID, CSVColumnName, SystemFieldName) VAL
 (1, 'Conversions', 'key_events'),
 (1, 'Conversion Rate', 'session_key_event_rate'),
 (1, 'Revenue', 'total_revenue');
+
+-- ==============================================
+-- CLEANUP SCRIPT FOR COLUMN_MAPPING AND METRIC_TYPE
+-- ==============================================
+
+-- 1. BACKUP EXISTING DATA (Optional - run these first if you want backups)
+-- CREATE TABLE column_mapping_backup AS SELECT * FROM column_mapping;
+-- CREATE TABLE metric_type_backup AS SELECT * FROM metric_type;
+
+-- 2. CLEAN UP COLUMN_MAPPING TABLE
+-- Remove duplicate and incorrect entries
+DELETE FROM column_mapping WHERE MappingID IN (
+    1653, 1654, 1655, 1656, 1657, 1658, 1659, 1660, 1661, 1662,  -- Format 2 duplicates
+    1663, 1664, 1665, 1666,  -- Format 3 entries
+    1667,  -- Invalid entry with "helloguys" data type
+    1669, 1670, 1671, 1673, 1674  -- Format 5 entries with wrong SystemFieldName
+);
+
+-- 3. FIX THE REMAINING FORMAT 5 ENTRIES
+UPDATE column_mapping SET SystemFieldName = 'visits' WHERE MappingID = 1669;
+UPDATE column_mapping SET SystemFieldName = 'unique_visitors' WHERE MappingID = 1670;  
+UPDATE column_mapping SET SystemFieldName = 'page_views' WHERE MappingID = 1671;
+UPDATE column_mapping SET SystemFieldName = 'key_events' WHERE MappingID = 1673;
+UPDATE column_mapping SET SystemFieldName = 'total_revenue' WHERE MappingID = 1674;
+
+-- 4. CLEAN UP METRIC_TYPE TABLE
+-- Remove duplicate and unnecessary entries
+DELETE FROM metric_type WHERE MetricTypeID IN (
+    17, 18, 19, 20, 28, 29, 30, 31, 32, 34, 35, 36, 37, 38, 39, 40, 41, 42,  -- Duplicates
+    116, 117, 118, 212, 327, 377, 427, 477, 504, 555  -- Test/custom entries
+);
+
+-- 5. ADD MISSING ESSENTIAL METRIC TYPES
+INSERT IGNORE INTO metric_type (MetricName, Description) VALUES
+('traffic_source', 'Traffic Source'),
+('traffic_medium', 'Traffic Medium'),
+('visits', 'Number of visits/sessions'),
+('unique_visitors', 'Number of unique visitors'),
+('page_views', 'Total number of page views'),
+('bounce_rate', 'Bounce rate percentage'),
+('avg_session_duration', 'Average session duration'),
+('engaged_sessions', 'Number of engaged sessions'),
+('events_per_session', 'Average events per session'),
+('event_count', 'Total event count'),
+('key_events', 'Number of key events/conversions'),
+('session_key_event_rate', 'Session key event rate'),
+('total_revenue', 'Total revenue generated');
+
+-- 6. CLEAN UP CSV_FORMAT TABLE (Remove duplicates)
+DELETE FROM csv_format WHERE FormatID IN (2, 3, 4, 5);
+
+-- 7. RESET AUTO INCREMENT VALUES
+ALTER TABLE column_mapping AUTO_INCREMENT = 1675;
+ALTER TABLE metric_type AUTO_INCREMENT = 50;
+ALTER TABLE csv_format AUTO_INCREMENT = 2;
+
+-- 8. VERIFY THE CLEANUP
+SELECT 'Column Mapping Count' as TableInfo, COUNT(*) as RecordCount FROM column_mapping
+UNION ALL
+SELECT 'Metric Type Count', COUNT(*) FROM metric_type
+UNION ALL  
+SELECT 'CSV Format Count', COUNT(*) FROM csv_format;

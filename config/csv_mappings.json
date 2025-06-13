@@ -84,17 +84,33 @@
             "Users": "integer"
         }
     },
-    "test_format_11": {
+    "custom_analytics": {
         "format_detection": [
-            "Test Column",
-            "Date",
-            "Value"
+            "Channel",
+            "Visits",
+            "Users",
+            "Page Views",
+            "Avg Time on Site",
+            "Goal Completions",
+            "Revenue Generated"
         ],
         "column_mappings": {
-            "sadqe": "Engaged sessions"
+            "Channel": "traffic_source",
+            "Visits": "visits",
+            "Users": "unique_visitors",
+            "Page Views": "page_views",
+            "Avg Time on Site": "avg_session_duration",
+            "Goal Completions": "key_events",
+            "Revenue Generated": "total_revenue"
         },
         "data_types": {
-            "sadqe": "helloguys"
+            "Channel": "string",
+            "Visits": "integer",
+            "Users": "integer",
+            "Page Views": "integer",
+            "Avg Time on Site": "float",
+            "Goal Completions": "integer",
+            "Revenue Generated": "currency"
         }
     }
 }

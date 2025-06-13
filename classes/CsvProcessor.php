@@ -546,20 +546,20 @@ class CsvProcessor {
                 'channel group',
                 'session primary channel group',
                 'default channel group',
-                'channel'  // ← ADD THIS
+                'channel'
             ],
             'visits' => [
                 'user sessions', 
                 'sessions', 
                 'visits'
             ],
-            'unique_visitors' => [  // ← ADD THIS NEW FIELD
+            'unique_visitors' => [
                 'users',
                 'unique users',
                 'unique visitors',
                 'visitors'
             ],
-            'page_views' => [  // ← ADD THIS NEW FIELD
+            'page_views' => [
                 'page views',
                 'pageviews',
                 'pages',
