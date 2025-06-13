@@ -3,6 +3,40 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
+// Add debugging at the top
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+error_log("=== OVERVIEW PAGE DEBUG ===");
+error_log("Session latest_upload_id: " . ($_SESSION['latest_upload_id'] ?? 'NOT SET'));
+error_log("User ID: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+
+// Check what uploads exist for this user
+$userId = $_SESSION['user_id'] ?? 1;
+$debugQuery = "SELECT UploadID, FileName, UploadDate, ReportType FROM CSV_UPLOAD WHERE UserID = ? ORDER BY UploadID DESC LIMIT 5";
+$debugStmt = $conn->prepare($debugQuery);
+$debugStmt->bind_param("i", $userId);
+$debugStmt->execute();
+$debugResult = $debugStmt->get_result();
+error_log("Recent uploads for user $userId:");
+while ($debugRow = $debugResult->fetch_assoc()) {
+    error_log("  Upload ID: {$debugRow['UploadID']}, File: {$debugRow['FileName']}, Date: {$debugRow['UploadDate']}, Type: {$debugRow['ReportType']}");
+}
+
+// Check data points
+$dataQuery = "SELECT COUNT(*) as count FROM PROCESSED_DATA_POINT pdp 
+              JOIN CSV_UPLOAD cu ON pdp.UploadID = cu.UploadID 
+              WHERE cu.UserID = ?";
+$dataStmt = $conn->prepare($dataQuery);
+$dataStmt->bind_param("i", $userId);
+$dataStmt->execute();
+$dataResult = $dataStmt->get_result();
+if ($dataRow = $dataResult->fetch_assoc()) {
+    error_log("Total data points for user $userId: " . $dataRow['count']);
+}
+error_log("=== END OVERVIEW DEBUG ===");
+
 // Get uploadId from URL parameter or most recent upload
 $uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null;
 

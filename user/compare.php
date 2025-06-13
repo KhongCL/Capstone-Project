@@ -7,8 +7,14 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Database connection and functions - Updated to match your other files
+require_once '../auth/user_auth.php';
+require_once '../config.php';
+include '../functions.php';
+
 $comparison_results = null;
 $error_message = null;
+$success_message = null;
 
 // Handle file upload and comparison
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isset($_FILES['csv_file2'])) {
@@ -21,7 +27,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         
         if (in_array($file1['type'], $allowed_types) && in_array($file2['type'], $allowed_types)) {
             try {
+                // Process comparison first
                 $comparison_results = compareCSVFiles($file1['tmp_name'], $file2['tmp_name']);
+                
+                // Save both files to database
+                $upload_result1 = handleCsvUpload($conn, $file1);
+                $upload_result2 = handleCsvUpload($conn, $file2);
+                
+                if ($upload_result1['type'] === 'success' && $upload_result2['type'] === 'success') {
+                    $success_message = "Comparison completed successfully! Files uploaded to database.";
+                } else {
+                    // If one upload failed, show error but still show comparison results
+                    $error_message = "Comparison completed but file upload had issues: ";
+                    $error_message .= $upload_result1['type'] !== 'success' ? "File 1: " . $upload_result1['message'] : "";
+                    $error_message .= $upload_result2['type'] !== 'success' ? " File 2: " . $upload_result2['message'] : "";
+                }
+                
             } catch (Exception $e) {
                 $error_message = "Error comparing files: " . $e->getMessage();
             }
@@ -32,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         $error_message = "Error uploading files. Please try again.";
     }
 }
+
 
 function compareCSVFiles($file1_path, $file2_path) {
     $data1 = parseCSV($file1_path);
@@ -682,6 +704,12 @@ function calculateStats($values) {
         .table-container::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
+
+        .user-alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
     </style>
 </head>
 <body>
@@ -710,6 +738,12 @@ function calculateStats($values) {
                 <?php if ($error_message): ?>
                     <div class="user-alert user-alert-danger">
                         <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
+                    </div>
+                <?php endif; ?>
+                
+                <?php if ($success_message): ?>
+                    <div class="user-alert user-alert-success">
+                        <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success_message); ?>
                     </div>
                 <?php endif; ?>
 

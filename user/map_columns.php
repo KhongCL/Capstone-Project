@@ -6,6 +6,14 @@ include '../functions.php';
 
 session_start();
 
+// Enhanced debugging for form submission
+error_log("=== MAP_COLUMNS.PHP DEBUG ===");
+error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
+error_log("POST data: " . print_r($_POST, true));
+error_log("Session uploaded_csv: " . ($_SESSION['uploaded_csv'] ?? 'NOT SET'));
+error_log("Session mapping_result: " . (isset($_SESSION['mapping_result']) ? 'SET' : 'NOT SET'));
+error_log("Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+
 // If no uploaded file in session, redirect
 if (!isset($_SESSION['uploaded_csv'])) {
     header('Location: index.php');
@@ -70,37 +78,88 @@ foreach ($allSystemFields as $field => $label) {
 
 // Handle form submission for manual mapping
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
+    error_log("=== PROCESSING FORM SUBMISSION ===");
+    
     $columnMapping = [];
     foreach ($_POST['mapping'] as $sourceCol => $targetCol) {
         if (!empty($targetCol)) {
             $columnMapping[$sourceCol] = $targetCol;
+            error_log("Mapped: $sourceCol -> $targetCol");
         }
     }
+    
+    error_log("Total mappings: " . count($columnMapping));
     
     // Check if at least one column is mapped
     if (empty($columnMapping)) {
         $error_message = "Please map at least one column before proceeding.";
+        error_log("ERROR: No columns mapped");
     } else {
-        // Transform data using the mapping
-        $transformedData = $processor->transformData($_SESSION['uploaded_csv'], $columnMapping);
+        error_log("Starting data transformation...");
         
-        // Save transformed data to database
-        if (saveTransformedData($conn, $transformedData)) {
-            $_SESSION['message'] = 'Data successfully imported and mapped.';
-            unset($_SESSION['mapping_result']);
-            unset($_SESSION['uploaded_csv']);
-            header('Location: overview.php');
-            exit;
+        // For manual mapping cases, we need to determine the format
+        $format = null;
+        if (isset($mappingResult['format']) && $mappingResult['format']) {
+            // Format was detected but needed confirmation
+            $format = $mappingResult['format'];
+            error_log("Using detected format: $format");
         } else {
-            // Check if we have a specific message from saveTransformedData
-            if (isset($_SESSION['upload_message'])) {
-                $error_message = $_SESSION['upload_message']['message'];
-                unset($_SESSION['upload_message']);
+            // Manual mapping - try to detect format based on column mappings
+            $ga4RequiredFields = ['traffic_source', 'visits', 'engaged_sessions', 'bounce_rate'];
+            $mappedFields = array_values($columnMapping);
+            $ga4MatchCount = count(array_intersect($ga4RequiredFields, $mappedFields));
+            
+            if ($ga4MatchCount >= 3) {
+                $format = 'ga4_traffic_acquisition';
+                error_log("Detected GA4 format based on manual mappings (matches: $ga4MatchCount)");
             } else {
-                $error_message = 'Error saving data to database.';
+                error_log("Could not detect format automatically, using manual mapping");
             }
         }
+
+        error_log("Using format for transformation: " . ($format ?? 'null'));
+        
+        try {
+            $transformedData = $processor->transformData($_SESSION['uploaded_csv'], $columnMapping, $format);
+            error_log("Transformation completed. Rows: " . count($transformedData));
+            
+            if (empty($transformedData)) {
+                error_log("ERROR: No data returned from transformation");
+                $error_message = 'No valid data found after transformation. Please check your CSV file.';
+            } else {
+                error_log("Sample transformed data: " . json_encode($transformedData[0] ?? []));
+                
+                // Save transformed data to database
+                if (saveTransformedData($conn, $transformedData)) {
+                    error_log("Data successfully saved to database");
+                    $_SESSION['message'] = 'Data successfully imported and mapped.';
+                    
+                    // CRITICAL: Clear mapping session data
+                    unset($_SESSION['mapping_result']);
+                    unset($_SESSION['uploaded_csv']);
+                    unset($_SESSION['csv_metadata']);
+                    
+                    error_log("Redirecting to overview.php");
+                    header('Location: overview.php');
+                    exit;
+                } else {
+                    error_log("ERROR: Failed to save data to database");
+                    // Check if we have a specific message from saveTransformedData
+                    if (isset($_SESSION['upload_message'])) {
+                        $error_message = $_SESSION['upload_message']['message'];
+                        unset($_SESSION['upload_message']);
+                    } else {
+                        $error_message = 'Error saving data to database.';
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            error_log("ERROR: Exception during transformation: " . $e->getMessage());
+            $error_message = 'Error processing data: ' . $e->getMessage();
+        }
     }
+    
+    error_log("=== END FORM PROCESSING ===");
 }
 ?>
 
@@ -132,9 +191,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             <section class="user-mapping-section">
                 <h2>Map CSV Columns</h2>
                 <?php if (isset($error_message)): ?>
-                    <div class="user-alert user-alert-danger">
-                        <?php echo $error_message; ?>
-                    </div>
+                    <?php 
+                    // Check if this is a validation error message with multiple errors
+                    if (strpos($error_message, 'Data validation errors found:') !== false): 
+                        // Parse the validation errors for better display
+                        $errorText = str_replace('Data validation errors found: ', '', $error_message);
+                        $errorText = str_replace('. Please correct these issues and upload again.', '', $errorText);
+                        
+                        // Split by row pattern to separate individual errors
+                        $errors = preg_split('/(?=Row \d+)/', $errorText);
+                        $errors = array_filter(array_map('trim', $errors)); // Remove empty elements
+                    ?>
+                        <div class="user-alert user-alert-danger">
+                            <h4>📋 Data Validation Issues Found</h4>
+                            <p><strong>Found <?php echo count($errors); ?> validation errors in your CSV file:</strong></p>
+                            
+                            <div class="validation-errors-list">
+                                <?php foreach ($errors as $error): ?>
+                                    <?php if (!empty($error)): ?>
+                                        <div class="error-item">
+                                            <?php
+                                            // Split error message and suggestions
+                                            if (strpos($error, ' Suggestions: ') !== false) {
+                                                $parts = explode(' Suggestions: ', $error);
+                                                $errorMsg = $parts[0];
+                                                $suggestions = $parts[1];
+                                            } else {
+                                                $errorMsg = $error;
+                                                $suggestions = null;
+                                            }
+                                            ?>
+                                            
+                                            <div class="error-message">
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                <?php echo htmlspecialchars(trim($errorMsg)); ?>
+                                            </div>
+                                            
+                                            <?php if ($suggestions): ?>
+                                                <div class="error-suggestions">
+                                                    <i class="fas fa-lightbulb"></i>
+                                                    <strong>💡 Suggestions:</strong> <?php echo htmlspecialchars($suggestions); ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </div>
+                            
+                            <p class="error-footer"><strong>Please correct these issues in your CSV file and upload again.</strong></p>
+                        </div>
+                    <?php else: ?>
+                        <!-- Display other types of messages -->
+                        <div class="user-alert user-alert-danger">
+                            <?php echo htmlspecialchars($error_message); ?>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
                 
                 <?php if ($mappingResult['status'] === 'needs_mapping'): ?>
@@ -147,6 +258,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                         <p>Please confirm the column mappings below:</p>
                     </div>
                 <?php endif; ?>
+
+                <div class="upload-progress" id="mappingProgress" style="display: none;">
+                    <h3>Processing Your Data</h3>
+                    
+                    <div class="progress-container">
+                        <div class="progress-stage completed" id="mappingStage1">
+                            <div class="stage-icon">✅</div>
+                            <div class="stage-text">File Upload</div>
+                            <div class="stage-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 100%"></div>
+                                </div>
+                                <div class="progress-text">100%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-stage completed" id="mappingStage2">
+                            <div class="stage-icon">✅</div>
+                            <div class="stage-text">Column Mapping</div>
+                            <div class="stage-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 100%"></div>
+                                </div>
+                                <div class="progress-text">100%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-stage active" id="mappingStage3">
+                            <div class="stage-icon">⚙️</div>
+                            <div class="stage-text">Data Validation</div>
+                            <div class="stage-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 0%"></div>
+                                </div>
+                                <div class="progress-text">0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-stage" id="mappingStage4">
+                            <div class="stage-icon">💾</div>
+                            <div class="stage-text">Saving to Database</div>
+                            <div class="stage-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: 0%"></div>
+                                </div>
+                                <div class="progress-text">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="overall-progress">
+                        <div class="overall-bar">
+                            <div class="overall-fill" id="mappingOverallFill" style="width: 50%"></div>
+                        </div>
+                        <div class="overall-text">
+                            <span id="mappingOverallPercent">50%</span> Complete
+                            <div id="mappingCurrentTask">Validating mapped data...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Processing Status:</span>
+                            <span class="detail-value" id="processingStatus">In Progress</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Current Stage:</span>
+                            <span class="detail-value" id="currentStage">Data Validation</span>
+                        </div>
+                    </div>
+                </div>
                 
                 <form action="" method="post">
                     <table class="user-mapping-table">
@@ -175,8 +357,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                                         $mappingResult['mapping'][$column] : '';
                                     $confidence = 100;
                                 } else {
-                                    $targetField = isset($mappingResult['suggestions'][$column]['suggested_mapping']) ? 
-                                        $mappingResult['suggestions'][$column]['suggested_mapping'] : '';
+                                    $targetField = isset($mappingResult['suggestions'][$column]['mapping']) ? 
+                                        $mappingResult['suggestions'][$column]['mapping'] : '';
                                     $confidence = isset($mappingResult['suggestions'][$column]['confidence']) ? 
                                         $mappingResult['suggestions'][$column]['confidence'] : 0;
                                 }
@@ -288,6 +470,189 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             
             // Initial update
             updateAvailableOptions();
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            const progressDiv = document.getElementById('mappingProgress');
+            let formSubmitted = false;
+            
+            form.addEventListener('submit', function(e) {
+                if (formSubmitted) return; // Prevent multiple submissions
+                formSubmitted = true;
+                
+                // Show progress immediately when form is submitted
+                progressDiv.style.display = 'block';
+                form.style.display = 'none';
+                
+                // Start the animation sequence but DON'T prevent form submission
+                runProgressAnimation();
+                
+                // CRITICAL: Let the form submit normally after showing animation
+                // Don't prevent default here - let PHP handle the processing
+                setTimeout(() => {
+                    // The form will submit naturally since we didn't prevent default
+                    console.log('Form processing completed, PHP will handle redirect');
+                }, 1000);
+            });
+            
+            function runProgressAnimation() {
+                // Stage 3: Data Validation - Faster progression
+                setTimeout(() => {
+                    updateMappingProgress(3, 20, 'Initializing data validation...');
+                }, 200);
+                
+                setTimeout(() => {
+                    updateMappingProgress(3, 50, 'Checking data types...');
+                }, 400);
+                
+                setTimeout(() => {
+                    updateMappingProgress(3, 80, 'Validating data values...');
+                }, 600);
+                
+                setTimeout(() => {
+                    updateMappingProgress(3, 100, 'Data validation completed ✓');
+                    completeStage(3);
+                    updateProcessingStatus('Validation Complete', 'Database Operations');
+                }, 800);
+                
+                // Stage 4: Database Saving
+                setTimeout(() => {
+                    activateStage(4);
+                    updateMappingProgress(4, 25, 'Preparing database transaction...');
+                    updateProcessingStatus('In Progress', 'Database Saving');
+                }, 900);
+                
+                setTimeout(() => {
+                    updateMappingProgress(4, 50, 'Creating data records...');
+                }, 1000);
+                
+                setTimeout(() => {
+                    updateMappingProgress(4, 75, 'Inserting traffic data...');
+                }, 1100);
+                
+                setTimeout(() => {
+                    updateMappingProgress(4, 100, 'Data saved successfully! ✓');
+                    completeStage(4);
+                    updateOverallProgress(100, 'Import completed successfully! 🎉');
+                    updateProcessingStatus('Complete', 'Ready');
+                }, 1200);
+            }
+            
+            function updateMappingProgress(stage, percent, message) {
+                const stageElement = document.getElementById(`mappingStage${stage}`);
+                const progressFill = stageElement.querySelector('.progress-fill');
+                const progressText = stageElement.querySelector('.progress-text');
+                
+                if (progressFill) {
+                    progressFill.style.width = `${percent}%`;
+                    
+                    if (percent === 100) {
+                        progressFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+                        progressFill.style.boxShadow = '0 2px 8px rgba(40, 167, 69, 0.4)';
+                    }
+                }
+                if (progressText) {
+                    progressText.textContent = `${percent}%`;
+                }
+                
+                // Calculate overall progress
+                let overallPercent = 50; // Start from 50% (stages 1&2 completed)
+                if (stage === 3) {
+                    overallPercent += (percent * 0.25);
+                } else if (stage === 4) {
+                    overallPercent = 75 + (percent * 0.25);
+                }
+                
+                updateOverallProgress(overallPercent, message);
+            }
+            
+            function updateOverallProgress(percent, message) {
+                const overallFill = document.getElementById('mappingOverallFill');
+                const overallPercent = document.getElementById('mappingOverallPercent');
+                const currentTask = document.getElementById('mappingCurrentTask');
+                
+                if (overallFill) {
+                    overallFill.style.width = `${Math.round(percent)}%`;
+                    
+                    if (percent >= 100) {
+                        overallFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+                        overallFill.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.5)';
+                        overallFill.style.animation = 'pulse-success 1.5s infinite';
+                    }
+                }
+                if (overallPercent) {
+                    overallPercent.textContent = `${Math.round(percent)}%`;
+                    
+                    if (percent >= 100) {
+                        overallPercent.style.color = '#28a745';
+                        overallPercent.style.fontWeight = '700';
+                    }
+                }
+                if (currentTask) {
+                    currentTask.textContent = message;
+                }
+            }
+            
+            function updateProcessingStatus(status, stage) {
+                const processingStatus = document.getElementById('processingStatus');
+                const currentStage = document.getElementById('currentStage');
+                
+                if (processingStatus) {
+                    processingStatus.textContent = status;
+                    if (status === 'Complete') {
+                        processingStatus.style.color = '#28a745';
+                        processingStatus.style.fontWeight = '600';
+                    }
+                }
+                if (currentStage) {
+                    currentStage.textContent = stage;
+                }
+            }
+            
+            function activateStage(stageIndex) {
+                const stageElement = document.getElementById(`mappingStage${stageIndex}`);
+                stageElement.classList.remove('completed');
+                stageElement.classList.add('active');
+                
+                const icon = stageElement.querySelector('.stage-icon');
+                icon.textContent = '⚙️';
+                icon.style.animation = 'pulse 2s infinite';
+            }
+            
+            function completeStage(stageIndex) {
+                const stageElement = document.getElementById(`mappingStage${stageIndex}`);
+                stageElement.classList.remove('active');
+                stageElement.classList.add('completed');
+                
+                const icon = stageElement.querySelector('.stage-icon');
+                icon.textContent = '✅';
+                icon.style.animation = 'bounce 0.6s ease';
+                
+                const progressFill = stageElement.querySelector('.progress-fill');
+                const progressText = stageElement.querySelector('.progress-text');
+                
+                if (progressFill) {
+                    progressFill.style.width = '100%';
+                    progressFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+                }
+                if (progressText) {
+                    progressText.textContent = '100%';
+                    progressText.style.color = '#28a745';
+                    progressText.style.fontWeight = '600';
+                }
+            }
+        });
+
+        // Handle browser back button to prevent stuck state
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                const form = document.querySelector('form');
+                const progressDiv = document.getElementById('mappingProgress');
+                
+                if (form) form.style.display = 'block';
+                if (progressDiv) progressDiv.style.display = 'none';
+            }
         });
         </script>
 </body>

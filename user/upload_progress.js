@@ -381,10 +381,26 @@ class UploadProgressTracker {
         // Check for structure errors immediately after server response
         if (this.serverResponseReceived && this.hasStructureErrors()) {
             console.log("DEBUG: Structure errors detected immediately, showing error");
-            // If structure errors detected, skip simulation and show error immediately
             setTimeout(() => {
                 this.showErrorAtStructureStage();
             }, 300);
+            return;
+        }
+
+        // IMPORTANT: Check for manual mapping BEFORE starting any timeouts
+        if (this.serverResponseReceived && this.serverResponse && 
+            this.serverResponse.success && this.serverResponse.redirect && 
+            this.serverResponse.redirect.includes('map_columns.php')) {
+            console.log("DEBUG: Manual mapping detected at start - stopping simulation early");
+            
+            // Complete only the first two stages for manual mapping
+            this.completeStage(1); // Structure validation ✅ 100%
+            this.updateOverallProgress(50, 'Manual column mapping required...');
+            
+            // Don't start any more timeouts - redirect immediately
+            setTimeout(() => {
+                this.processServerResponse();
+            }, 800);
             return;
         }
 
@@ -393,12 +409,24 @@ class UploadProgressTracker {
             if (this.cancelled) return;
             
             console.log("DEBUG: Starting structure validation simulation");
-            console.log("DEBUG: Checking for structure errors before activating stage");
             
             // Double-check for structure errors before starting validation animation
             if (this.serverResponseReceived && this.hasStructureErrors()) {
                 console.log("DEBUG: Structure errors found at 300ms, stopping simulation");
                 this.showErrorAtStructureStage();
+                return;
+            }
+            
+            // ALSO CHECK FOR MANUAL MAPPING HERE
+            if (this.serverResponseReceived && this.serverResponse && 
+                this.serverResponse.success && this.serverResponse.redirect && 
+                this.serverResponse.redirect.includes('map_columns.php')) {
+                console.log("DEBUG: Manual mapping detected at 300ms - stopping simulation");
+                this.completeStage(1);
+                this.updateOverallProgress(50, 'Manual column mapping required...');
+                setTimeout(() => {
+                    this.processServerResponse();
+                }, 500);
                 return;
             }
             
@@ -412,10 +440,23 @@ class UploadProgressTracker {
             
             console.log("DEBUG: 600ms checkpoint - checking for structure errors");
             
-            // Check again before progressing
+            // Check for structure errors
             if (this.serverResponseReceived && this.hasStructureErrors()) {
                 console.log("DEBUG: Structure errors found at 600ms, stopping simulation");
                 this.showErrorAtStructureStage();
+                return;
+            }
+            
+            // ALSO CHECK FOR MANUAL MAPPING HERE
+            if (this.serverResponseReceived && this.serverResponse && 
+                this.serverResponse.success && this.serverResponse.redirect && 
+                this.serverResponse.redirect.includes('map_columns.php')) {
+                console.log("DEBUG: Manual mapping detected at 600ms - stopping simulation");
+                this.completeStage(1);
+                this.updateOverallProgress(50, 'Manual column mapping required...');
+                setTimeout(() => {
+                    this.processServerResponse();
+                }, 200);
                 return;
             }
             
@@ -429,10 +470,23 @@ class UploadProgressTracker {
             
             console.log("DEBUG: 900ms checkpoint - checking for structure errors");
             
-            // Check again before progressing
+            // Check for structure errors
             if (this.serverResponseReceived && this.hasStructureErrors()) {
                 console.log("DEBUG: Structure errors found at 900ms, stopping simulation");
                 this.showErrorAtStructureStage();
+                return;
+            }
+            
+            // ALSO CHECK FOR MANUAL MAPPING HERE
+            if (this.serverResponseReceived && this.serverResponse && 
+                this.serverResponse.success && this.serverResponse.redirect && 
+                this.serverResponse.redirect.includes('map_columns.php')) {
+                console.log("DEBUG: Manual mapping detected at 900ms - stopping simulation");
+                this.completeStage(1);
+                this.updateOverallProgress(50, 'Manual column mapping required...');
+                setTimeout(() => {
+                    this.processServerResponse();
+                }, 100);
                 return;
             }
             
@@ -452,52 +506,97 @@ class UploadProgressTracker {
             
             if (hasStructureErrors) {
                 console.log("DEBUG: Structure errors confirmed at 1200ms, showing error");
-                // Show error at structure validation stage with 0% progress
                 this.showErrorAtStructureStage();
                 return;
             } else {
                 console.log("DEBUG: No structure errors, completing structure validation");
-                // Complete structure validation successfully (green ✅ 100%)
                 this.completeStage(1);
                 this.updateOverallProgress(45, 'Structure validation completed');
+                
+                // CHECK FOR MANUAL MAPPING ONE FINAL TIME
+                if (this.serverResponseReceived && this.serverResponse && 
+                    this.serverResponse.success && this.serverResponse.redirect && 
+                    this.serverResponse.redirect.includes('map_columns.php')) {
+                    console.log("DEBUG: Manual mapping required, stopping simulation immediately");
+                    this.updateOverallProgress(50, 'Manual column mapping required...');
+                    // CRITICAL: Don't proceed to data processing - redirect now
+                    setTimeout(() => {
+                        this.processServerResponse();
+                    }, 100);
+                    return;
+                }
                 
                 // Check if we should proceed to data processing or show error
                 if (this.shouldStopSimulation(2)) {
                     console.log("DEBUG: Should stop simulation, showing data processing error");
-                    // Show error on data processing stage
                     setTimeout(() => {
                         this.showErrorAtDataProcessingStage();
                     }, 300);
                 } else {
                     console.log("DEBUG: Continuing with data processing");
-                    // Continue with data processing
                     this.activateStage(2);
                     this.updateOverallProgress(50, 'Processing data rows...');
                 }
             }
         }, 1200));
 
-        // Only continue if no data validation errors
+        // IMPORTANT: All subsequent timeouts need manual mapping checks too
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(2)) return;
+            
+            // CHECK FOR MANUAL MAPPING BEFORE PROCEEDING
+            if (this.serverResponseReceived && this.serverResponse && 
+                this.serverResponse.success && this.serverResponse.redirect && 
+                this.serverResponse.redirect.includes('map_columns.php')) {
+                console.log("DEBUG: Manual mapping detected at 1500ms - aborting data processing");
+                return;
+            }
+            
             this.updateStageProgress(2, 25);
             this.updateOverallProgress(55, 'Transforming data...');
         }, 1500));
 
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(2)) return;
+            
+            // CHECK FOR MANUAL MAPPING BEFORE PROCEEDING
+            if (this.serverResponseReceived && this.serverResponse && 
+                this.serverResponse.success && this.serverResponse.redirect && 
+                this.serverResponse.redirect.includes('map_columns.php')) {
+                console.log("DEBUG: Manual mapping detected at 1800ms - aborting data processing");
+                return;
+            }
+            
             this.updateStageProgress(2, 50);
             this.updateOverallProgress(65, 'Validating data integrity...');
         }, 1800));
 
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(2)) return;
+            
+            // CHECK FOR MANUAL MAPPING BEFORE PROCEEDING
+            if (this.serverResponseReceived && this.serverResponse && 
+                this.serverResponse.success && this.serverResponse.redirect && 
+                this.serverResponse.redirect.includes('map_columns.php')) {
+                console.log("DEBUG: Manual mapping detected at 2100ms - aborting data processing");
+                return;
+            }
+            
             this.updateStageProgress(2, 80);
             this.updateOverallProgress(75, 'Preparing for database...');
         }, 2100));
 
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(2)) return;
+            
+            // CHECK FOR MANUAL MAPPING BEFORE PROCEEDING
+            if (this.serverResponseReceived && this.serverResponse && 
+                this.serverResponse.success && this.serverResponse.redirect && 
+                this.serverResponse.redirect.includes('map_columns.php')) {
+                console.log("DEBUG: Manual mapping detected at 2400ms - aborting data processing");
+                return;
+            }
+            
             this.completeStage(2);
             this.updateOverallProgress(80, 'Data processing completed');
             
@@ -506,20 +605,45 @@ class UploadProgressTracker {
             this.updateOverallProgress(85, 'Saving to database...');
         }, 2400));
 
+        // Continue with remaining timeouts but with manual mapping checks...
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(3)) return;
+            
+            // CHECK FOR MANUAL MAPPING
+            if (this.serverResponseReceived && this.serverResponse && 
+                this.serverResponse.success && this.serverResponse.redirect && 
+                this.serverResponse.redirect.includes('map_columns.php')) {
+                return;
+            }
+            
             this.updateStageProgress(3, 40);
             this.updateOverallProgress(88, 'Creating data records...');
         }, 2700));
 
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(3)) return;
+            
+            // CHECK FOR MANUAL MAPPING
+            if (this.serverResponseReceived && this.serverResponse && 
+                this.serverResponse.success && this.serverResponse.redirect && 
+                this.serverResponse.redirect.includes('map_columns.php')) {
+                return;
+            }
+            
             this.updateStageProgress(3, 70);
             this.updateOverallProgress(92, 'Indexing data...');
         }, 3000));
 
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(3)) return;
+            
+            // CHECK FOR MANUAL MAPPING
+            if (this.serverResponseReceived && this.serverResponse && 
+                this.serverResponse.success && this.serverResponse.redirect && 
+                this.serverResponse.redirect.includes('map_columns.php')) {
+                return;
+            }
+            
             this.updateStageProgress(3, 90);
             this.updateOverallProgress(95, 'Finalizing...');
         }, 3300));
@@ -661,18 +785,29 @@ class UploadProgressTracker {
         const response = this.serverResponse;
 
         if (response.success) {
-            // Complete all stages and show success
-            this.completeStage(3);
-            this.updateOverallProgress(100, 'Upload completed successfully!');
-            
-            // Handle redirect if needed
-            if (response.redirect) {
+            // Check if this needs mapping (redirect to mapping page)
+            if (response.redirect && response.redirect.includes('map_columns.php')) {
+                // For manual mapping - show ONLY partial progress and redirect
+                this.completeStage(0); // File upload ✅ 100%
+                this.completeStage(1); // Structure validation ✅ 100%
+                
+                // Do NOT complete stages 2 and 3 - they should remain at 0%
+                // Just show that we're transitioning to manual mapping
+                this.updateOverallProgress(50, 'Redirecting to column mapping...');
+                
                 setTimeout(() => {
                     window.location.href = response.redirect;
-                }, 2000);
+                }, 1000); // Reduced delay for faster transition
             } else {
+                // Complete all stages for automatic processing
+                this.completeStage(0); // File upload ✅
+                this.completeStage(1); // Structure validation ✅  
+                this.completeStage(2); // Data processing ✅
+                this.completeStage(3); // Database save ✅
+                this.updateOverallProgress(100, 'Upload completed successfully!');
+                
                 setTimeout(() => {
-                    window.location.href = 'overview.php';
+                    window.location.href = response.redirect || 'overview.php';
                 }, 2000);
             }
         } else {
