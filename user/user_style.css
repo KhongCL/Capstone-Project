@@ -164,7 +164,7 @@
 
 /* Help and validation */
 .validation-help {
-    background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+    background-color: #f0fff4;
     border: 2px solid #68d391;
     border-radius: 12px;
     padding: 20px;
@@ -246,7 +246,7 @@
     padding: 20px;
     margin: 20px 0;
     margin-bottom: 15px;
-    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+    background-color: #fff5f5;
     box-shadow: 0 4px 12px rgba(252, 129, 129, 0.15);
 }
 
@@ -281,6 +281,12 @@
     background-color: #ffe6e6;
 }
 
+.validation-errors-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 15px 0;
+}
+
 .error-item {
     background: white;
     border: 1px solid #fed7d7;
@@ -307,6 +313,11 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
+.error-suggestions i {
+    color: #ecc94b;
+    margin-right: 6px;
+}
+
 .error-suggestions strong {
     color: #2b6cb0;
     display: inline-block;
@@ -316,7 +327,7 @@
 
 .error-item .error-suggestions {
     border-left: 3px solid #3182ce;
-    background: linear-gradient(135deg, #f0f8ff 0%, #e6f3ff 100%);
+    background-color: #f0f8ff;
 }
 
 .suggestions-text {
@@ -327,7 +338,6 @@
     margin-top: 4px;
 }
 
-
 .error-details {
     margin: 20px 0;
     padding: 20px;
@@ -337,11 +347,12 @@
 }
 
 .error-footer {
-    color: #c53030;
-    font-weight: 600;
-    text-align: center;
     margin-top: 15px;
-    font-size: 14px;
+    padding: 10px;
+    background: #fed7d7;
+    border-radius: 5px;
+    color: #c53030;
+    font-weight: 500;
 }
 
 /* Message styling */
@@ -379,83 +390,121 @@
 /* Progress Container Styles */
 .upload-progress {
     margin: 20px 0;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
+    padding: 25px;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    border: 2px solid #dee2e6;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.upload-progress h3 {
+    margin: 0 0 20px 0;
+    color: #495057;
+    text-align: center;
+    font-size: 1.25rem;
+    font-weight: 600;
 }
 
 .progress-container {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    margin-bottom: 20px;
+    margin-bottom: 25px;
+}
+
+#mappingProgress {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .progress-stage {
     display: flex;
     align-items: center;
     gap: 15px;
-    padding: 12px;
+    padding: 15px;
     background: white;
-    border-radius: 6px;
+    border-radius: 8px;
     border: 2px solid #e9ecef;
     opacity: 0.6;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .progress-stage.active {
     opacity: 1;
     border-color: #007bff;
-    background: #f0f8ff;
+    background-color: #f0f8ff;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.15);
 }
 
 .progress-stage.completed {
     opacity: 1;
     border-color: #28a745;
-    background: #f0fff4;
+    background-color: #f0fff4;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
 }
 
 .progress-stage.error {
     opacity: 1;
     border-color: #dc3545;
-    background: #fff5f5;
+    background-color: #fff5f5;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
 }
 
 .stage-icon {
-    font-size: 20px;
-    min-width: 30px;
+    font-size: 24px;
+    min-width: 35px;
     text-align: center;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .stage-text {
     font-weight: 600;
-    min-width: 150px;
+    min-width: 180px;
     color: #495057;
+    font-size: 1rem;
 }
 
 .stage-progress {
     flex: 1;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 15px;
 }
 
 .progress-bar {
     flex: 1;
-    height: 20px;
+    height: 24px;
     background: #e9ecef;
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
     position: relative;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #007bff, #0056b3);
-    border-radius: 10px;
-    transition: width 0.3s ease;
+    background-color: #007bff;
+    border-radius: 12px;
+    transition: width 0.5s ease;
     position: relative;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+.progress-stage.completed .progress-fill {
+    background-color: #28a745 !important;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.4) !important;
+}
+
+.progress-stage.error .progress-fill {
+    background-color: #dc3545;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
 }
 
 .progress-fill::after {
@@ -475,49 +524,59 @@
 }
 
 @keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+    0% { left: -100%; }
+    100% { left: 100%; }
 }
 
 .progress-text {
     font-weight: 600;
     color: #495057;
-    min-width: 40px;
-    text-align: right;
+    min-width: 50px;
+    text-align: center;
+    font-size: 0.9rem;
+    background: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
 }
 
 /* Overall Progress */
 .overall-progress {
-    margin-top: 20px;
-    padding: 15px;
+    position: relative;
+    margin-top: 25px;
+    padding: 20px;
     background: white;
-    border-radius: 6px;
-    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    border: 2px solid #dee2e6;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .overall-bar {
-    height: 30px;
+    height: 35px;
     background: #e9ecef;
-    border-radius: 15px;
+    border-radius: 18px;
     overflow: hidden;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .overall-fill {
     height: 100%;
-    background: linear-gradient(90deg, #28a745, #20c997);
-    border-radius: 15px;
-    transition: width 0.5s ease;
+    background-color: #28a745;
+    border-radius: 18px;
+    transition: width 0.8s ease;
     position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
 }
 
 .overall-fill::after {
     content: '';
     position: absolute;
     top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
     background: linear-gradient(
         90deg,
         transparent,
@@ -545,15 +604,27 @@
     color: #6c757d;
 }
 
+#mappingOverallPercent {
+    font-size: 1.25rem;
+    color: #28a745;
+    font-weight: 700;
+}
+
+#mappingCurrentTask {
+    font-style: italic;
+    color: #6c757d;
+    font-weight: 500;
+}
+
 /* Progress Details */
 .progress-details {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 15px;
-    margin-top: 15px;
-    padding: 15px;
+    margin-top: 20px;
+    padding: 20px;
     background: white;
-    border-radius: 6px;
+    border-radius: 8px;
     border: 1px solid #dee2e6;
 }
 
@@ -561,9 +632,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
+    padding: 12px 15px;
     background: #f8f9fa;
-    border-radius: 4px;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
 }
 
 .detail-label {
@@ -656,6 +728,12 @@
     100% { transform: scale(1); }
 }
 
+@keyframes pulse-success {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
 /* Map Columns Page Specific Styles */
 .user-confidence-bar {
     position: relative;
@@ -668,7 +746,7 @@
 
 .user-confidence-fill {
     height: 100%;
-    background: linear-gradient(90deg, #dc3545 0%, #ffc107 50%, #28a745 100%);
+    background-color: #ffc107;
     transition: width 0.3s ease;
 }
 
@@ -794,7 +872,7 @@
 }
 
 .user-metric-summary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background-color: #667eea;
     color: white;
     border-radius: 10px;
     padding: 20px;
@@ -870,8 +948,6 @@
     color: #0c5460;
     border: 1px solid #bee5eb;
 }
-
-/* ...existing code... */
 
 /* User Overview Page Styles */
 .user-overview-container {
@@ -1320,8 +1396,6 @@
         overflow-x: scroll;
     }
 }
-
-/* ...existing code... */
 
 /* User Traffic Sources Page Styles */
 .user-traffic-sources-container {

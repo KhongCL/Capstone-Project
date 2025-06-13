@@ -34,7 +34,7 @@ session_start();
     </header>
 
     <section id="contact-us">
-        <div class="container">
+        <div class="contact-container">
             <h2>Connect with the TrafAnalyz Team</h2>
             <div id="contact-block">
                 <div class="contact-box">
@@ -51,9 +51,7 @@ session_start();
                 </div>
                 <div class="contact-box">
                     <h3><i class="fas fa-map-marker-alt icon"></i> Project Base</h3>
-                    <p>Asia Pacific University of Technology & Innovation (APU)</p>
-                    <p>Jalan Teknologi 5, Taman Teknologi Malaysia,</p>
-                    <p>57000 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia</p>
+                    <p>Asia Pacific University of Technology & Innovation (APU)<br>Jalan Teknologi 5, Taman Teknologi Malaysia,<br>57000 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia</p>
                 </div>
             </div>
         </div>

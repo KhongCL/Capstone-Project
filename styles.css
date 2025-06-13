@@ -100,7 +100,7 @@ header {
 .logo-icon {
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    background-color: var(--primary-color);
     border-radius: 8px;
     margin-right: 12px;
     display: flex;
@@ -285,7 +285,7 @@ select:focus {
    LANDING PAGE STYLES (index.php)
    ===================================================== */
 .hero {
-    background: linear-gradient(135deg, #4a6baf 0%, #1e3c72 100%);
+    background-color: #1e3c72;
     color: white;
     padding: 5rem 2rem;
     text-align: center;
@@ -749,15 +749,19 @@ select:focus {
    ===================================================== */
 #contact-us {
     padding: 50px 20px;
-    background-color: #f9f9f9;
+    background-color: transparent !important;
     border-radius: 0;
     margin-bottom: 0;
+    box-shadow: none !important;
 }
 
-#contact-us .container {
+#contact-us .contact-container {
     max-width: 1200px;
     margin: 0 auto;
     text-align: center;
+    background: transparent;
+    box-shadow: none;
+    border: none;
 }
 
 #contact-us h2 {
@@ -837,8 +841,11 @@ select:focus {
 
 .content-section {
     max-width: 800px;
-    margin: 0 auto;
-    padding: 0 2rem;
+    margin: 32px auto;
+    padding: 2rem;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .content-section h1,
@@ -868,9 +875,12 @@ select:focus {
 .terms-content,
 .privacy-content {
     max-width: 800px;
-    margin: 0 auto;
+    margin: auto;
     padding: 2rem;
     line-height: 1.6;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .terms-content h1,
@@ -920,6 +930,24 @@ select:focus {
     border-left: 4px solid #4a6baf;
 }
 
+/* FAQ Content Styling */
+.faq-content {
+    max-width: 800px;
+    margin: auto;
+    padding: 2rem;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.faq-content h1 {
+    color: #1e3c72;
+    margin-bottom: 2rem;
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 600;
+}
+
 /* FAQ Specific Styles */
 .faq-item {
     margin-bottom: 2rem;
@@ -947,6 +975,75 @@ select:focus {
     padding: 1rem;
     background-color: white;
     border-top: 1px solid #e5e7eb;
+}
+
+.faq-answer p {
+    margin-bottom: 1rem;
+    color: #555;
+    line-height: 1.6;
+}
+
+/* =====================================================
+   ABOUT PAGE STYLES (about.php) - SIMPLIFIED
+   ===================================================== */
+.about-content {
+    max-width: 800px;
+    margin: auto;
+    padding: 2rem;
+    line-height: 1.6;
+    font-size: 1rem;
+    color: #333;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.about-content h1 {
+    color: #2c3e50;
+    margin-bottom: 2rem;
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 600;
+}
+
+.about-content p {
+    margin-bottom: 1.5rem;
+    text-align: left;
+    color: #555;
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+.about-content p strong {
+    color: #4c78d0;
+    font-weight: 600;
+}
+
+/* Remove all fancy effects */
+.about-content p:hover {
+    /* No hover effects */
+}
+
+.about-content::before {
+    /* Remove top accent bar */
+    display: none;
+}
+
+.about-content h1::after {
+    /* Remove underline decoration */
+    display: none;
+}
+
+.about-content p::first-letter {
+    /* Remove first letter styling */
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+}
+
+/* Remove animations */
+.about-content {
+    animation: none;
 }
 
 /* =====================================================
@@ -1090,6 +1187,30 @@ footer {
     .auth-form {
         padding: 40px;
     }
+    
+    .about-content {
+        max-width: 95%;
+        padding: 2rem 1.5rem;
+        margin: 1rem auto;
+    }
+    
+    .about-content h1 {
+        font-size: 2.2rem;
+    }
+    
+    .terms-content,
+    .privacy-content {
+        max-width: 95%;
+        padding: 2rem 1.5rem;
+        margin: 1rem auto;
+    }
+    
+    .content-section,
+    .faq-content {
+        max-width: 95%;
+        padding: 2rem 1.5rem;
+        margin: 1rem auto;
+    }
 }
 
 @media (max-width: 768px) {
@@ -1168,13 +1289,29 @@ footer {
     }
     
     /* Content Pages */
-    .content-section {
-        padding: 0 1rem;
+    .content-section,
+    .faq-content {
+        padding: 1.5rem 1rem;
     }
     
     .terms-content,
     .privacy-content {
-        padding: 1rem;
+        padding: 1.5rem 1rem;
+    }
+    
+    /* About Content */
+    .about-content {
+        padding: 1.5rem 1rem;
+        font-size: 0.95rem;
+    }
+    
+    .about-content h1 {
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .about-content p:first-of-type {
+        font-size: 1rem;
     }
 }
 
@@ -1247,6 +1384,63 @@ footer {
         padding: 6px 12px;
         font-size: 0.8rem;
     }
+    
+    /* About Content */
+    .about-content {
+        padding: 1rem;
+        margin: 0.5rem;
+        border-radius: 6px;
+    }
+    
+    .about-content h1 {
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .about-content p {
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    /* Terms and Privacy Content */
+    .terms-content,
+    .privacy-content {
+        padding: 1rem;
+        margin: 0.5rem;
+        border-radius: 6px;
+    }
+    
+    .terms-content h1,
+    .privacy-content h1 {
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .terms-content p,
+    .privacy-content p {
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
+    
+    /* Content Section and FAQ Content */
+    .content-section,
+    .faq-content {
+        padding: 1rem;
+        margin: 0.5rem;
+        border-radius: 6px;
+    }
+    
+    .content-section h1,
+    .faq-content h1 {
+        font-size: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .content-section p,
+    .faq-content p {
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+    }
 }
 
 /* =====================================================
@@ -1289,6 +1483,38 @@ footer {
 
 .w-100 { width: 100%; }
 .h-100 { height: 100%; }
+
+/* =====================================================
+   SIMPLE FOCUS STATES FOR ABOUT CONTENT
+   ===================================================== */
+.about-content p:focus-within {
+    outline: 2px solid #4c78d0;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* =====================================================
+   PRINT STYLES FOR ABOUT CONTENT
+   ===================================================== */
+@media print {
+    .about-content {
+        background: white !important;
+        box-shadow: none !important;
+        padding: 1rem !important;
+        max-width: 100% !important;
+        color: black !important;
+    }
+    
+    .about-content p {
+        color: black !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .about-content h1 {
+        color: black !important;
+        font-size: 1.8rem !important;
+    }
+}
 
 /* =====================================================
    PRINT STYLES

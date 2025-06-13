@@ -33,7 +33,7 @@ session_start();
     </header>
 
     <main class="content-page">
-        <div class="content-section">
+        <div class="faq-content">
             <h1>Frequently Asked Questions</h1>
             
             <div class="faq-item">
