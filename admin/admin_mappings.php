@@ -446,7 +446,7 @@ $predefinedSystemFields = [
     'traffic_source' => 'Traffic Source',
     'traffic_medium' => 'Traffic Medium',
     'visits' => 'Visits/Sessions',
-    'visitors' => 'Unique Visitors',
+    'unique_visitors' => 'Unique Visitors',
     'page_views' => 'Page Views',
     'bounce_rate' => 'Bounce Rate',
     'avg_session_duration' => 'Avg. Session Duration',
@@ -463,17 +463,23 @@ $usedSystemFields = [];
 foreach ($mappings as $format) {
     if (isset($format['column_mappings'])) {
         foreach ($format['column_mappings'] as $csvCol => $systemField) {
-            $usedSystemFields[$systemField] = ucwords(str_replace('_', ' ', $systemField));
+            // Only include fields that follow the proper naming convention
+            if (preg_match('/^[a-z0-9_]+$/', $systemField)) {
+                $usedSystemFields[$systemField] = ucwords(str_replace('_', ' ', $systemField));
+            }
         }
     }
 }
 
 // Get all system fields from the metric_type table (in case some were added directly to DB)
 $dbSystemFields = [];
-$result = $conn->query("SELECT DISTINCT MetricName FROM metric_type ORDER BY MetricName");
+$result = $conn->query("SELECT DISTINCT MetricName FROM metric_type WHERE MetricName REGEXP '^[a-z0-9_]+$' ORDER BY MetricName");
 if ($result) {
     while ($row = $result->fetch_assoc()) {
-        $dbSystemFields[$row['MetricName']] = ucwords(str_replace('_', ' ', $row['MetricName']));
+        // Only include fields that follow the proper naming convention
+        if (preg_match('/^[a-z0-9_]+$/', $row['MetricName'])) {
+            $dbSystemFields[$row['MetricName']] = ucwords(str_replace('_', ' ', $row['MetricName']));
+        }
     }
 }
 
@@ -481,6 +487,7 @@ if ($result) {
 $systemFields = array_merge($predefinedSystemFields, $usedSystemFields, $dbSystemFields);
 
 // Remove duplicates and sort
+$systemFields = array_unique($systemFields, SORT_REGULAR);
 ksort($systemFields);
 
 // Get available data types

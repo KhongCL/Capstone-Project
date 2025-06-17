@@ -41,6 +41,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
             $response['message'] = $uploadMessage['message'];
             $response['stage'] = 4; // Completed
             error_log("UPLOAD_HANDLER: Success response prepared");
+        } else if ($uploadMessage['type'] === 'warning') {
+            // NEW: Handle validation warnings
+            $response['success'] = true;
+            $response['message'] = $uploadMessage['message'];
+            $response['stage'] = 4; // Completed with warnings
+            $response['validation_errors'] = $uploadMessage['validation_errors'] ?? [];
+            error_log("UPLOAD_HANDLER: Warning response prepared with " . count($response['validation_errors']) . " validation errors");
         } else if ($uploadMessage['type'] === 'needs_mapping') {
             // Handle column mapping scenario
             $response['success'] = true;

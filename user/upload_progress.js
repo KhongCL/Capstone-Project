@@ -798,6 +798,33 @@ class UploadProgressTracker {
                 setTimeout(() => {
                     window.location.href = response.redirect;
                 }, 1000); // Reduced delay for faster transition
+            } else if (response.validation_errors && response.validation_errors.length > 0) {
+                // NEW: Handle validation warnings - show processing failed at stage 3
+                this.completeStage(0); // File upload ✅ 100%
+                this.completeStage(1); // Structure validation ✅ 100%
+                this.completeStage(2); // Data processing ✅ 100%
+                
+                // CRITICAL FIX: Show stage 3 (Database save) as FAILED, not completed
+                this.activateStage(3); // Activate stage 3 first
+                
+                setTimeout(() => {
+                    // Show stage 3 as failed with 0% progress
+                    const stageElement = document.getElementById(this.stages[3].id);
+                    stageElement.classList.remove('active');
+                    stageElement.classList.add('error');
+                    
+                    const icon = stageElement.querySelector('.stage-icon');
+                    icon.textContent = '⚠️'; // Use warning icon instead of ❌
+                    
+                    // Keep progress at 0% to show it failed
+                    this.updateStageProgress(3, 0);
+                    this.updateOverallProgress(75, 'Data saved with validation warnings');
+                    
+                    setTimeout(() => {
+                        this.hideProgressContainer();
+                        this.showValidationWarnings(response.message, response.validation_errors);
+                    }, 1500);
+                }, 500);
             } else {
                 // Complete all stages for automatic processing
                 this.completeStage(0); // File upload ✅
@@ -817,6 +844,58 @@ class UploadProgressTracker {
             } else {
                 this.showErrorAtDataProcessingStage();
             }
+        }
+    }
+
+    // Update the showValidationWarnings method to not complete stages
+    showValidationWarnings(message, errors) {
+        const uploadSection = document.querySelector('.upload-section');
+        
+        // Remove any existing error displays
+        const existingErrors = uploadSection.querySelectorAll('.error-container, .validation-help, .upload-result');
+        existingErrors.forEach(el => el.remove());
+        
+        // Create warning display
+        const warningContainer = document.createElement('div');
+        warningContainer.className = 'upload-result warning';
+        warningContainer.innerHTML = `
+            <div class="warning-header">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h3>Upload Completed with Warnings</h3>
+            </div>
+            <p class="warning-message">${message}</p>
+            
+            <details class="validation-details">
+                <summary>View validation errors (${errors.length})</summary>
+                <div class="validation-errors">
+                    ${errors.map(error => {
+                        const errorMessage = typeof error === 'object' ? error.message : error;
+                        const suggestions = typeof error === 'object' ? error.suggestions : '';
+                        
+                        return `
+                            <div class="error-item">
+                                <div class="error-message">${errorMessage}</div>
+                                ${suggestions ? `<div class="error-suggestions"><strong>💡 Suggestions:</strong> ${suggestions}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </details>
+            
+            <div class="result-actions">
+                <button onclick="window.location.href='overview.php'" class="btn btn-primary">
+                    <i class="fas fa-chart-bar"></i> View Imported Data
+                </button>
+                <button onclick="location.reload()" class="btn btn-secondary">
+                    <i class="fas fa-upload"></i> Upload Another File
+                </button>
+            </div>
+        `;
+        
+        // Insert after the form
+        const form = uploadSection.querySelector('form');
+        if (form && form.parentNode) {
+            form.parentNode.insertBefore(warningContainer, form.nextSibling);
         }
     }
 
