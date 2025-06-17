@@ -11,6 +11,7 @@ if (!isset($_SESSION['user_id'])) {
 require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
+require_once '../classes/CsvProcessor.php';
 
 $userID = $_SESSION['user_id']; // Make sure userID is defined
 
@@ -36,10 +37,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         
         if (in_array($file1['type'], $allowed_types) && in_array($file2['type'], $allowed_types)) {
             try {
-                // Process comparison first
+                // Initialize CSV processor for validation
+                $csvProcessor = new CsvProcessor();
+                
+                // Validate both files before processing
+                $validation1 = $csvProcessor->processFile($file1['tmp_name']);
+                $validation2 = $csvProcessor->processFile($file2['tmp_name']);
+                
+                // Check if both files passed validation
+                if ($validation1['status'] === 'error') {
+                    throw new Exception("File 1 validation failed: " . $validation1['message']);
+                }
+                
+                if ($validation2['status'] === 'error') {
+                    throw new Exception("File 2 validation failed: " . $validation2['message']);
+                }
+                
+                // If validation passed, proceed with comparison
                 $comparison_results = compareCSVFiles($file1['tmp_name'], $file2['tmp_name']);
                 
-                // Save both files to database
+                // Save both files to database only if validation and comparison succeeded
                 $upload_result1 = handleCsvUpload($conn, $file1);
                 $upload_result2 = handleCsvUpload($conn, $file2);
                 
@@ -53,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
                 }
                 
             } catch (Exception $e) {
-                $error_message = "Error comparing files: " . $e->getMessage();
+                $error_message = "Error processing files: " . $e->getMessage();
             }
         } else {
             $error_message = "Please upload valid CSV files only.";
@@ -866,6 +883,97 @@ function calculateStats($values) {
     button:hover {
         background-color: #005a87;
     }
+
+    .error-container {
+            margin-bottom: 20px;
+        }
+        
+        .error-summary {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #721c24;
+        }
+        
+        .error-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .error-item {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .error-message {
+            font-weight: 500;
+            color: #721c24;
+            margin-bottom: 8px;
+        }
+        
+        .error-suggestions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 3px;
+            padding: 8px;
+            font-size: 0.9em;
+        }
+        
+        .suggestions-text {
+            color: #856404;
+        }
+        
+        .validation-help {
+            background: #e2e3e5;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .validation-help h4 {
+            color: #495057;
+            margin-bottom: 12px;
+        }
+        
+        .fix-guide {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .fix-item {
+            background: white;
+            border-radius: 4px;
+            padding: 12px;
+            border: 1px solid #ced4da;
+        }
+        
+        .fix-item strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+        
+        .fix-item ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .fix-item li {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }
+        
+        .error-footer {
+            font-weight: bold;
+            color: #721c24;
+            margin-top: 15px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -892,15 +1000,94 @@ function calculateStats($values) {
                 <h3><i class="fas fa-upload"></i> Upload Analytics CSV Files</h3>
                 
                 <?php if ($error_message): ?>
-                    <div class="user-alert user-alert-danger">
-                        <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
-                    </div>
-                <?php endif; ?>
-                
-                <?php if ($success_message): ?>
-                    <div class="user-alert user-alert-success">
-                        <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success_message); ?>
-                    </div>
+                    <?php 
+                    // Check if this is a validation error with suggestions
+                    if (strpos($error_message, 'Data validation errors') !== false): ?>
+                        <?php
+                        // Enhanced error message parsing to extract suggestions
+                        $errorMessage = $error_message;
+                        $errorMessage = str_replace("Error processing files: ", "", $errorMessage);
+                        $errorMessage = str_replace("File 1 validation failed: ", "", $errorMessage);
+                        $errorMessage = str_replace("File 2 validation failed: ", "", $errorMessage);
+                        $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
+                        $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
+                        
+                        // Split by semicolons and parse suggestions
+                        $errorList = explode(';', $errorMessage);
+                        ?>
+                        
+                        <div class="user-alert user-alert-danger">
+                            <div class="error-container">
+                                <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> Found <?php echo count($errorList); ?> validation errors in your CSV file(s):</p>
+                                <ul class="error-list">
+                                    <?php foreach($errorList as $error): ?>
+                                        <?php $error = trim($error); ?>
+                                        <?php if(!empty($error)): ?>
+                                            <?php
+                                            // Parse error and suggestions
+                                            $parts = explode(' Suggestions: ', $error);
+                                            $mainError = $parts[0];
+                                            $suggestions = isset($parts[1]) ? $parts[1] : '';
+                                            ?>
+                                            <li class="error-item">
+                                                <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
+                                                <?php if (!empty($suggestions)): ?>
+                                                    <div class="error-suggestions">
+                                                        <strong>💡 Suggestions:</strong> 
+                                                        <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </li>
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                            
+                            <div class="validation-help">
+                                <h4>Quick Fix Guide:</h4>
+                                <div class="fix-guide">
+                                    <div class="fix-item">
+                                        <strong>🔢 Integer Issues:</strong>
+                                        <ul>
+                                            <li>Remove letters: "15a" → "15"</li>
+                                            <li>Evaluate expressions: "42+3" → "45"</li>
+                                            <li>Convert Unicode: "５０" → "50"</li>
+                                        </ul>
+                                    </div>
+                                    <div class="fix-item">
+                                        <strong>📊 Float/Decimal Issues:</strong>
+                                        <ul>
+                                            <li>Fix multiple decimals: "8..5" → "8.5"</li>
+                                            <li>Convert scientific: "1.2e3" → "1200"</li>
+                                            <li>Remove special chars: "~5.3" → "5.3"</li>
+                                        </ul>
+                                    </div>
+                                    <div class="fix-item">
+                                        <strong>⏰ Time Format Issues:</strong>
+                                        <ul>
+                                            <li>Use proper format: "10:65:30" → "11:05:30"</li>
+                                            <li>Convert units: "12m30s" → "12:30" or "750"</li>
+                                        </ul>
+                                    </div>
+                                    <div class="fix-item">
+                                        <strong>💰 Currency Issues:</strong>
+                                        <ul>
+                                            <li>Remove symbols: "$1,200" → "1200"</li>
+                                            <li>Remove commas: "500.abc" → "500"</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <p class="error-footer">Please correct these issues and upload again.</p>
+                        </div>
+                        
+                    <?php else: ?>
+                        <!-- Display other types of messages -->
+                        <div class="user-alert user-alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
 
                 <form method="post" enctype="multipart/form-data">
