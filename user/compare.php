@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['load_comparison'])) {
 
 // Get user's uploaded CSV files for dropdown
 $csvFiles = [];
-$stmt = $conn->prepare("SELECT UploadID, FileName FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC");
+$stmt = $conn->prepare("SELECT UploadID, FileName, UploadDate FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC");
 $stmt->bind_param("i", $userID);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -966,7 +966,7 @@ function calculateStats($values) {
                             <?php foreach ($csvFiles as $file): ?>
                                 <option value="<?php echo $file['UploadID']; ?>"
                                         <?php echo (isset($upload2) && $upload2 == $file['UploadID']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($file['FileName']); ?>
+                                    <?php echo htmlspecialchars($file['FileName']) . ' (' . date('M j, Y g:i A', strtotime($file['UploadDate'])) . ')'; ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
