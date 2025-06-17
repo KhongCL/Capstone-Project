@@ -26,57 +26,69 @@ $stmt->execute();
 $result = $stmt->get_result();
 $uploads = $result->fetch_all(MYSQLI_ASSOC);
 
-// Handle file upload and comparison
+// Handle file upload and comparison using the same validation as index.php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isset($_FILES['csv_file2'])) {
     $file1 = $_FILES['csv_file1'];
     $file2 = $_FILES['csv_file2'];
     
-    // Validate files
-    if ($file1['error'] === UPLOAD_ERR_OK && $file2['error'] === UPLOAD_ERR_OK) {
-        $allowed_types = ['text/csv', 'application/csv', 'text/plain'];
-        
-        if (in_array($file1['type'], $allowed_types) && in_array($file2['type'], $allowed_types)) {
-            try {
-                // Initialize CSV processor for validation
-                $csvProcessor = new CsvProcessor();
-                
-                // Validate both files before processing
-                $validation1 = $csvProcessor->processFile($file1['tmp_name']);
-                $validation2 = $csvProcessor->processFile($file2['tmp_name']);
-                
-                // Check if both files passed validation
-                if ($validation1['status'] === 'error') {
-                    throw new Exception("File 1 validation failed: " . $validation1['message']);
-                }
-                
-                if ($validation2['status'] === 'error') {
-                    throw new Exception("File 2 validation failed: " . $validation2['message']);
-                }
-                
-                // If validation passed, proceed with comparison
-                $comparison_results = compareCSVFiles($file1['tmp_name'], $file2['tmp_name']);
-                
-                // Save both files to database only if validation and comparison succeeded
-                $upload_result1 = handleCsvUpload($conn, $file1);
-                $upload_result2 = handleCsvUpload($conn, $file2);
-                
-                if ($upload_result1['type'] === 'success' && $upload_result2['type'] === 'success') {
-                    $success_message = "Comparison completed successfully! Files uploaded to database.";
-                } else {
-                    // If one upload failed, show error but still show comparison results
-                    $error_message = "Comparison completed but file upload had issues: ";
-                    $error_message .= $upload_result1['type'] !== 'success' ? "File 1: " . $upload_result1['message'] : "";
-                    $error_message .= $upload_result2['type'] !== 'success' ? " File 2: " . $upload_result2['message'] : "";
-                }
-                
-            } catch (Exception $e) {
-                $error_message = "Error processing files: " . $e->getMessage();
-            }
-        } else {
-            $error_message = "Please upload valid CSV files only.";
+    try {
+        // Create temporary copies of the files BEFORE calling handleCsvUpload
+        $uploadDir = __DIR__ . '/../uploads/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
         }
-    } else {
-        $error_message = "Error uploading files. Please try again.";
+        
+        $tempFile1 = $uploadDir . 'temp_compare_1_' . uniqid() . '.csv';
+        $tempFile2 = $uploadDir . 'temp_compare_2_' . uniqid() . '.csv';
+        
+        // Copy the uploaded files to preserve them for comparison
+        if (!copy($file1['tmp_name'], $tempFile1)) {
+            throw new Exception("Failed to create temporary copy of first file");
+        }
+        if (!copy($file2['tmp_name'], $tempFile2)) {
+            throw new Exception("Failed to create temporary copy of second file");
+        }
+        
+        // Now use the original files for handleCsvUpload validation
+        // handleCsvUpload will move the files internally, so we use the originals
+        $upload_result1 = handleCsvUpload($conn, $file1);
+        $upload_result2 = handleCsvUpload($conn, $file2);
+        
+        // Check if both uploads were successful
+        if ($upload_result1['type'] === 'success' && $upload_result2['type'] === 'success') {
+            // If both files passed validation and were uploaded, proceed with comparison
+            // Use our temporary copies for comparison since originals were moved by handleCsvUpload
+            $comparison_results = compareCSVFiles($tempFile1, $tempFile2);
+            $success_message = "Comparison completed successfully! Files uploaded to database.";
+        } else {
+            // If either file failed validation, show the detailed error
+            if ($upload_result1['type'] === 'error') {
+                $error_message = "File 1: " . $upload_result1['message'];
+            } elseif ($upload_result2['type'] === 'error') {
+                $error_message = "File 2: " . $upload_result2['message'];
+            } else {
+                $error_message = "File 1: " . $upload_result1['message'] . " | File 2: " . $upload_result2['message'];
+            }
+        }
+        
+        // Clean up temporary files
+        if (file_exists($tempFile1)) {
+            unlink($tempFile1);
+        }
+        if (file_exists($tempFile2)) {
+            unlink($tempFile2);
+        }
+        
+    } catch (Exception $e) {
+        // Clean up temporary files on error
+        if (isset($tempFile1) && file_exists($tempFile1)) {
+            unlink($tempFile1);
+        }
+        if (isset($tempFile2) && file_exists($tempFile2)) {
+            unlink($tempFile2);
+        }
+        
+        $error_message = "Error processing files: " . $e->getMessage();
     }
 }
 
@@ -1001,24 +1013,39 @@ function calculateStats($values) {
                 
                 <?php if ($error_message): ?>
                     <?php 
-                    // Check if this is a validation error with suggestions
-                    if (strpos($error_message, 'Data validation errors') !== false): ?>
+                    // Check if this is a validation error with suggestions OR a data validation error
+                    if (strpos($error_message, 'Data validation errors') !== false || 
+                        strpos($error_message, 'No valid data to save') !== false ||
+                        strpos($error_message, 'CSV parsing error') !== false ||
+                        strpos($error_message, 'trademark symbols') !== false ||
+                        strpos($error_message, 'scientific notation') !== false ||
+                        strpos($error_message, 'non-numeric characters') !== false ||
+                        strpos($error_message, 'Empty value') !== false ||
+                        strpos($error_message, 'whitespace') !== false): ?>
                         <?php
                         // Enhanced error message parsing to extract suggestions
                         $errorMessage = $error_message;
                         $errorMessage = str_replace("Error processing files: ", "", $errorMessage);
-                        $errorMessage = str_replace("File 1 validation failed: ", "", $errorMessage);
-                        $errorMessage = str_replace("File 2 validation failed: ", "", $errorMessage);
+                        $errorMessage = str_replace("File 1: ", "", $errorMessage);
+                        $errorMessage = str_replace("File 2: ", "", $errorMessage);
                         $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
                         $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
-                        
-                        // Split by semicolons and parse suggestions
-                        $errorList = explode(';', $errorMessage);
+
+                        // If it's "No valid data to save", create a more helpful error list
+                        if (strpos($error_message, 'No valid data to save') !== false) {
+                            $errorList = [
+                                "No valid data found in CSV file - All rows failed validation",
+                                "Common causes: Invalid file format, corrupt data, or unsupported CSV structure"
+                            ];
+                        } else {
+                            // Split by semicolons and parse suggestions
+                            $errorList = explode(';', $errorMessage);
+                        }
                         ?>
-                        
+
                         <div class="user-alert user-alert-danger">
                             <div class="error-container">
-                                <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> Found <?php echo count($errorList); ?> validation errors in your CSV file(s):</p>
+                                <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> Found validation errors in your CSV file(s):</p>
                                 <ul class="error-list">
                                     <?php foreach($errorList as $error): ?>
                                         <?php $error = trim($error); ?>
@@ -1042,10 +1069,19 @@ function calculateStats($values) {
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
-                            
+                                                
                             <div class="validation-help">
                                 <h4>Quick Fix Guide:</h4>
                                 <div class="fix-guide">
+                                    <div class="fix-item">
+                                        <strong>📁 File Format Issues:</strong>
+                                        <ul>
+                                            <li>Ensure CSV has proper headers</li>
+                                            <li>Check for GA4 metadata lines starting with #</li>
+                                            <li>Verify file isn't corrupted or empty</li>
+                                            <li>Make sure data rows aren't all empty</li>
+                                        </ul>
+                                    </div>
                                     <div class="fix-item">
                                         <strong>🔢 Integer Issues:</strong>
                                         <ul>
@@ -1076,18 +1112,33 @@ function calculateStats($values) {
                                             <li>Remove commas: "500.abc" → "500"</li>
                                         </ul>
                                     </div>
+                                    <div class="fix-item">
+                                        <strong>🚫 Common CSV Issues:</strong>
+                                        <ul>
+                                            <li>Remove trademark symbols: ™, ®, ©</li>
+                                            <li>Fix unquoted commas in data fields</li>
+                                            <li>Remove leading/trailing whitespace</li>
+                                            <li>Check for mixed data types in columns</li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
-                            
+                                                
                             <p class="error-footer">Please correct these issues and upload again.</p>
                         </div>
-                        
+                                                
                     <?php else: ?>
                         <!-- Display other types of messages -->
                         <div class="user-alert user-alert-danger">
                             <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
                         </div>
                     <?php endif; ?>
+                <?php endif; ?>
+                    
+                <?php if ($success_message): ?>
+                    <div class="user-alert user-alert-success">
+                        <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success_message); ?>
+                    </div>
                 <?php endif; ?>
 
                 <form method="post" enctype="multipart/form-data">
@@ -1140,7 +1191,7 @@ function calculateStats($values) {
                             <?php foreach ($csvFiles as $file): ?>
                                 <option value="<?php echo $file['UploadID']; ?>" 
                                         <?php echo (isset($upload1) && $upload1 == $file['UploadID']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($file['FileName']); ?>
+                                    <?php echo htmlspecialchars($file['FileName']) . ' (' . date('M j, Y g:i A', strtotime($file['UploadDate'])) . ')'; ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>

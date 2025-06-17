@@ -1,0 +1,12 @@
+# ----------------------------------------,,,,,,,,,
+# Traffic acquisition: Session primary channel group (Default channel group),,,,,,,,,
+# Account: MarketingPro,,,,,,,,,
+# Property: GlobalSite,,,,,,,,,
+# ----------------------------------------,,,,,,,,,
+#,,,,,,,,,
+# All Users,,,,,,,,,
+# Start date: 20250501,,,,,,,,,
+# End date: 20250531,,,,,,,,,
+Session primary channel group (Default channel group),Sessions,Engaged sessions,Engagement rate,Average engagement time per session,Events per session,Event count,Key events,Session key event rate,Total revenue
+Direct,11,7,0.1,2.6,4,80,40,1,50
+Unassigned,22,9,4,6,3.5,8,50,0,90
