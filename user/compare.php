@@ -64,25 +64,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
 }
 
 
+// Handle saving comparison
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['compare'])) {
     $upload1 = $_POST['upload1'];
     $upload2 = $_POST['upload2'];
     $comparisonName = trim($_POST['comparisonName']);
 
-    // Insert into saved_comparison
-    $stmt = $conn->prepare("INSERT INTO saved_comparison (UserID, ComparisonName) VALUES (?, ?)");
-    $stmt->bind_param("is", $userID, $comparisonName);
-    $stmt->execute();
-    $comparisonID = $conn->insert_id;
+    if (!empty($comparisonName)) {
+        // Insert into saved_comparison
+        $stmt = $conn->prepare("INSERT INTO saved_comparison (UserID, ComparisonName) VALUES (?, ?)");
+        $stmt->bind_param("is", $userID, $comparisonName);
+        $stmt->execute();
+        $comparisonID = $conn->insert_id;
 
-    // Insert the two files into comparison_file_link
-    $stmt = $conn->prepare("INSERT INTO comparison_file_link (ComparisonID, UploadID, FileOrder) VALUES (?, ?, ?)");
-    $stmt->bind_param("iii", $comparisonID, $upload1, 1);
-    $stmt->execute();
-    $stmt->bind_param("iii", $comparisonID, $upload2, 2);
-    $stmt->execute();
+        // Insert the first file into comparison_file_link
+        $stmt1 = $conn->prepare("INSERT INTO comparison_file_link (ComparisonID, UploadID, FileOrder) VALUES (?, ?, ?)");
+        $fileOrder1 = 1;
+        $stmt1->bind_param("iii", $comparisonID, $upload1, $fileOrder1);
+        $stmt1->execute();
+        
+        // Insert the second file into comparison_file_link
+        $stmt2 = $conn->prepare("INSERT INTO comparison_file_link (ComparisonID, UploadID, FileOrder) VALUES (?, ?, ?)");
+        $fileOrder2 = 2;
+        $stmt2->bind_param("iii", $comparisonID, $upload2, $fileOrder2);
+        $stmt2->execute();
 
-    echo "<p>✅ Comparison saved successfully as '<strong>$comparisonName</strong>'!</p>";
+        echo "<p>✅ Comparison saved successfully as '<strong>$comparisonName</strong>'!</p>";
+    }
+}
+
+// Handle loading saved comparison
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['load_comparison'])) {
+    $selectedComparisonID = $_POST['saved_comparison_id'];
+    
+    // Get the files for this comparison - using actual column names
+    $stmt = $conn->prepare("
+        SELECT cfl.UploadID, cfl.FileOrder, cu.FileName, cu.UploadID as FileUploadID
+        FROM comparison_file_link cfl 
+        JOIN csv_upload cu ON cfl.UploadID = cu.UploadID 
+        WHERE cfl.ComparisonID = ? 
+        ORDER BY cfl.FileOrder
+    ");
+    $stmt->bind_param("i", $selectedComparisonID);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $files = [];
+    while ($row = $result->fetch_assoc()) {
+        $files[$row['FileOrder']] = $row;
+    }
+    
+    if (count($files) >= 2) {
+        // Set the selected files for comparison
+        $upload1 = $files[1]['UploadID'];
+        $upload2 = $files[2]['UploadID'];
+        
+        // Construct the file paths using the FileName
+        // Files are typically stored in the uploads directory with their original filename
+        $file1_path = '../uploads/' . $files[1]['FileName'];
+        $file2_path = '../uploads/' . $files[2]['FileName'];
+        
+        // Check if files exist
+        if (file_exists($file1_path) && file_exists($file2_path)) {
+            try {
+                // Perform the comparison using the saved files
+                $comparison_results = compareCSVFiles($file1_path, $file2_path);
+                $success_message = "Loaded comparison: " . htmlspecialchars($files[1]['FileName']) . " vs " . htmlspecialchars($files[2]['FileName']);
+            } catch (Exception $e) {
+                $error_message = "Error loading comparison: " . $e->getMessage();
+            }
+        } else {
+            $error_message = "One or both files for this saved comparison no longer exist in the uploads directory.";
+            // Debug info to help troubleshoot
+            $error_message .= "<br>Looking for: " . htmlspecialchars($file1_path) . " and " . htmlspecialchars($file2_path);
+        }
+    } else {
+        $error_message = "Invalid comparison data found.";
+    }
+}
+
+
+// Get user's uploaded CSV files for dropdown
+$csvFiles = [];
+$stmt = $conn->prepare("SELECT UploadID, FileName FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC");
+$stmt->bind_param("i", $userID);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) {
+    $csvFiles[] = $row;
+}
+
+// Get user's saved comparisons for dropdown
+$savedComparisons = [];
+$stmt = $conn->prepare("SELECT ComparisonID, ComparisonName FROM saved_comparison WHERE UserID = ? ORDER BY ComparisonName");
+$stmt->bind_param("i", $userID);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) {
+    $savedComparisons[] = $row;
 }
 
 
@@ -742,6 +821,51 @@ function calculateStats($values) {
             color: #155724;
             border: 1px solid #c3e6cb;
         }
+
+        .comparison-container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+    }
+
+    .saved-comparisons {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+
+    .file-selection, .comparison-name {
+        margin-bottom: 15px;
+    }
+
+    .file-selection label, .comparison-name label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+
+    .file-selection select, .comparison-name input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    button {
+        background-color: #007cba;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background-color: #005a87;
+    }
     </style>
 </head>
 <body>
@@ -795,6 +919,65 @@ function calculateStats($values) {
                     <button type="submit" class="user-btn-submit">
                         <i class="fas fa-chart-bar"></i> Compare Analytics Data
                     </button>
+                </form>
+            </div>
+
+            <div class="comparison-container">
+                <h3>Compare CSV Files</h3>
+                            
+                <!-- Load Saved Comparison -->
+                <?php if (!empty($savedComparisons)): ?>
+                <div class="saved-comparisons">
+                    <h4>Load Saved Comparison</h4>
+                    <form method="POST">
+                        <select name="saved_comparison_id" required>
+                            <option value="">Select a saved comparison...</option>
+                            <?php foreach ($savedComparisons as $comparison): ?>
+                                <option value="<?php echo $comparison['ComparisonID']; ?>">
+                                    <?php echo htmlspecialchars($comparison['ComparisonName']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" name="load_comparison">Load Comparison</button>
+                    </form>
+                    <hr>
+                </div>
+                <?php endif; ?>
+                            
+                <!-- New Comparison -->
+                <form method="POST">
+                    <div class="file-selection">
+                        <label>First CSV File:</label>
+                        <select name="upload1" required>
+                            <option value="">Select first file...</option>
+                            <?php foreach ($csvFiles as $file): ?>
+                                <option value="<?php echo $file['UploadID']; ?>" 
+                                        <?php echo (isset($upload1) && $upload1 == $file['UploadID']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($file['FileName']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                            
+                    <div class="file-selection">
+                        <label>Second CSV File:</label>
+                        <select name="upload2" required>
+                            <option value="">Select second file...</option>
+                            <?php foreach ($csvFiles as $file): ?>
+                                <option value="<?php echo $file['UploadID']; ?>"
+                                        <?php echo (isset($upload2) && $upload2 == $file['UploadID']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($file['FileName']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                            
+                    <div class="comparison-name">
+                        <label>Comparison Name (optional):</label>
+                        <input type="text" name="comparisonName" placeholder="Enter a name to save this comparison">
+                    </div>
+                            
+                    <button type="submit" name="compare">Compare Files</button>
                 </form>
             </div>
 
