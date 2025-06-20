@@ -13,7 +13,6 @@ if (!isset($_SESSION['user_id'])) {
 $title = "Dashboard Home";
 $active_page = "home";
 
-
 // Handle CSV upload (fallback for non-JavaScript)
 $uploadMessage = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
@@ -138,6 +137,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset
                     <?php endif; ?>
                 <?php endif; ?>
                 
+                <!-- ADD THIS NEW SECTION FOR VALIDATION WARNINGS -->
+                <?php if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])): ?>
+                    <?php 
+                    // Get validation errors and immediately clear them to prevent persistence
+                    $validationErrors = $_SESSION['validation_errors'];
+                    unset($_SESSION['validation_errors']); // Clear immediately after reading
+                    ?>
+                    
+                    <div class="message warning">
+                        <h4>📋 Upload Completed with Warnings</h4>
+                        <p>Data imported with <?php echo count($validationErrors); ?> validation warnings. Some rows had errors but valid data was processed.</p>
+                        
+                        <details>
+                            <summary>View validation errors (<?php echo count($validationErrors); ?>)</summary>
+                            <div class="validation-errors-list">
+                                <?php foreach ($validationErrors as $error): ?>
+                                    <div class="error-item">
+                                        <?php echo htmlspecialchars($error); ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </details>
+                        
+                        <p><a href="overview.php" class="btn">View Imported Data</a></p>
+                    </div>
+                <?php endif; ?>
+                <!-- END NEW SECTION -->
+                
                 <p>Upload your CSV file containing web traffic data. 
                     <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
                 </p>
@@ -260,7 +287,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset
             </section>
         </main>
 
-				<?php include 'user_footer.php'; ?>
+        <?php include 'user_footer.php'; ?>
 
         <div style="text-align: center; margin: 20px 0;">
             <form action="../logout.php" method="post" style="display: inline;">

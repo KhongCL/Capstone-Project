@@ -644,6 +644,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             }
         });
 
+        function updateConfidence(selectElement) {
+            const csvColumn = selectElement.closest('tr').cells[0].textContent.trim();
+            const selectedField = selectElement.value;
+            const confidenceCell = selectElement.closest('tr').cells[3];
+            
+            if (!selectedField) {
+                confidenceCell.innerHTML = '';
+                return;
+            }
+            
+            // Calculate confidence based on string similarity
+            let confidence = calculateStringSimilarity(csvColumn, selectedField);
+            
+            // Update confidence bar
+            confidenceCell.innerHTML = `
+                <div class="user-confidence-bar">
+                    <div class="user-confidence-fill" style="width: ${confidence}%"></div>
+                    <span>${Math.round(confidence)}%</span>
+                </div>
+            `;
+        }
+
+        // Add event listeners to all select elements
+        fieldSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                updateAvailableOptions();
+                updateConfidence(this); // Add this line
+            });
+        });
+
         // Handle browser back button to prevent stuck state
         window.addEventListener('pageshow', function(event) {
             if (event.persisted) {

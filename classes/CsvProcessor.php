@@ -597,8 +597,8 @@ class CsvProcessor {
                 'time',
                 'average engagement time per session',
                 'engagement time',
-                'avg time on site',  // ← ADD THIS
-                'time on site'       // ← ADD THIS
+                'avg time on site',
+                'time on site'
             ],
             'events_per_session' => [
                 'events per session', 
@@ -613,7 +613,7 @@ class CsvProcessor {
                 'conversions', 
                 'key events', 
                 'goals',
-                'goal completions'  // ← ADD THIS
+                'goal completions'
             ],
             'session_key_event_rate' => [
                 'conversion rate', 
@@ -625,7 +625,7 @@ class CsvProcessor {
                 'revenue', 
                 'total revenue', 
                 'income',
-                'revenue generated'  // ← ADD THIS
+                'revenue generated'
             ]
         ];
         
@@ -691,476 +691,486 @@ class CsvProcessor {
     /**
      * Transform data based on mapping
      */
-public function transformData($filePath, $columnMapping, $format = null) {
-    error_log("=== TRANSFORM DATA DEBUG START ===");
-    error_log("File path: $filePath");
-    error_log("Column mapping: " . json_encode($columnMapping));
-    error_log("Format: " . ($format ?? 'null'));
-    
-    $this->columnMap = $columnMapping;
-
-    if ($format && isset($this->mappings[$format]['column_mappings'])) {
-        // Get all mappings from configuration
-        foreach ($this->mappings[$format]['column_mappings'] as $sourceCol => $targetCol) {
-            $this->columnMap[$sourceCol] = $targetCol;
-            error_log("Added mapping from config: $sourceCol -> $targetCol");
-        }
-    }
-
-    if ($format) {
-        $this->detectedFormat = $format;
-    } else {
-        // For manual mapping without detected format, try to infer it
-        $mappedFields = array_values($columnMapping);
-        $ga4RequiredFields = ['traffic_source', 'visits', 'engaged_sessions', 'bounce_rate'];
-        $ga4MatchCount = count(array_intersect($ga4RequiredFields, $mappedFields));
+    public function transformData($filePath, $columnMapping, $format = null) {
+        error_log("=== TRANSFORM DATA DEBUG START ===");
+        error_log("File path: $filePath");
+        error_log("Column mapping: " . json_encode($columnMapping));
+        error_log("Format: " . ($format ?? 'null'));
         
-        if ($ga4MatchCount >= 3) {
-            $this->detectedFormat = 'ga4_traffic_acquisition';
-            error_log("Inferred GA4 format from manual mappings");
+        // CRITICAL FIX: Clear any existing validation errors at the start of new upload
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
         }
-    }
+        
+        // Clear previous validation errors and messages
+        unset($_SESSION['validation_errors']);
+        unset($_SESSION['upload_message']);
+        error_log("Cleared previous validation errors and upload messages");
+        
+        $this->columnMap = $columnMapping;
 
-    // IMPORTANT: Use mappings from JSON config, not database
-    if ($this->detectedFormat && isset($this->mappings[$this->detectedFormat]['column_mappings'])) {
-        // Merge JSON mappings with provided mapping
-        $configMappings = $this->mappings[$this->detectedFormat]['column_mappings'];
-        foreach ($configMappings as $csvCol => $systemField) {
-            if (!isset($this->columnMap[$csvCol])) {
-                $this->columnMap[$csvCol] = $systemField;
-                error_log("Added mapping from config: $csvCol -> $systemField");
+        if ($format && isset($this->mappings[$format]['column_mappings'])) {
+            // Get all mappings from configuration
+            foreach ($this->mappings[$format]['column_mappings'] as $sourceCol => $targetCol) {
+                $this->columnMap[$sourceCol] = $targetCol;
+                error_log("Added mapping from config: $sourceCol -> $targetCol");
             }
         }
-    }
 
-    error_log("Final column mapping: " . json_encode($this->columnMap));
-    error_log("Detected format: " . ($this->detectedFormat ?? "No format detected"));
-    error_log("Transform data using format: " . ($this->detectedFormat ?? "No format detected"));
-    error_log("Full column mapping: " . json_encode($this->columnMap));
-    
-    $transformed = [];
-    $validationErrors = [];
-    $validRows = 0;
-    $rowNumber = 0;
-    $totalRowsProcessed = 0;
-    $skippedRows = 0;
-    
-    error_log("Starting transformData with mapping: " . json_encode($columnMapping));
-    
-    // Check if this is a GA4 format file
-    $isGa4Format = false;
-    $handle = fopen($filePath, "r");
-    if ($handle) {
-        $firstLine = fgets($handle);
-        if (substr(trim($firstLine), 0, 1) === '#') {
-            $isGa4Format = true;
-            error_log("Detected GA4 format file");
+        if ($format) {
+            $this->detectedFormat = $format;
+        } else {
+            // For manual mapping without detected format, try to infer it
+            $mappedFields = array_values($columnMapping);
+            $ga4RequiredFields = ['traffic_source', 'visits', 'engaged_sessions', 'bounce_rate'];
+            $ga4MatchCount = count(array_intersect($ga4RequiredFields, $mappedFields));
+            
+            if ($ga4MatchCount >= 3) {
+                $this->detectedFormat = 'ga4_traffic_acquisition';
+                error_log("Inferred GA4 format from manual mappings");
+            }
         }
-        fclose($handle);
-    }
-    
-    if ($isGa4Format) {
-        error_log("Processing as GA4 format");
-        // For GA4 format, we need to skip metadata lines
-        if (($handle = fopen($filePath, "r")) !== FALSE) {
-            $headerLine = null;
-            
-            // Skip metadata lines and find the header
-            while (($line = fgets($handle)) !== FALSE) {
-                $line = trim($line);
-                if (empty($line)) continue;
-                
-                if (substr($line, 0, 1) === '#') {
-                    continue;
-                }
-                
-                // First non-metadata line is the header
-                if ($headerLine === null) {
-                    $headerLine = $line;
-                    break;
+
+        // IMPORTANT: Use mappings from JSON config, not database
+        if ($this->detectedFormat && isset($this->mappings[$this->detectedFormat]['column_mappings'])) {
+            // Merge JSON mappings with provided mapping
+            $configMappings = $this->mappings[$this->detectedFormat]['column_mappings'];
+            foreach ($configMappings as $csvCol => $systemField) {
+                if (!isset($this->columnMap[$csvCol])) {
+                    $this->columnMap[$csvCol] = $systemField;
+                    error_log("Added mapping from config: $csvCol -> $systemField");
                 }
             }
-            
-            // Process header
-            $header = str_getcsv($headerLine);
-            $headerIndexes = array_flip($header);
-            error_log("Found header: " . json_encode($header));
-            error_log("Header indexes: " . json_encode($headerIndexes));
+        }
 
-            $rowNumber = 1;
-            
-            // Process data rows
-            while (($line = fgets($handle)) !== FALSE) {
-                $line = trim($line);
-                if (empty($line)) continue;
-                
-                $data = str_getcsv($line);
-                $totalRowsProcessed++;
-                $rowNumber++;
-                
-                error_log("=== PROCESSING ROW $rowNumber ===");
-                error_log("Raw data: " . json_encode($data));
-                
-                if (count($data) < count($header)) {
-                    error_log("Row $rowNumber has fewer columns than the header. Skipping.");
-                    $validationErrors[] = "Row $rowNumber has fewer columns than expected - please check for missing values";
-                    $skippedRows++;
-                    continue; // Skip invalid rows
-                }
-                
-                $row = [];
-                $rowHasError = false;
-                $sourceName = 'Unknown';
-
-                // Try to find traffic source using multiple possible column names
-                $trafficSourceColumns = [
-                    'Session primary channel group (Default channel group)',
-                    'Traffic Source',
-                    'Source',
-                    'Channel'
-                ];
-
-                foreach ($trafficSourceColumns as $colName) {
-                    if (isset($headerIndexes[$colName]) && isset($data[$headerIndexes[$colName]])) {
-                        $sourceName = trim($data[$headerIndexes[$colName]]);
-                        break;
-                    }
-                }
-                if (empty($sourceName) || $sourceName === 'Unknown') {
-                    $sourceName = "Row $rowNumber";
-                }
-
-                error_log("Processing row for source: '$sourceName'");
-
-                $headerLookup = [];
-                foreach ($header as $index => $headerCol) {
-                    $headerLookup[strtolower(trim($headerCol))] = $index;
-                }
-                
-                // Map each column according to our defined structure
-                foreach ($this->columnMap as $sourceCol => $targetCol) {
-                    error_log("Processing column '$sourceCol' -> '$targetCol'");
-                    
-                    // Store original column name for reporting
-                    $originalSourceCol = $sourceCol;
-                    
-                    // First try exact index lookup
-                    $columnIndex = $headerIndexes[$sourceCol] ?? null;
-                    
-                    // If not found, try case-insensitive lookup among header columns
-                    if ($columnIndex === null) {
-                        foreach (array_keys($headerIndexes) as $headerCol) {
-                            if (strcasecmp(trim($sourceCol), trim($headerCol)) === 0) {
-                                $columnIndex = $headerIndexes[$headerCol];
-                                $sourceCol = $headerCol; // Use the exact column name from the header
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // If still not found, try lowercase lookup
-                    if ($columnIndex === null && isset($headerLookup[strtolower(trim($sourceCol))])) {
-                        $columnIndex = $headerLookup[strtolower(trim($sourceCol))];
-                        
-                        // Find the actual header column that matched
-                        foreach ($header as $index => $headerCol) {
-                            if ($index === $columnIndex) {
-                                $sourceCol = $headerCol; // Use the exact column name from the header
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // Skip columns that don't exist in this CSV
-                    if ($columnIndex === null) {
-                        error_log("Skipping column '$originalSourceCol' - not found in CSV headers");
-                        continue;
-                    }
-                    
-                    // Get the value from the data row
-                    if (!isset($data[$columnIndex])) {
-                        error_log("Skipping column '$sourceCol' - no data in this row");
-                        continue; // Skip if the cell doesn't exist
-                    }
-                    
-                    $value = trim($data[$columnIndex]);
-                    error_log("Processing column '$sourceCol' -> '$targetCol' with value: '$value'");
-                    
-                    try {
-                        // Validate the value based on data type
-                        $formattedValue = $this->formatValue($value, $sourceCol);
-                        $row[$targetCol] = $formattedValue;
-                        error_log("✅ Validation successful for '$sourceCol': '$value' -> '$formattedValue'");
-                    } catch (Exception $e) {
-                        // Log the error with more context about which row had the issue
-                        error_log("❌ Data validation error at row $rowNumber, column '$sourceCol': " . $e->getMessage());
-                        
-                        // Create a more user-friendly error message with row information
-                        $errorWithRow = "Row " . $rowNumber . " ($sourceName): " . $e->getMessage();
-                        $validationErrors[] = $errorWithRow;
-                        
-                        $rowHasError = true;
-                    }
-                }
-                
-                error_log("Row $rowNumber validation complete:");
-                error_log("- Has error: " . ($rowHasError ? 'YES' : 'NO'));
-                error_log("- Row data populated: " . json_encode($row));
-                error_log("- Has traffic_source: " . (isset($row['traffic_source']) ? 'YES' : 'NO'));
-                
-                // Only add row if it has no validation errors
-                if (!$rowHasError && !empty($row)) {
-                    $transformed[] = $row;
-                    $validRows++;
-                    error_log("✅ Row $rowNumber ACCEPTED and added to transformed data");
-                    error_log("✅ Current transformed array size: " . count($transformed));
-                } else {
-                    $skippedRows++;
-                    error_log("❌ Row $rowNumber REJECTED");
-                }
-                
-                error_log("=== END ROW $rowNumber PROCESSING ===");
+        error_log("Final column mapping: " . json_encode($this->columnMap));
+        error_log("Detected format: " . ($this->detectedFormat ?? "No format detected"));
+        error_log("Transform data using format: " . ($this->detectedFormat ?? "No format detected"));
+        error_log("Full column mapping: " . json_encode($this->columnMap));
+        
+        $transformed = [];
+        $validationErrors = [];
+        $validRows = 0;
+        $rowNumber = 0;
+        $totalRowsProcessed = 0;
+        $skippedRows = 0;
+        
+        error_log("Starting transformData with mapping: " . json_encode($columnMapping));
+        
+        // Check if this is a GA4 format file
+        $isGa4Format = false;
+        $handle = fopen($filePath, "r");
+        if ($handle) {
+            $firstLine = fgets($handle);
+            if (substr(trim($firstLine), 0, 1) === '#') {
+                $isGa4Format = true;
+                error_log("Detected GA4 format file");
             }
-
             fclose($handle);
         }
-    } else {
-        error_log("Processing as standard CSV format");
-        // Standard CSV format processing
-        if (($handle = fopen($filePath, "r")) !== FALSE) {
-            $header = fgetcsv($handle);
-            $headerIndexes = array_flip($header);
-            $rowNumber = 0;
-            
-            while (($data = fgetcsv($handle)) !== FALSE) {
-                $totalRowsProcessed++;
-                $rowNumber++;
-                $row = [];
-                $criticalErrors = 0; // Count only critical errors
-                $nonCriticalErrors = 0; // Count non-critical errors
+        
+        if ($isGa4Format) {
+            error_log("Processing as GA4 format");
+            // For GA4 format, we need to skip metadata lines
+            if (($handle = fopen($filePath, "r")) !== FALSE) {
+                $headerLine = null;
                 
-                error_log("=== PROCESSING STANDARD CSV ROW $rowNumber ===");
-                error_log("Raw data: " . json_encode($data));
-                
-                // Try to find traffic source name for error reporting
-                $sourceName = 'Unknown';
-                $sourceColumns = ['Session primary channel group (Default channel group)', 'Channel', 'Source', 'Traffic Source'];
-                foreach ($sourceColumns as $colName) {
-                    if (isset($headerIndexes[$colName]) && isset($data[$headerIndexes[$colName]])) {
-                        $sourceName = $data[$headerIndexes[$colName]];
+                // Skip metadata lines and find the header
+                while (($line = fgets($handle)) !== FALSE) {
+                    $line = trim($line);
+                    if (empty($line)) continue;
+                    
+                    if (substr($line, 0, 1) === '#') {
+                        continue;
+                    }
+                    
+                    // First non-metadata line is the header
+                    if ($headerLine === null) {
+                        $headerLine = $line;
                         break;
                     }
                 }
-                if ($sourceName === 'Unknown') {
-                    $sourceName = "Row $rowNumber";
-                }
                 
-                error_log("Processing row for source: '$sourceName'");
+                // Process header
+                $header = str_getcsv($headerLine);
+                $headerIndexes = array_flip($header);
+                error_log("Found header: " . json_encode($header));
+                error_log("Header indexes: " . json_encode($headerIndexes));
+
+                $rowNumber = 1;
                 
-                // Define critical fields that MUST be valid for a row to be useful
-                $criticalFields = ['traffic_source', 'visits']; // Only these are truly essential
-                
-                foreach ($this->columnMap as $sourceCol => $targetCol) {
-                    // Skip columns that don't exist in this CSV
-                    if (!isset($headerIndexes[$sourceCol])) {
-                        error_log("Column '$sourceCol' not found in CSV headers, skipping");
-                        continue;
+                // Process data rows
+                while (($line = fgets($handle)) !== FALSE) {
+                    $line = trim($line);
+                    if (empty($line)) continue;
+                    
+                    $data = str_getcsv($line);
+                    $totalRowsProcessed++;
+                    $rowNumber++;
+                    
+                    error_log("=== PROCESSING ROW $rowNumber ===");
+                    error_log("Raw data: " . json_encode($data));
+                    
+                    if (count($data) < count($header)) {
+                        error_log("Row $rowNumber has fewer columns than the header. Skipping.");
+                        $validationErrors[] = "Row $rowNumber has fewer columns than expected - please check for missing values";
+                        $skippedRows++;
+                        continue; // Skip invalid rows
                     }
                     
-                    // Get the value from the data row
-                    $colIndex = $headerIndexes[$sourceCol];
-                    if (!isset($data[$colIndex])) {
-                        error_log("No data for column '$sourceCol' in row $rowNumber, skipping");
-                        continue;
+                    $row = [];
+                    $rowHasError = false;
+                    $sourceName = 'Unknown';
+
+                    // Try to find traffic source using multiple possible column names
+                    $trafficSourceColumns = [
+                        'Session primary channel group (Default channel group)',
+                        'Traffic Source',
+                        'Source',
+                        'Channel'
+                    ];
+
+                    foreach ($trafficSourceColumns as $colName) {
+                        if (isset($headerIndexes[$colName]) && isset($data[$headerIndexes[$colName]])) {
+                            $sourceName = trim($data[$headerIndexes[$colName]]);
+                            break;
+                        }
+                    }
+                    if (empty($sourceName) || $sourceName === 'Unknown') {
+                        $sourceName = "Row $rowNumber";
+                    }
+
+                    error_log("Processing row for source: '$sourceName'");
+
+                    $headerLookup = [];
+                    foreach ($header as $index => $headerCol) {
+                        $headerLookup[strtolower(trim($headerCol))] = $index;
                     }
                     
-                    $value = $data[$colIndex];
-                    error_log("Processing column '$sourceCol' -> '$targetCol' with value: '$value'");
-                    
-                    try {
-                        // Validate the value based on data type
-                        $row[$targetCol] = $this->formatValue($value, $sourceCol);
-                        error_log("✅ Validation successful for CSV column '$sourceCol' with value '$value'");
-                    } catch (Exception $e) {
-                        // Log the error with more context
-                        error_log("❌ Data validation error: " . $e->getMessage() . " (Row: " . json_encode($data) . ")");
+                    // Map each column according to our defined structure
+                    foreach ($this->columnMap as $sourceCol => $targetCol) {
+                        error_log("Processing column '$sourceCol' -> '$targetCol'");
                         
-                        // Create a more user-friendly error message with row information
-                        $errorWithRow = "Row " . $rowNumber . " ($sourceName): " . $e->getMessage();
-                        $validationErrors[] = $errorWithRow;
+                        // Store original column name for reporting
+                        $originalSourceCol = $sourceCol;
                         
-                        // Determine if this is a critical field error
-                        $isCritical = in_array($targetCol, $criticalFields);
+                        // First try exact index lookup
+                        $columnIndex = $headerIndexes[$sourceCol] ?? null;
                         
-                        if ($isCritical) {
-                            $criticalErrors++;
-                            error_log("🔴 CRITICAL ERROR in row $rowNumber for field '$targetCol': " . $e->getMessage());
-                        } else {
-                            $nonCriticalErrors++;
-                            error_log("🟡 NON-CRITICAL ERROR in row $rowNumber for field '$targetCol': " . $e->getMessage());
+                        // If not found, try case-insensitive lookup among header columns
+                        if ($columnIndex === null) {
+                            foreach (array_keys($headerIndexes) as $headerCol) {
+                                if (strcasecmp(trim($sourceCol), trim($headerCol)) === 0) {
+                                    $columnIndex = $headerIndexes[$headerCol];
+                                    $sourceCol = $headerCol; // Use the exact column name from the header
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // If still not found, try lowercase lookup
+                        if ($columnIndex === null && isset($headerLookup[strtolower(trim($sourceCol))])) {
+                            $columnIndex = $headerLookup[strtolower(trim($sourceCol))];
                             
-                            // For non-critical fields, use safe default values
-                            switch ($targetCol) {
-                                case 'bounce_rate':
-                                case 'session_key_event_rate':
-                                    $row[$targetCol] = 0.0;
+                            // Find the actual header column that matched
+                            foreach ($header as $index => $headerCol) {
+                                if ($index === $columnIndex) {
+                                    $sourceCol = $headerCol; // Use the exact column name from the header
                                     break;
-                                case 'avg_session_duration':
-                                    $row[$targetCol] = 0.0;
-                                    break;
-                                case 'events_per_session':
-                                    $row[$targetCol] = 0.0;
-                                    break;
-                                case 'event_count':
-                                case 'key_events':
-                                    $row[$targetCol] = 0;
-                                    break;
-                                case 'total_revenue':
-                                    $row[$targetCol] = 0.0;
-                                    break;
-                                case 'engaged_sessions':
-                                    $row[$targetCol] = 0;
-                                    break;
-                                default:
-                                    // Skip unknown fields
-                                    error_log("Skipping unknown non-critical field '$targetCol'");
-                                    break;
+                                }
+                            }
+                        }
+                        
+                        // Skip columns that don't exist in this CSV
+                        if ($columnIndex === null) {
+                            error_log("Skipping column '$originalSourceCol' - not found in CSV headers");
+                            continue;
+                        }
+                        
+                        // Get the value from the data row
+                        if (!isset($data[$columnIndex])) {
+                            error_log("Skipping column '$sourceCol' - no data in this row");
+                            continue; // Skip if the cell doesn't exist
+                        }
+                        
+                        $value = trim($data[$columnIndex]);
+                        error_log("Processing column '$sourceCol' -> '$targetCol' with value: '$value'");
+                        
+                        try {
+                            // Validate the value based on data type
+                            $formattedValue = $this->formatValue($value, $sourceCol);
+                            $row[$targetCol] = $formattedValue;
+                            error_log("✅ Validation successful for '$sourceCol': '$value' -> '$formattedValue'");
+                        } catch (Exception $e) {
+                            // Log the error with more context about which row had the issue
+                            error_log("❌ Data validation error at row $rowNumber, column '$sourceCol': " . $e->getMessage());
+                            
+                            // Create a more user-friendly error message with row information
+                            $errorWithRow = "Row " . $rowNumber . " ($sourceName): " . $e->getMessage();
+                            $validationErrors[] = $errorWithRow;
+                            
+                            $rowHasError = true;
+                        }
+                    }
+                    
+                    error_log("Row $rowNumber validation complete:");
+                    error_log("- Has error: " . ($rowHasError ? 'YES' : 'NO'));
+                    error_log("- Row data populated: " . json_encode($row));
+                    error_log("- Has traffic_source: " . (isset($row['traffic_source']) ? 'YES' : 'NO'));
+                    
+                    // Only add row if it has no validation errors
+                    if (!$rowHasError && !empty($row)) {
+                        $transformed[] = $row;
+                        $validRows++;
+                        error_log("✅ Row $rowNumber ACCEPTED and added to transformed data");
+                        error_log("✅ Current transformed array size: " . count($transformed));
+                    } else {
+                        $skippedRows++;
+                        error_log("❌ Row $rowNumber REJECTED");
+                    }
+                    
+                    error_log("=== END ROW $rowNumber PROCESSING ===");
+                }
+
+                fclose($handle);
+            }
+        } else {
+            error_log("Processing as standard CSV format");
+            // Standard CSV format processing
+            if (($handle = fopen($filePath, "r")) !== FALSE) {
+                $header = fgetcsv($handle);
+                $headerIndexes = array_flip($header);
+                $rowNumber = 0;
+                
+                while (($data = fgetcsv($handle)) !== FALSE) {
+                    $totalRowsProcessed++;
+                    $rowNumber++;
+                    $row = [];
+                    $criticalErrors = 0; // Count only critical errors
+                    $nonCriticalErrors = 0; // Count non-critical errors
+                    
+                    error_log("=== PROCESSING STANDARD CSV ROW $rowNumber ===");
+                    error_log("Raw data: " . json_encode($data));
+                    
+                    // Try to find traffic source name for error reporting
+                    $sourceName = 'Unknown';
+                    $sourceColumns = ['Session primary channel group (Default channel group)', 'Channel', 'Source', 'Traffic Source'];
+                    foreach ($sourceColumns as $colName) {
+                        if (isset($headerIndexes[$colName]) && isset($data[$headerIndexes[$colName]])) {
+                            $sourceName = $data[$headerIndexes[$colName]];
+                            break;
+                        }
+                    }
+                    if ($sourceName === 'Unknown') {
+                        $sourceName = "Row $rowNumber";
+                    }
+                    
+                    error_log("Processing row for source: '$sourceName'");
+                    
+                    // Define critical fields that MUST be valid for a row to be useful
+                    $criticalFields = ['traffic_source', 'visits']; // Only these are truly essential
+                    
+                    foreach ($this->columnMap as $sourceCol => $targetCol) {
+                        // Skip columns that don't exist in this CSV
+                        if (!isset($headerIndexes[$sourceCol])) {
+                            error_log("Column '$sourceCol' not found in CSV headers, skipping");
+                            continue;
+                        }
+                        
+                        // Get the value from the data row
+                        $colIndex = $headerIndexes[$sourceCol];
+                        if (!isset($data[$colIndex])) {
+                            error_log("No data for column '$sourceCol' in row $rowNumber, skipping");
+                            continue;
+                        }
+                        
+                        $value = $data[$colIndex];
+                        error_log("Processing column '$sourceCol' -> '$targetCol' with value: '$value'");
+                        
+                        try {
+                            // Validate the value based on data type
+                            $row[$targetCol] = $this->formatValue($value, $sourceCol);
+                            error_log("✅ Validation successful for CSV column '$sourceCol' with value '$value'");
+                        } catch (Exception $e) {
+                            // Log the error with more context
+                            error_log("❌ Data validation error: " . $e->getMessage() . " (Row: " . json_encode($data) . ")");
+                            
+                            // Create a more user-friendly error message with row information
+                            $errorWithRow = "Row " . $rowNumber . " ($sourceName): " . $e->getMessage();
+                            $validationErrors[] = $errorWithRow;
+                            
+                            // Determine if this is a critical field error
+                            $isCritical = in_array($targetCol, $criticalFields);
+                            
+                            if ($isCritical) {
+                                $criticalErrors++;
+                                error_log("🔴 CRITICAL ERROR in row $rowNumber for field '$targetCol': " . $e->getMessage());
+                            } else {
+                                $nonCriticalErrors++;
+                                error_log("🟡 NON-CRITICAL ERROR in row $rowNumber for field '$targetCol': " . $e->getMessage());
+                                
+                                // For non-critical fields, use safe default values
+                                switch ($targetCol) {
+                                    case 'bounce_rate':
+                                    case 'session_key_event_rate':
+                                        $row[$targetCol] = 0.0;
+                                        break;
+                                    case 'avg_session_duration':
+                                        $row[$targetCol] = 0.0;
+                                        break;
+                                    case 'events_per_session':
+                                        $row[$targetCol] = 0.0;
+                                        break;
+                                    case 'event_count':
+                                    case 'key_events':
+                                        $row[$targetCol] = 0;
+                                        break;
+                                    case 'total_revenue':
+                                        $row[$targetCol] = 0.0;
+                                        break;
+                                    case 'engaged_sessions':
+                                        $row[$targetCol] = 0;
+                                        break;
+                                    default:
+                                        // Skip unknown fields
+                                        error_log("Skipping unknown non-critical field '$targetCol'");
+                                        break;
+                                }
                             }
                         }
                     }
+                    
+                    error_log("Row $rowNumber decision point:");
+                    error_log("- Critical errors: $criticalErrors");
+                    error_log("- Non-critical errors: $nonCriticalErrors");
+                    error_log("- Row data populated: " . json_encode($row));
+                    error_log("- Has traffic_source: " . (isset($row['traffic_source']) ? 'YES' : 'NO'));
+                    error_log("- Traffic source value: " . ($row['traffic_source'] ?? 'NOT SET'));
+                    
+                    // CRITICAL FIX: Only reject rows with critical field errors
+                    if ($criticalErrors === 0 && !empty($row) && isset($row['traffic_source'])) {
+                        $transformed[] = $row;
+                        $validRows++;
+                        error_log("✅ Row $rowNumber added to transformed data (Critical errors: $criticalErrors, Non-critical: $nonCriticalErrors)");
+                        error_log("✅ Current transformed array size: " . count($transformed));
+                    } else {
+                        $skippedRows++;
+                        error_log("❌ Row $rowNumber REJECTED (Critical errors: $criticalErrors, missing required fields)");
+                    }
+                    
+                    error_log("=== END STANDARD CSV ROW $rowNumber PROCESSING ===");
                 }
-                
-                error_log("Row $rowNumber decision point:");
-                error_log("- Critical errors: $criticalErrors");
-                error_log("- Non-critical errors: $nonCriticalErrors");
-                error_log("- Row data populated: " . json_encode($row));
-                error_log("- Has traffic_source: " . (isset($row['traffic_source']) ? 'YES' : 'NO'));
-                error_log("- Traffic source value: " . ($row['traffic_source'] ?? 'NOT SET'));
-                
-                // CRITICAL FIX: Only reject rows with critical field errors
-                if ($criticalErrors === 0 && !empty($row) && isset($row['traffic_source'])) {
-                    $transformed[] = $row;
-                    $validRows++;
-                    error_log("✅ Row $rowNumber added to transformed data (Critical errors: $criticalErrors, Non-critical: $nonCriticalErrors)");
-                    error_log("✅ Current transformed array size: " . count($transformed));
-                } else {
-                    $skippedRows++;
-                    error_log("❌ Row $rowNumber REJECTED (Critical errors: $criticalErrors, missing required fields)");
-                }
-                
-                error_log("=== END STANDARD CSV ROW $rowNumber PROCESSING ===");
+                fclose($handle);
             }
-            fclose($handle);
-        }
-    }
-    
-    error_log("=== FINAL TRANSFORMATION RESULTS ===");
-    error_log("Total rows processed: $totalRowsProcessed");
-    error_log("Valid rows: $validRows");
-    error_log("Skipped rows: $skippedRows");
-    error_log("Validation errors count: " . count($validationErrors));
-    error_log("Final transformed array size: " . count($transformed));
-    error_log("Transformed " . count($transformed) . " rows");
-    
-    if (!empty($transformed)) {
-        error_log("Sample transformed data (first row): " . json_encode($transformed[0]));
-    }
-    
-    // Better empty file detection
-    if (count($transformed) === 0) {
-        error_log("No data rows found after transformation");
-
-        if (!empty($validationErrors)) {
-            if (session_status() == PHP_SESSION_NONE) {
-                session_start();
-            }
-            $_SESSION['validation_errors'] = $validationErrors;
-            error_log("Stored " . count($validationErrors) . " validation errors in session");
         }
         
-        // Create a detailed error message depending on whether there were validation errors
-        if (!empty($validationErrors)) {
-            error_log("Validation errors found: " . implode("; ", $validationErrors));
-            
-            // Store error message in session with all errors
-            if (session_status() == PHP_SESSION_NONE) {
-                session_start();
+        error_log("=== FINAL TRANSFORMATION RESULTS ===");
+        error_log("Total rows processed: $totalRowsProcessed");
+        error_log("Valid rows: $validRows");
+        error_log("Skipped rows: $skippedRows");
+        error_log("Validation errors count: " . count($validationErrors));
+        error_log("Final transformed array size: " . count($transformed));
+        error_log("Transformed " . count($transformed) . " rows");
+        
+        if (!empty($transformed)) {
+            error_log("Sample transformed data (first row): " . json_encode($transformed[0]));
+        }
+        
+        // Better empty file detection
+        if (count($transformed) === 0) {
+            error_log("No data rows found after transformation");
+
+            if (!empty($validationErrors)) {
+                if (session_status() == PHP_SESSION_NONE) {
+                    session_start();
+                }
+                $_SESSION['validation_errors'] = $validationErrors;
+                error_log("Stored " . count($validationErrors) . " validation errors in session");
             }
             
+            // Create a detailed error message depending on whether there were validation errors
+            if (!empty($validationErrors)) {
+                error_log("Validation errors found: " . implode("; ", $validationErrors));
+                
+                // Store error message in session with all errors
+                if (session_status() == PHP_SESSION_NONE) {
+                    session_start();
+                }
+                
+                $_SESSION['upload_message'] = [
+                    'type' => 'error',
+                    'message' => "Data validation errors found: " . implode("; ", $validationErrors) . ". Please correct these issues and upload again."
+                ];
+            } else {
+                if (session_status() == PHP_SESSION_NONE) {
+                    session_start();
+                }
+                
+                $_SESSION['upload_message'] = [
+                    'type' => 'warning',
+                    'message' => "No valid data rows found in the CSV file after validation."
+                ];
+            }
+            
+            // Clean up the file when there are validation errors
+            if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
+                unlink($_SESSION['uploaded_csv']);
+                unset($_SESSION['uploaded_csv']);
+            }
+            
+            // Return empty array to indicate no valid data
+            return [];
+        }
+        
+        if (count($transformed) > 0) {
+            error_log("First transformed row: " . json_encode($transformed[0]));
+        }
+
+        error_log("Validated $rowNumber rows, found " . count($validationErrors) . " errors, $validRows rows valid");
+
+    if (!empty($validationErrors)) {
+        error_log("Validation errors found: " . implode("; ", $validationErrors));
+        
+        // Store validation errors in session for user feedback
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        // CRITICAL FIX: Only discard data if NO valid rows were processed
+        if (count($transformed) === 0) {
+            // No valid data at all - return error
             $_SESSION['upload_message'] = [
                 'type' => 'error',
                 'message' => "Data validation errors found: " . implode("; ", $validationErrors) . ". Please correct these issues and upload again."
             ];
-        } else {
-            if (session_status() == PHP_SESSION_NONE) {
-                session_start();
+            
+            // Clean up the file when there are validation errors
+            if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
+                unlink($_SESSION['uploaded_csv']);
+                unset($_SESSION['uploaded_csv']);
             }
             
+            // Return empty array to indicate no valid data
+            return [];
+        } else {
+            // Some valid data found - store errors as warnings but continue processing
+            $_SESSION['validation_errors'] = $validationErrors;
+            error_log("Stored " . count($validationErrors) . " validation errors as warnings - processing " . count($transformed) . " valid rows");
+            
+            // Store success message with warnings
             $_SESSION['upload_message'] = [
                 'type' => 'warning',
-                'message' => "No valid data rows found in the CSV file after validation."
+                'message' => "Data imported successfully with " . count($validationErrors) . " validation warnings. " . count($transformed) . " valid rows were processed."
             ];
+            
+            error_log("=== TRANSFORM DATA DEBUG END ===");
+            return $transformed; // Return the valid data
         }
-        
-        // Clean up the file when there are validation errors
-        if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
-            unlink($_SESSION['uploaded_csv']);
-            unset($_SESSION['uploaded_csv']);
-        }
-        
-        // Return empty array to indicate no valid data
-        return [];
-    }
-    
-    if (count($transformed) > 0) {
-        error_log("First transformed row: " . json_encode($transformed[0]));
-    }
-
-    error_log("Validated $rowNumber rows, found " . count($validationErrors) . " errors, $validRows rows valid");
-
-if (!empty($validationErrors)) {
-    error_log("Validation errors found: " . implode("; ", $validationErrors));
-    
-    // Store validation errors in session for user feedback
-    if (session_status() == PHP_SESSION_NONE) {
-        session_start();
-    }
-    
-    // CRITICAL FIX: Only discard data if NO valid rows were processed
-    if (count($transformed) === 0) {
-        // No valid data at all - return error
-        $_SESSION['upload_message'] = [
-            'type' => 'error',
-            'message' => "Data validation errors found: " . implode("; ", $validationErrors) . ". Please correct these issues and upload again."
-        ];
-        
-        // Clean up the file when there are validation errors
-        if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
-            unlink($_SESSION['uploaded_csv']);
-            unset($_SESSION['uploaded_csv']);
-        }
-        
-        // Return empty array to indicate no valid data
-        return [];
     } else {
-        // Some valid data found - store errors as warnings but continue processing
-        $_SESSION['validation_errors'] = $validationErrors;
-        error_log("Stored " . count($validationErrors) . " validation errors as warnings - processing " . count($transformed) . " valid rows");
-        
-        // Store success message with warnings
-        $_SESSION['upload_message'] = [
-            'type' => 'warning',
-            'message' => "Data imported successfully with " . count($validationErrors) . " validation warnings. " . count($transformed) . " valid rows were processed."
-        ];
-        
         error_log("=== TRANSFORM DATA DEBUG END ===");
-        return $transformed; // Return the valid data
+        return $transformed;
     }
-} else {
-    error_log("=== TRANSFORM DATA DEBUG END ===");
-    return $transformed;
-}
-}
+    }
 
     /**
      * Format value based on data type with enhanced validation - no auto-fixing

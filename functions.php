@@ -5,6 +5,16 @@ require_once 'classes/CsvProcessor.php';
 // Replace the handleCsvUpload function:
 
 function handleCsvUpload($conn, $file) {
+    // CRITICAL FIX: Clear any existing validation errors at the very start
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // Clear all previous upload-related session data
+    unset($_SESSION['validation_errors']);
+    unset($_SESSION['upload_message']);
+    error_log("Cleared previous validation errors and upload messages at start of handleCsvUpload");
+    
     // Basic file validation
     if ($file['error'] !== UPLOAD_ERR_OK) {
         return [
