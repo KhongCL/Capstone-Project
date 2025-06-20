@@ -401,21 +401,49 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     // ========== Export Functions ==========
 
     function exportToCSV() {
-      let csv = 'Time Period,Page Views,Unique Visitors\n';
+      const metricCards = document.querySelectorAll('.user-metric-card');
+      const totalPageViews = metricCards[0].querySelector('.user-metric-value').textContent;
+      const uniqueVisitors = metricCards[1].querySelector('.user-metric-value').textContent;
+      const avgSessionDuration = metricCards[2].querySelector('.user-metric-value').textContent;
+      const bounceRate = metricCards[3].querySelector('.user-metric-value').textContent;
+        
+      // CSV generation
+      let csv = 'Section,Metric,Value\n';
+      csv += `Key Metrics,Total Page Views,${totalPageViews.replace(/,/g, '')}\n`;
+      csv += `Key Metrics,Unique Visitors,${uniqueVisitors.replace(/,/g, '')}\n`;
+      csv += `Key Metrics,Average Session Duration,${avgSessionDuration}\n`;
+      csv += `Key Metrics,Bounce Rate,${bounceRate}\n\n`;
+        
+      csv += 'Traffic Over Time,Time Period,Page Views,Unique Visitors\n';
       trafficData.forEach(row => {
-        csv += `${row.time_period},${row.page_views},${row.unique_visitors}\n`;
+        csv += `Traffic Over Time,${row.time_period},${row.page_views},${row.unique_visitors}\n`;
       });
-
+    
+      // Trigger download
       const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.setAttribute('hidden', '');
-      a.setAttribute('href', url);
-      a.setAttribute('download', 'traffic_data.csv');
+      a.href = url;
+      a.download = 'overview_dashboard_data.csv';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+    
+      // Log export in DB
+      fetch('log_export.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `exportType=CSV&description=Exported overview dashboard metrics and traffic data (uploadId: ${uploadId})`
+      }).then(response => response.json())
+        .then(data => {
+          if (!data.success) {
+            console.warn('Export log failed:', data.message);
+          }
+        });
     }
+
 
     function exportToPDF() {
       html2canvas(document.getElementById('dashboard')).then(canvas => {
@@ -426,8 +454,23 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
         const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save('dashboard.pdf');
+      
+        // Log the PDF export into the database
+        fetch('log_export.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: `exportType=PDF&description=Exported dashboard as PDF (uploadId: ${uploadId})`
+        }).then(response => response.json())
+          .then(data => {
+            if (!data.success) {
+              console.warn('Export log failed:', data.message);
+            }
+          });
       });
     }
+
   </script>
 </body>
 </html>
