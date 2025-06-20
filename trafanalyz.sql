@@ -795,3 +795,59 @@ DELETE FROM CSV_UPLOAD WHERE UserID = 7;
 -- Reset auto increment to clean state
 ALTER TABLE CSV_UPLOAD AUTO_INCREMENT = 1;
 ALTER TABLE PROCESSED_DATA_POINT AUTO_INCREMENT = 1;
+
+-- ==============================================
+-- CLEANUP REDUNDANT COLUMN MAPPINGS AND METRIC TYPES
+-- ==============================================
+
+-- 1. Remove duplicate column mappings (keep only one per format)
+DELETE FROM column_mapping WHERE MappingID IN (
+    1829, 1830, 1831, 1832, 1833, 1834, 1835, 1836, 1837, 1838  -- Format 2 duplicates (same as Format 1)
+);
+
+-- 2. Clean up redundant metric types - keep only the most descriptive ones
+DELETE FROM metric_type WHERE MetricTypeID IN (
+    752,  -- Duplicate of 731 (visitors vs unique_visitors)
+    798,  -- 'Sessions' - keep 'visits' instead
+    799,  -- 'Average engagement time per session' - keep standardized version
+    800,  -- 'Key events' - keep standardized version  
+    801,  -- 'Total revenue' - keep standardized version
+    804,  -- Duplicate of 731 ('Unique visitors')
+    813,  -- 'Engaged sessions' - keep standardized version
+    814,  -- 'Engagement rate' - keep standardized version
+    815,  -- 'Events per session' - keep standardized version
+    816,  -- 'Event count' - keep standardized version
+    817   -- 'Session key event rate' - keep standardized version
+);
+
+-- 3. Keep only these essential metric types:
+-- 729	traffic_source	Traffic Source
+-- 730	traffic_medium	Traffic Medium  
+-- 731	unique_visitors	Number of unique visitors
+-- 732	page_views	Total number of page views
+-- 733	bounce_rate	Bounce rate percentage
+-- 734	avg_session_duration	Average session duration
+-- 735	engaged_sessions	Number of engaged sessions
+-- 736	events_per_session	Average events per session
+-- 737	event_count	Total event count
+-- 738	key_events	Number of key events/conversions
+-- 739	session_key_event_rate	Session key event rate
+-- 740	total_revenue	Total revenue generated
+-- 802	Users	Automatically added from CSV import (for custom analytics)
+-- 803	Page Views	Automatically added from CSV import (for custom analytics)
+-- 805	visits	Number of visits/sessions
+
+-- 4. Add any missing essential metrics
+INSERT IGNORE INTO metric_type (MetricName, Description) VALUES
+('Avg Time on Site', 'Average time spent on site per session'),
+('Channel', 'Traffic source channel'),
+('Source', 'Traffic source'),
+('Visits', 'Number of visits/sessions'),
+('Revenue Generated', 'Revenue generated from analytics');
+
+-- 5. Verify final state
+SELECT 'Column Mappings by Format' as Info, FormatID, COUNT(*) as Count 
+FROM column_mapping 
+GROUP BY FormatID
+UNION ALL
+SELECT 'Total Metric Types', '', COUNT(*) FROM metric_type;

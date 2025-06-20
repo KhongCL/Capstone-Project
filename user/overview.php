@@ -97,22 +97,55 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 
       <section class="user-metrics-grid" id="metricsSection">
         <div class="user-metric-card">
-          <h3>Total Page Views</h3>
-          <p class="user-metric-value"><?php echo number_format($metrics['total_page_views']); ?></p>
+            <h3>Total Page Views</h3>
+            <p class="user-metric-value"><?php echo number_format($metrics['total_page_views']); ?></p>
         </div>
         <div class="user-metric-card">
-          <h3>Unique Visitors</h3>
-          <p class="user-metric-value"><?php echo number_format($metrics['unique_visitors']); ?></p>
+            <h3>Unique Visitors</h3>
+            <p class="user-metric-value">
+                <?php 
+                if ($metrics['unique_visitors'] === 'N/A') {
+                    echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
+                } else {
+                    echo number_format($metrics['unique_visitors']);
+                }
+                ?>
+            </p>
+            <?php if ($metrics['unique_visitors'] === 'N/A'): ?>
+                <small style="color: #666; font-size: 0.8em;">Data not available in uploaded CSV</small>
+            <?php endif; ?>
         </div>
         <div class="user-metric-card">
-          <h3>Avg. Session Duration</h3>
-          <p class="user-metric-value"><?php echo $metrics['avg_session_duration']; ?></p>
+            <h3>Avg. Session Duration</h3>
+            <p class="user-metric-value">
+                <?php 
+                if ($metrics['avg_session_duration'] === 'N/A') {
+                    echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
+                } else {
+                    echo $metrics['avg_session_duration'];
+                }
+                ?>
+            </p>
+            <?php if ($metrics['avg_session_duration'] === 'N/A'): ?>
+                <small style="color: #666; font-size: 0.8em;">Data not available in uploaded CSV</small>
+            <?php endif; ?>
         </div>
-        <div class="user-metric-card">
-          <h3>Bounce Rate</h3>
-          <p class="user-metric-value"><?php echo $metrics['bounce_rate']; ?></p>
-        </div>
-      </section>
+          <div class="user-metric-card">
+              <h3>Bounce Rate</h3>
+              <p class="user-metric-value">
+                  <?php 
+                  if ($metrics['bounce_rate'] === 'N/A') {
+                      echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
+                  } else {
+                      echo $metrics['bounce_rate'] . '%';
+                  }
+                  ?>
+              </p>
+              <?php if ($metrics['bounce_rate'] === 'N/A'): ?>
+                  <small style="color: #666; font-size: 0.8em;">Data not available in uploaded CSV</small>
+              <?php endif; ?>
+          </div>
+    </section>
 
       <section class="user-chart-section" id="chartSection">
         <h3>Website Traffic Over Time</h3>
