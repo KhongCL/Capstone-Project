@@ -3,6 +3,19 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
+// Get uploadId from URL parameter or most recent upload
+$uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null;
+
+if (!$uploadId) {
+    // Get most recent upload for the current user
+    $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC LIMIT 1");
+    $stmt->bind_param("i", $_SESSION['user_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $uploadId = $row ? $row['UploadID'] : null;
+}
+
 // Get traffic sources data
 $sourcesData = getTrafficSourcesDistribution($conn);
 ?>
@@ -91,6 +104,8 @@ $sourcesData = getTrafficSourcesDistribution($conn);
   <script>
     // Parse PHP data to JavaScript
     const sourcesData = <?php echo json_encode($sourcesData); ?>;
+    const uploadId = <?php echo $uploadId ? $uploadId : 'null'; ?>;
+    
     // Extract data points for Chart.js
     const labels = sourcesData.map(item => item.traffic_source);
     const visitCounts = sourcesData.map(item => parseInt(item.visit_count));
@@ -196,6 +211,23 @@ $sourcesData = getTrafficSourcesDistribution($conn);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+
+      // Log export in DB
+      fetch('log_export.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `exportType=CSV&description=Exported traffic sources table data (uploadId: ${uploadId})`
+      }).then(response => response.json())
+        .then(data => {
+          if (!data.success) {
+            console.warn('Export log failed:', data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error logging export:', error);
+        });
     }
 
     // Export chart to PDF
@@ -203,14 +235,36 @@ $sourcesData = getTrafficSourcesDistribution($conn);
       const chartContainer = document.getElementById("chartContainer");
       const canvasImage = await html2canvas(chartContainer);
       const imageData = canvasImage.toDataURL("image/png");
-
+        
+      // Determine current chart type
+      const activeButton = document.querySelector('.user-chart-type-toggle .btn.active');
+      const chartType = activeButton ? activeButton.dataset.chartType : 'pie';
+      const chartTypeText = chartType === 'pie' ? 'pie chart' : 'bar chart';
+        
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF();
       const imgProps = pdf.getImageProperties(imageData);
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       pdf.addImage(imageData, "PNG", 10, 10, pdfWidth - 20, pdfHeight);
-      pdf.save("traffic_sources_chart.pdf");
+      pdf.save(`traffic_sources_${chartType}_chart.pdf`);
+        
+      // Log the PDF export into the database with specific chart type
+      fetch('log_export.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `exportType=PDF&description=Exported traffic sources ${chartTypeText} as PDF (uploadId: ${uploadId})`
+      }).then(response => response.json())
+        .then(data => {
+          if (!data.success) {
+            console.warn('Export log failed:', data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error logging export:', error);
+        });
     }
   </script>
 </body>
