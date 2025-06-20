@@ -8,6 +8,10 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
+// Set page variables for header
+$title = "Overview Dashboard";
+$active_page = "overview";
+
 error_log("=== OVERVIEW PAGE DEBUG ===");
 error_log("Session latest_upload_id: " . ($_SESSION['latest_upload_id'] ?? 'NOT SET'));
 error_log("User ID: " . ($_SESSION['user_id'] ?? 'NOT SET'));
@@ -67,20 +71,10 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
+
 <body>
   <div class="container user-overview-container" id="dashboard">
-    <header>
-      <h1>Web Traffic Analysis Dashboard</h1>
-      <nav>
-        <ul>
-          <li><a href="index.php">Home</a></li>
-          <li><a href="overview.php" class="active">Overview</a></li>
-          <li><a href="traffic_sources.php">Traffic Sources</a></li>
-          <li><a href="pages.php">Pages</a></li>
-          <li><a href="compare.php">Compare</a></li>
-        </ul>
-      </nav>
-    </header>
+    <?php include 'user_header.php'; ?>
 
     <main>
       <h2>Overview Dashboard</h2>

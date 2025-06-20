@@ -3,6 +3,10 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
+// Set page variables for header
+$title = "Top Pages";
+$active_page = "pages";
+
 // Get top pages data
 $pagesData = getTopVisitedPages($conn, 10);
 ?>
@@ -21,18 +25,7 @@ $pagesData = getTopVisitedPages($conn, 10);
 </head>
 <body>
   <div class="container user-pages-container">
-    <header>
-      <h1>Web Traffic Analysis Dashboard</h1>
-      <nav>
-        <ul>
-          <li><a href="index.php">Home</a></li>
-          <li><a href="overview.php">Overview</a></li>
-          <li><a href="traffic_sources.php">Traffic Sources</a></li>
-          <li><a href="pages.php" class="active">Pages</a></li>
-          <li><a href="compare.php">Compare</a></li>
-        </ul>
-      </nav>
-    </header>
+    <?php include 'user_header.php'; ?>
     
     <main>
       <h2>Top Pages Dashboard</h2>

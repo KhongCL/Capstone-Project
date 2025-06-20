@@ -107,7 +107,7 @@ function getReportTypes($conn) {
 </head>
 <body>
     <div class="container">
-        <?php include 'header.php'; ?>
+        <?php include 'admin_header.php'; ?>
 
         <main>
             <?php /* Removed the sample_upload_message display section that was here */ ?>

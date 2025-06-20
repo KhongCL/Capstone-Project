@@ -7,6 +7,10 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Set page variables for header
+$title = "Compare Analytics";
+$active_page = "compare";
+
 // Database connection and functions - Updated to match your other files
 require_once '../auth/user_auth.php';
 require_once '../config.php';
@@ -990,22 +994,7 @@ function calculateStats($values) {
 </head>
 <body>
     <div class="container compare-user-compare-container" id="dashboard">
-        <header>
-            <a href="../index.php" class="logo">
-                <div class="logo-icon">T</div>
-                TrafAnalyz
-            </a>
-            <h1>Web Traffic Analysis Dashboard</h1>
-            <nav>
-                <ul>
-                    <li><a href="index.php">Home</a></li>
-                    <li><a href="overview.php">Overview</a></li>
-                    <li><a href="traffic_sources.php">Traffic Sources</a></li>
-                    <li><a href="pages.php">Pages</a></li>
-                    <li><a href="compare.php" class="active">Compare</a></li>
-                </ul>
-            </nav>
-        </header>
+        <?php include 'user_header.php'; ?>
 
         <main>
             <h2><i class="fas fa-balance-scale"></i> Analytics CSV Comparison</h2>

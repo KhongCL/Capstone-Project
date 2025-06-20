@@ -1,4 +1,7 @@
 <?php
+// search, filter, sort user
+
+
 require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 require_once '../functions.php';
@@ -78,7 +81,7 @@ if ($result) {
         <?php 
             $title = "User Management";
             $active_page = "users";
-            include 'header.php';
+            include 'admin_header.php';
         ?>
         
         <main>
