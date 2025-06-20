@@ -3,6 +3,23 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
+// Set page variables for header
+$title = "Top Pages";
+$active_page = "pages";
+
+// Get uploadId from URL parameter or most recent upload
+$uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null;
+
+if (!$uploadId) {
+    // Get most recent upload for the current user
+    $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC LIMIT 1");
+    $stmt->bind_param("i", $_SESSION['user_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $uploadId = $row ? $row['UploadID'] : null;
+}
+
 // Get top pages data
 $pagesData = getTopVisitedPages($conn, 10);
 
@@ -28,18 +45,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
 </head>
 <body>
   <div class="container user-pages-container">
-    <header>
-      <h1>Web Traffic Analysis Dashboard</h1>
-      <nav>
-        <ul>
-          <li><a href="index.php">Home</a></li>
-          <li><a href="overview.php">Overview</a></li>
-          <li><a href="traffic_sources.php">Traffic Sources</a></li>
-          <li><a href="pages.php" class="active">Pages</a></li>
-          <li><a href="compare.php">Compare</a></li>
-        </ul>
-      </nav>
-    </header>
+    <?php include 'user_header.php'; ?>
     
     <main>
       <h2>Top Pages Dashboard</h2>
@@ -132,6 +138,8 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
   <script>
     // Parse PHP data to JavaScript
     const pagesData = <?php echo json_encode($pagesData); ?>;
+    const uploadId = <?php echo $uploadId ? $uploadId : 'null'; ?>;
+    
     // Extract data points for Chart.js
     const pageUrls = pagesData.map(item => {
       const url = item.page_url;
@@ -195,42 +203,63 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
         csv.push(cols.join(","));
       }
       
-      const csvContent = "data:text/csv;charset=utf-8," + csv.join("\n");
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "top_pages.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const blob = new Blob([csv.join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "top_pages_table.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Log export in DB
+      fetch('log_export.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `exportType=CSV&description=Exported top pages table data (uploadId: ${uploadId})`
+      }).then(response => response.json())
+        .then(data => {
+          if (!data.success) {
+            console.warn('Export log failed:', data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error logging export:', error);
+        });
     }
 
     // Export chart to PDF
     function exportChartToPDF() {
-      const canvas = document.getElementById('pagesChart');
-      const { jsPDF } = window.jspdf;
+      const chartContainer = document.getElementById('chartContainer');
       
-      html2canvas(canvas).then(canvas => {
+      html2canvas(chartContainer).then(canvas => {
         const imgData = canvas.toDataURL('image/png');
+        const { jsPDF } = window.jspdf;
         const pdf = new jsPDF();
-        const imgWidth = 210;
-        const pageHeight = 295;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        let heightLeft = imgHeight;
-        
-        let position = 0;
-        
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-        
-        while (heightLeft >= 0) {
-          position = heightLeft - imgHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
-        }
-        
-        pdf.save('pages_chart.pdf');
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight);
+        pdf.save('top_pages_chart.pdf');
+
+        // Log the PDF export into the database
+        fetch('log_export.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: `exportType=PDF&description=Exported top pages chart as PDF (uploadId: ${uploadId})`
+        }).then(response => response.json())
+          .then(data => {
+            if (!data.success) {
+              console.warn('Export log failed:', data.message);
+            }
+          })
+          .catch(error => {
+            console.error('Error logging export:', error);
+          });
       }).catch(err => {
         console.error('Error generating PDF:', err);
         alert('Error generating PDF. Please try again.');

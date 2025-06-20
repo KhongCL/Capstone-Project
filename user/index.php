@@ -3,6 +3,17 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../login.php");
+    exit();
+}
+
+// Set page variables for header
+$title = "Dashboard Home";
+$active_page = "home";
+
+
 // Handle CSV upload (fallback for non-JavaScript)
 $uploadMessage = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
@@ -24,18 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>Web Traffic Analysis Dashboard</h1>
-            <nav>
-                <ul>
-                    <li><a href="index.php" class="active">Home</a></li>
-                    <li><a href="overview.php">Overview</a></li>
-                    <li><a href="traffic_sources.php">Traffic Sources</a></li>
-                    <li><a href="pages.php">Pages</a></li>
-                    <li><a href="compare.php">Compare</a></li>
-                </ul>
-            </nav>
-        </header>
+        <?php include 'user_header.php'; ?>
         
         <main>
             <section class="welcome-section">

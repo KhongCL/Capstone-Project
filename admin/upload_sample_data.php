@@ -36,7 +36,7 @@ if ($result) {
         <?php 
             $title = "Upload Sample Data";
             $active_page = "sample_data";
-            include 'header.php';
+            include 'admin_header.php';
         ?>
 
         <main>

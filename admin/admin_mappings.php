@@ -543,7 +543,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
         <?php 
             $title = "CSV Mappings";
             $active_page = "mappings";
-            include 'header.php';
+            include 'admin_header.php';
         ?>
 
         <main>

@@ -3,6 +3,9 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
+// Set page variables for header
+$title = "Traffic Sources";
+$active_page = "traffic_sources";
 // Get uploadId from URL parameter or most recent upload
 $uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null;
 
@@ -34,18 +37,7 @@ $sourcesData = getTrafficSourcesDistribution($conn);
 </head>
 <body>
   <div class="container user-traffic-sources-container">
-    <header>
-      <h1>Web Traffic Analysis Dashboard</h1>
-      <nav>
-        <ul>
-          <li><a href="index.php">Home</a></li>
-          <li><a href="overview.php">Overview</a></li>
-          <li><a href="traffic_sources.php" class="active">Traffic Sources</a></li>
-          <li><a href="pages.php">Pages</a></li>
-          <li><a href="compare.php">Compare</a></li>
-        </ul>
-      </nav>
-    </header>
+		<?php include 'user_header.php'; ?>
     
     <main>
       <h2>Traffic Sources Dashboard</h2>
