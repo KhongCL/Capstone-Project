@@ -5,6 +5,13 @@ include '../functions.php';
 
 // Get top pages data
 $pagesData = getTopVisitedPages($conn, 10);
+
+// Get data quality information
+$dataQuality = $_SESSION['pages_data_quality'] ?? [
+    'source_type' => 'unknown',
+    'estimation_method' => null,
+    'confidence_level' => 'high'
+];
 ?>
 
 <!DOCTYPE html>
@@ -36,7 +43,29 @@ $pagesData = getTopVisitedPages($conn, 10);
     
     <main>
       <h2>Top Pages Dashboard</h2>
-      
+
+      <?php if ($dataQuality['source_type'] === 'estimated'): ?>
+        <div class="data-quality-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+          <h4 style="margin: 0 0 10px 0; color: #856404;">📊 Data Quality Notice</h4>
+          <p style="margin: 0; color: #856404;">
+            <?php if ($dataQuality['estimation_method'] === 'sessions_70_percent_rule'): ?>
+              <strong>Estimated Unique Visitors:</strong> Your CSV doesn't contain unique visitor data. We've estimated it as 70% of sessions based on industry averages.
+            <?php elseif ($dataQuality['estimation_method'] === 'sessions_60_percent_rule'): ?>
+              <strong>Rough Estimate:</strong> Limited data available. Unique visitors estimated as 60% of available session data.
+            <?php endif ?>
+            <br><small>💡 For more accurate data, upload a CSV with both page views and unique visitor metrics.</small>
+          </p>
+        </div>
+        <?php elseif ($dataQuality['estimation_method'] === 'sessions_as_page_views'): ?>
+        <div class="data-quality-notice" style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+          <h4 style="margin: 0 0 10px 0; color: #0c5460;">ℹ️ Data Source Information</h4>
+          <p style="margin: 0; color: #0c5460;">
+            <strong>Using Sessions as Page Views:</strong> Your CSV contains session data which we're using as page view metrics.
+            <br><small>This provides accurate relative comparisons between traffic sources.</small>
+          </p>
+        </div>
+      <?php endif ?>
+
       <section class="user-chart-section">
         <h3>Most Visited Pages</h3>
         <div class="user-chart-container" id="chartContainer">
@@ -57,7 +86,11 @@ $pagesData = getTopVisitedPages($conn, 10);
             <tr>
               <th>Page URL</th>
               <th>Page Views</th>
-              <th>Unique Visitors</th>
+              <th>Unique Visitors 
+                <?php if ($dataQuality['source_type'] === 'estimated'): ?>
+                  <span style="font-size: 0.8em; color: #856404;">*</span>
+                <?php endif ?>
+              </th>
               <th>Views/Visitor</th>
             </tr>
           </thead>
@@ -66,12 +99,24 @@ $pagesData = getTopVisitedPages($conn, 10);
             <tr>
               <td><?php echo htmlspecialchars($page['page_url']); ?></td>
               <td><?php echo number_format($page['page_views']); ?></td>
-              <td><?php echo number_format($page['unique_visitors']); ?></td>
+              <td>
+                <?php echo number_format($page['unique_visitors']); ?>
+                <?php if ($dataQuality['source_type'] === 'estimated'): ?>
+                  <span style="font-size: 0.8em; color: #856404;">*</span>
+                <?php endif ?>
+              </td>
               <td><?php echo round($page['page_views'] / $page['unique_visitors'], 2); ?></td>
             </tr>
             <?php endforeach; ?>
           </tbody>
         </table>
+        
+        <?php if ($dataQuality['source_type'] === 'estimated'): ?>
+        <p style="font-size: 0.9em; color: #856404; margin-top: 10px;">
+          <span style="font-size: 0.8em;">*</span> Estimated values based on available session data
+        </p>
+        <?php endif ?>
+        
         <div style="margin-top: 10px;">
           <button onclick="exportTableToCSV()" class="export-btn csv">
             <span class="icon">📊</span>
