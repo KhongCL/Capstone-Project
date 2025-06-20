@@ -1161,45 +1161,47 @@ select option[value="__custom_type__"] {
    FOOTER STYLES
    ===================================================== */
 footer {
-    background-color: #1e3c72;
+    background-color: #fff;
     color: white;
-    padding: 2rem 2rem 1rem 2rem;
+    padding: 2rem;
     text-align: center;
     margin-bottom: 0;
-    border-radius: 0;
+    border-radius: 10px;
+    margin-top: 2rem;
+		z-index: 100;
+		box-shadow: var(--shadow);
+}
+
+header {
+    background-color: var(--white);
+    padding: 1rem 2rem;
+    box-shadow: var(--shadow);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 100;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    border-bottom: 1px solid #e5e7eb;
 }
 
 .footer-content {
-    color: white;
+    color: var(--text-color);
     max-width: 800px;
     margin: 0 auto;
 }
 
-.footer-content p {
-    margin-bottom: 0.5rem;
-}
-
-.footer-content p:last-child {
-    margin-bottom: 0;
-}
-
-.footer-links {
-    margin-top: 1rem;
-    margin-bottom: 0;
-    padding-top: 1rem;
-    padding-bottom: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-}
-
 .footer-links a {
-    color: var(--primary);
+    color: #4c78d0;
     text-decoration: none;
     margin: 0 1rem;
-    transition: color 0.3s;
+    transition: color 0.5s;
 }
 
 .footer-links a:hover {
-    color: var(--primary-dark);
+    color: #3a5fb0;
     text-decoration: underline;
 }
 
