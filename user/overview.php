@@ -407,35 +407,30 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
       const avgSessionDuration = metricCards[2].querySelector('.user-metric-value').textContent;
       const bounceRate = metricCards[3].querySelector('.user-metric-value').textContent;
         
-      // CSV generation
-      let csv = 'Section,Metric,Value\n';
-      csv += `Key Metrics,Total Page Views,${totalPageViews.replace(/,/g, '')}\n`;
-      csv += `Key Metrics,Unique Visitors,${uniqueVisitors.replace(/,/g, '')}\n`;
-      csv += `Key Metrics,Average Session Duration,${avgSessionDuration}\n`;
-      csv += `Key Metrics,Bounce Rate,${bounceRate}\n\n`;
+      // CSV generation - only key metrics
+      let csv = 'Metric,Value\n';
+      csv += `Total Page Views,${totalPageViews.replace(/,/g, '')}\n`;
+      csv += `Unique Visitors,${uniqueVisitors.replace(/,/g, '')}\n`;
+      csv += `Average Session Duration,${avgSessionDuration}\n`;
+      csv += `Bounce Rate,${bounceRate}\n`;
         
-      csv += 'Traffic Over Time,Time Period,Page Views,Unique Visitors\n';
-      trafficData.forEach(row => {
-        csv += `Traffic Over Time,${row.time_period},${row.page_views},${row.unique_visitors}\n`;
-      });
-    
       // Trigger download
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'overview_dashboard_data.csv';
+      a.download = 'overview_key_metrics.csv';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    
+        
       // Log export in DB
       fetch('log_export.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `exportType=CSV&description=Exported overview dashboard metrics and traffic data (uploadId: ${uploadId})`
+        body: `exportType=CSV&description=Exported overview key metrics (uploadId: ${uploadId})`
       }).then(response => response.json())
         .then(data => {
           if (!data.success) {
@@ -443,7 +438,6 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
           }
         });
     }
-
 
     function exportToPDF() {
       html2canvas(document.getElementById('dashboard')).then(canvas => {
