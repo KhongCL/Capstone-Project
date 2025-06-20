@@ -112,5 +112,22 @@
             "Goal Completions": "integer",
             "Revenue Generated": "currency"
         }
+    },
+    "simple_analytics": {
+        "format_detection": [
+            "Source",
+            "Sessions",
+            "Engagement Rate"
+        ],
+        "column_mappings": {
+            "Source": "traffic_source",
+            "Sessions": "visits",
+            "Engagement Rate": "bounce_rate"
+        },
+        "data_types": {
+            "Source": "string",
+            "Sessions": "integer",
+            "Engagement Rate": "float"
+        }
     }
 }

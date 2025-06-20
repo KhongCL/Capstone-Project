@@ -752,3 +752,46 @@ UNION ALL
 SELECT 'Metric Type Count', COUNT(*) FROM metric_type
 UNION ALL  
 SELECT 'CSV Format Count', COUNT(*) FROM csv_format;
+
+
+-- ==============================================
+-- FIX ADMIN MAPPINGS DUPLICATE SYSTEM FIELDS
+-- ==============================================
+
+-- 1. Fix the incorrect column mappings for FormatID 4 (custom_analytics)
+UPDATE column_mapping SET SystemFieldName = 'visits' WHERE MappingID = 1779;
+UPDATE column_mapping SET SystemFieldName = 'unique_visitors' WHERE MappingID = 1780;
+UPDATE column_mapping SET SystemFieldName = 'total_revenue' WHERE MappingID = 1784;
+
+-- 2. Clean up duplicate metric types - keep only the proper lowercase versions
+DELETE FROM metric_type WHERE MetricTypeID IN (
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 797  -- Remove old duplicates
+);
+
+-- 3. Keep only the standardized metric types (IDs 729-740, 752)
+-- These are the correct ones with proper system field names
+
+-- 4. Verify the cleanup
+SELECT 'Column Mappings for FormatID 4' as Info, CSVColumnName, SystemFieldName FROM column_mapping WHERE FormatID = 4
+UNION ALL
+SELECT 'Total Metric Types', CAST(COUNT(*) AS CHAR), 'records' FROM metric_type;
+
+-- Add missing metric types for your custom analytics
+INSERT IGNORE INTO metric_type (MetricName, Description) VALUES
+('Sessions', 'Number of sessions/visits'),
+('Unique visitors', 'Number of unique visitors'),
+('Page views', 'Total number of page views'),
+('visits', 'Number of visits/sessions'),
+('unique_visitors', 'Number of unique visitors'),
+('page_views', 'Total number of page views'),
+('key_events', 'Number of key events/conversions'),
+('total_revenue', 'Total revenue generated'),
+('avg_session_duration', 'Average session duration');
+
+-- Clean up test data for user 7
+DELETE FROM PROCESSED_DATA_POINT WHERE UploadID IN (SELECT UploadID FROM CSV_UPLOAD WHERE UserID = 7);
+DELETE FROM CSV_UPLOAD WHERE UserID = 7;
+
+-- Reset auto increment to clean state
+ALTER TABLE CSV_UPLOAD AUTO_INCREMENT = 1;
+ALTER TABLE PROCESSED_DATA_POINT AUTO_INCREMENT = 1;
