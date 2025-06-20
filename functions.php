@@ -586,6 +586,11 @@ function getTrafficSourcesDistribution($conn) {
 
 function getTopVisitedPages($conn, $limit = 10) {
     $data = [];
+    $dataQuality = [
+        'source_type' => 'unknown',
+        'estimation_method' => null,
+        'confidence_level' => 'high'
+    ];
     
     try {
         // ENHANCED: Use session upload ID first, then fall back to MAX
@@ -605,8 +610,8 @@ function getTopVisitedPages($conn, $limit = 10) {
             $stmt->bind_param("i", $userId);
             $stmt->execute();
             $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $latestUpload = $row['latest_upload'];
+            if ($result && $row = $result->fetch_assoc()) {
+                $latestUpload = $row['latest_upload'];
                 error_log("Using latest upload ID for pages (user $userId): $latestUpload");
             }
         }
@@ -616,7 +621,9 @@ function getTopVisitedPages($conn, $limit = 10) {
             return $data;
         }
         
-        // CORRECTED: Get proper page data using Page Views metric and Users metric
+        // FIXED: Try multiple strategies to get page data
+        
+        // Strategy 1: Try to get Page Views + Users (ideal case)
         $query = "SELECT 
                     st.SourceName as page_url,
                     SUM(CASE WHEN mt.MetricName = 'Page Views' THEN pdp.Value ELSE 0 END) as page_views,
@@ -627,7 +634,7 @@ function getTopVisitedPages($conn, $limit = 10) {
                   WHERE mt.MetricName IN ('Page Views', 'Users')
                   AND pdp.UploadID = ?
                   GROUP BY st.SourceName
-                  HAVING page_views > 0
+                  HAVING page_views > 0 AND unique_visitors > 0
                   ORDER BY page_views DESC
                   LIMIT ?";
                   
@@ -636,17 +643,139 @@ function getTopVisitedPages($conn, $limit = 10) {
         $stmt->execute();
         $result = $stmt->get_result();
         
-        if ($result) {
+        $dataFound = false;
+        if ($result && $result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
-                // Make sure we have at least 1 visitor to avoid division by zero
-                if ($row['unique_visitors'] < 1) {
-                    $row['unique_visitors'] = 1;
-                }
                 $data[] = $row;
+                $dataFound = true;
+            }
+            $dataQuality = [
+                'source_type' => 'actual',
+                'estimation_method' => null,
+                'confidence_level' => 'high'
+            ];
+        }
+        
+        // Strategy 2: Sessions + Users (good quality)
+        if (!$dataFound) {
+            error_log("No Page Views found, trying Sessions + Users");
+            $query = "SELECT 
+                        st.SourceName as page_url,
+                        SUM(CASE WHEN mt.MetricName = 'Sessions' THEN pdp.Value ELSE 0 END) as page_views,
+                        SUM(CASE WHEN mt.MetricName = 'Users' THEN pdp.Value ELSE 0 END) as unique_visitors
+                      FROM PROCESSED_DATA_POINT pdp
+                      JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
+                      JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                      WHERE mt.MetricName IN ('Sessions', 'Users')
+                      AND pdp.UploadID = ?
+                      GROUP BY st.SourceName
+                      HAVING page_views > 0 AND unique_visitors > 0
+                      ORDER BY page_views DESC
+                      LIMIT ?";
+                      
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("ii", $latestUpload, $limit);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($result && $result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+                    $data[] = $row;
+                    $dataFound = true;
+                }
+                $dataQuality = [
+                    'source_type' => 'actual',
+                    'estimation_method' => 'sessions_as_page_views',
+                    'confidence_level' => 'high'
+                ];
             }
         }
         
+        // Strategy 3: Sessions only - estimate visitors (medium quality)
+        if (!$dataFound) {
+            error_log("No Users found, estimating visitors from Sessions");
+            $query = "SELECT 
+                        st.SourceName as page_url,
+                        SUM(pdp.Value) as page_views,
+                        ROUND(SUM(pdp.Value) * 0.7) as unique_visitors,
+                        'estimated' as visitor_type
+                      FROM PROCESSED_DATA_POINT pdp
+                      JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
+                      JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                      WHERE mt.MetricName IN ('Sessions', 'visits')
+                      AND pdp.UploadID = ?
+                      GROUP BY st.SourceName
+                      HAVING page_views > 0
+                      ORDER BY page_views DESC
+                      LIMIT ?";
+                      
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("ii", $latestUpload, $limit);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($result && $result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+                    // Make sure we have at least 1 visitor to avoid division by zero
+                    if ($row['unique_visitors'] < 1) {
+                        $row['unique_visitors'] = 1;
+                    }
+                    $data[] = $row;
+                    $dataFound = true;
+                }
+                $dataQuality = [
+                    'source_type' => 'estimated',
+                    'estimation_method' => 'sessions_70_percent_rule',
+                    'confidence_level' => 'medium'
+                ];
+            }
+        }
+        
+        // Strategy 4: Last resort - rough estimates (low quality)
+        if (!$dataFound) {
+            error_log("Last resort: rough estimation from any session data");
+            $query = "SELECT 
+                        st.SourceName as page_url,
+                        SUM(pdp.Value) as page_views,
+                        GREATEST(1, ROUND(SUM(pdp.Value) * 0.6)) as unique_visitors,
+                        'rough_estimate' as visitor_type
+                      FROM PROCESSED_DATA_POINT pdp
+                      JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
+                      JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                      WHERE mt.MetricName IN ('Sessions', 'Engaged sessions', 'User Sessions', 'SESSIONS')
+                      AND pdp.UploadID = ?
+                      GROUP BY st.SourceName
+                      HAVING page_views > 0
+                      ORDER BY page_views DESC
+                      LIMIT ?";
+                      
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("ii", $latestUpload, $limit);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($result && $result->num_rows > 0) {
+                while ($row = $result->fetch_assoc()) {
+                    $data[] = $row;
+                    $dataFound = true;
+                }
+                $dataQuality = [
+                    'source_type' => 'estimated',
+                    'estimation_method' => 'sessions_60_percent_rule',
+                    'confidence_level' => 'low'
+                ];
+            }
+        }
+        
+        // Store data quality info in session for UI display
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['pages_data_quality'] = $dataQuality;
+        
+        error_log("Data quality: " . json_encode($dataQuality));
         error_log("Found " . count($data) . " page records for latest upload $latestUpload");
+        
     } catch (Exception $e) {
         error_log("Error getting page data: " . $e->getMessage());
     }
