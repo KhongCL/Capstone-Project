@@ -91,22 +91,55 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 
       <section class="user-metrics-grid" id="metricsSection">
         <div class="user-metric-card">
-          <h3>Total Page Views</h3>
-          <p class="user-metric-value"><?php echo number_format($metrics['total_page_views']); ?></p>
+            <h3>Total Page Views</h3>
+            <p class="user-metric-value"><?php echo number_format($metrics['total_page_views']); ?></p>
         </div>
         <div class="user-metric-card">
-          <h3>Unique Visitors</h3>
-          <p class="user-metric-value"><?php echo number_format($metrics['unique_visitors']); ?></p>
+            <h3>Unique Visitors</h3>
+            <p class="user-metric-value">
+                <?php 
+                if ($metrics['unique_visitors'] === 'N/A') {
+                    echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
+                } else {
+                    echo number_format($metrics['unique_visitors']);
+                }
+                ?>
+            </p>
+            <?php if ($metrics['unique_visitors'] === 'N/A'): ?>
+                <small style="color: #666; font-size: 0.8em;">Data not available in uploaded CSV</small>
+            <?php endif; ?>
         </div>
         <div class="user-metric-card">
-          <h3>Avg. Session Duration</h3>
-          <p class="user-metric-value"><?php echo $metrics['avg_session_duration']; ?></p>
+            <h3>Avg. Session Duration</h3>
+            <p class="user-metric-value">
+                <?php 
+                if ($metrics['avg_session_duration'] === 'N/A') {
+                    echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
+                } else {
+                    echo $metrics['avg_session_duration'];
+                }
+                ?>
+            </p>
+            <?php if ($metrics['avg_session_duration'] === 'N/A'): ?>
+                <small style="color: #666; font-size: 0.8em;">Data not available in uploaded CSV</small>
+            <?php endif; ?>
         </div>
-        <div class="user-metric-card">
-          <h3>Bounce Rate</h3>
-          <p class="user-metric-value"><?php echo $metrics['bounce_rate']; ?></p>
-        </div>
-      </section>
+          <div class="user-metric-card">
+              <h3>Bounce Rate</h3>
+              <p class="user-metric-value">
+                  <?php 
+                  if ($metrics['bounce_rate'] === 'N/A') {
+                      echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
+                  } else {
+                      echo $metrics['bounce_rate'] . '%';
+                  }
+                  ?>
+              </p>
+              <?php if ($metrics['bounce_rate'] === 'N/A'): ?>
+                  <small style="color: #666; font-size: 0.8em;">Data not available in uploaded CSV</small>
+              <?php endif; ?>
+          </div>
+    </section>
 
       <section class="user-chart-section" id="chartSection">
         <h3>Website Traffic Over Time</h3>
@@ -395,20 +428,42 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     // ========== Export Functions ==========
 
     function exportToCSV() {
-      let csv = 'Time Period,Page Views,Unique Visitors\n';
-      trafficData.forEach(row => {
-        csv += `${row.time_period},${row.page_views},${row.unique_visitors}\n`;
-      });
-
+      const metricCards = document.querySelectorAll('.user-metric-card');
+      const totalPageViews = metricCards[0].querySelector('.user-metric-value').textContent;
+      const uniqueVisitors = metricCards[1].querySelector('.user-metric-value').textContent;
+      const avgSessionDuration = metricCards[2].querySelector('.user-metric-value').textContent;
+      const bounceRate = metricCards[3].querySelector('.user-metric-value').textContent;
+        
+      // CSV generation - only key metrics
+      let csv = 'Metric,Value\n';
+      csv += `Total Page Views,${totalPageViews.replace(/,/g, '')}\n`;
+      csv += `Unique Visitors,${uniqueVisitors.replace(/,/g, '')}\n`;
+      csv += `Average Session Duration,${avgSessionDuration}\n`;
+      csv += `Bounce Rate,${bounceRate}\n`;
+        
+      // Trigger download
       const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.setAttribute('hidden', '');
-      a.setAttribute('href', url);
-      a.setAttribute('download', 'traffic_data.csv');
+      a.href = url;
+      a.download = 'overview_key_metrics.csv';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+        
+      // Log export in DB
+      fetch('log_export.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `exportType=CSV&description=Exported overview key metrics (uploadId: ${uploadId})`
+      }).then(response => response.json())
+        .then(data => {
+          if (!data.success) {
+            console.warn('Export log failed:', data.message);
+          }
+        });
     }
 
     function exportToPDF() {
@@ -420,8 +475,23 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
         const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
         pdf.save('dashboard.pdf');
+      
+        // Log the PDF export into the database
+        fetch('log_export.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: `exportType=PDF&description=Exported dashboard as PDF (uploadId: ${uploadId})`
+        }).then(response => response.json())
+          .then(data => {
+            if (!data.success) {
+              console.warn('Export log failed:', data.message);
+            }
+          });
       });
     }
+
   </script>
 </body>
 </html>

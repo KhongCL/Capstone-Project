@@ -265,34 +265,32 @@ function updateUploadProgress($stage, $percent, $message, $rowsProcessed = 0, $t
 function getKeyMetrics($conn, $uploadId = null) {
     $metrics = [
         'total_page_views' => 0,
-        'unique_visitors' => 0,
-        'avg_session_duration' => 0,
-        'bounce_rate' => 35.0
+        'unique_visitors' => 'N/A',
+        'avg_session_duration' => 'N/A',
+        'bounce_rate' => 'N/A'
     ];
     
     try {
-        // CRITICAL FIX: Always get the latest upload ID for current user
+        // Get upload ID logic (keep existing)...
         if ($uploadId === null) {
             if (session_status() == PHP_SESSION_NONE) {
                 session_start();
             }
             
-            $userId = $_SESSION['user_id'] ?? 7; // Your user ID
+            $userId = $_SESSION['user_id'] ?? 7;
             
-            // FORCE refresh - always get the most recent upload from database
             $query = "SELECT UploadID, FileName, UploadDate FROM CSV_UPLOAD 
                      WHERE UserID = ? AND IsValidated = 1 
                      ORDER BY UploadDate DESC, UploadID DESC LIMIT 1";
-                $stmt = $conn->prepare($query);
-                $stmt->bind_param("i", $userId);
-                $stmt->execute();
-                $result = $stmt->get_result();
-            
-                if ($result && $row = $result->fetch_assoc()) {
+            $stmt = $conn->prepare($query);
+            $stmt->bind_param("i", $userId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+        
+            if ($result && $row = $result->fetch_assoc()) {
                 $uploadId = $row['UploadID'];
                 error_log("🔄 FORCED REFRESH: Using latest upload ID: $uploadId (File: {$row['FileName']}, Date: {$row['UploadDate']})");
                 
-                // Clear any cached session data
                 unset($_SESSION['latest_upload_id']);
                 unset($_SESSION['cached_metrics']);
                 $_SESSION['latest_upload_id'] = $uploadId;
@@ -309,56 +307,124 @@ function getKeyMetrics($conn, $uploadId = null) {
             return $metrics;
         }
         
-        // Get Page Views (from Sessions data)
-        $query = "SELECT SUM(pdp.Value) as total_views 
+        // 1. Get Page Views - FIXED to prioritize correctly
+        $query = "SELECT mt.MetricName
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                 WHERE mt.MetricName IN ('Page Views', 'Sessions')
-                 AND pdp.UploadID = ?";
+                 WHERE mt.MetricName IN ('Page Views', 'Sessions', 'visits')
+                 AND pdp.UploadID = ?
+                 ORDER BY CASE 
+                     WHEN mt.MetricName = 'Page Views' THEN 1
+                     WHEN mt.MetricName = 'Sessions' THEN 2
+                     WHEN mt.MetricName = 'visits' THEN 3
+                 END
+                 LIMIT 1";
         $stmt = $conn->prepare($query);
         $stmt->bind_param("i", $uploadId);
         $stmt->execute();
         $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $metrics['total_page_views'] = $row['total_views'] ?: 0;
-        }
         
-        // Get unique visitors from Engaged sessions
-        $query = "SELECT SUM(pdp.Value) as unique_visitors 
-                FROM PROCESSED_DATA_POINT pdp
-                JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                WHERE mt.MetricName = 'Engaged sessions'
-                AND pdp.UploadID = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("i", $uploadId);
-        $stmt->execute();
-        $result = $stmt->get_result();
         if ($result && $row = $result->fetch_assoc()) {
-            $metrics['unique_visitors'] = $row['unique_visitors'] ?: 0;
-            error_log("Found unique visitors: " . $metrics['unique_visitors']);
-        }
-        
-        // Average Session Duration
-        $query = "SELECT AVG(pdp.Value) as avg_duration
-                 FROM PROCESSED_DATA_POINT pdp
-                 JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                 WHERE mt.MetricName = 'Average engagement time per session'
-                 AND pdp.UploadID = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("i", $uploadId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result && $row = $result->fetch_assoc()) {
-            $avgSeconds = $row['avg_duration'] ?: 0;
-            if ($avgSeconds == 0) {
-                // Estimate based on engagement rate if available
-                $metrics['avg_session_duration'] = 45; // Default estimate
-            } else {
-            $metrics['avg_session_duration'] = round($avgSeconds, 1);
+            $selectedMetric = $row['MetricName'];
+            error_log("Selected metric for page views: $selectedMetric");
+            
+            $sumQuery = "SELECT SUM(pdp.Value) as total_views 
+                        FROM PROCESSED_DATA_POINT pdp
+                        JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                        WHERE mt.MetricName = ? AND pdp.UploadID = ?";
+            $sumStmt = $conn->prepare($sumQuery);
+            $sumStmt->bind_param("si", $selectedMetric, $uploadId);
+            $sumStmt->execute();
+            $sumResult = $sumStmt->get_result();
+            
+            if ($sumResult && $sumRow = $sumResult->fetch_assoc()) {
+                $metrics['total_page_views'] = $sumRow['total_views'] ?: 0;
+                error_log("Using $selectedMetric for page views: " . $metrics['total_page_views']);
             }
         }
         
-        // Bounce rate - use actual data from Engagement Rate
+        // 2. Get unique visitors - FIXED to prioritize correctly  
+        $query = "SELECT mt.MetricName
+                 FROM PROCESSED_DATA_POINT pdp
+                 JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                 WHERE mt.MetricName IN ('Users', 'Unique visitors', 'visitors', 'Engaged sessions')
+                 AND pdp.UploadID = ?
+                 ORDER BY CASE 
+                     WHEN mt.MetricName = 'Users' THEN 1
+                     WHEN mt.MetricName = 'Unique visitors' THEN 2
+                     WHEN mt.MetricName = 'visitors' THEN 3
+                     WHEN mt.MetricName = 'Engaged sessions' THEN 4
+                 END
+                 LIMIT 1";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $uploadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result && $row = $result->fetch_assoc()) {
+            $selectedMetric = $row['MetricName'];
+            error_log("Selected metric for unique visitors: $selectedMetric");
+            
+            $sumQuery = "SELECT SUM(pdp.Value) as unique_visitors 
+                        FROM PROCESSED_DATA_POINT pdp
+                        JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                        WHERE mt.MetricName = ? AND pdp.UploadID = ?";
+            $sumStmt = $conn->prepare($sumQuery);
+            $sumStmt->bind_param("si", $selectedMetric, $uploadId);
+            $sumStmt->execute();
+            $sumResult = $sumStmt->get_result();
+            
+            if ($sumResult && $sumRow = $sumResult->fetch_assoc()) {
+                $uniqueVisitors = $sumRow['unique_visitors'] ?: 0;
+                if ($uniqueVisitors > 0) {
+                    $metrics['unique_visitors'] = $uniqueVisitors;
+                    error_log("Using $selectedMetric for unique visitors: " . $metrics['unique_visitors']);
+                } else {
+                    error_log("No unique visitor data available");
+                }
+            }
+        }
+        
+        // 3. Average Session Duration - FIXED to prioritize correctly
+        $query = "SELECT mt.MetricName
+                 FROM PROCESSED_DATA_POINT pdp
+                 JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                 WHERE mt.MetricName IN ('Avg Time on Site', 'Average engagement time per session', 'avg_session_duration')
+                 AND pdp.UploadID = ?
+                 ORDER BY CASE 
+                     WHEN mt.MetricName = 'Avg Time on Site' THEN 1
+                     WHEN mt.MetricName = 'Average engagement time per session' THEN 2
+                     WHEN mt.MetricName = 'avg_session_duration' THEN 3
+                 END
+                 LIMIT 1";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $uploadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result && $row = $result->fetch_assoc()) {
+            $selectedMetric = $row['MetricName'];
+            error_log("Selected metric for avg session duration: $selectedMetric");
+            
+            $avgQuery = "SELECT AVG(pdp.Value) as avg_duration
+                        FROM PROCESSED_DATA_POINT pdp
+                        JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                        WHERE mt.MetricName = ? AND pdp.UploadID = ?";
+            $avgStmt = $conn->prepare($avgQuery);
+            $avgStmt->bind_param("si", $selectedMetric, $uploadId);
+            $avgStmt->execute();
+            $avgResult = $avgStmt->get_result();
+            
+            if ($avgResult && $avgRow = $avgResult->fetch_assoc()) {
+                $avgSeconds = $avgRow['avg_duration'] ?: 0;
+                if ($avgSeconds > 0) {
+                    $metrics['avg_session_duration'] = round($avgSeconds, 1);
+                    error_log("Using $selectedMetric for avg session duration: " . $metrics['avg_session_duration']);
+                }
+            }
+        }
+        
+        // 4. Bounce rate - use actual data from Engagement Rate
         $query = "SELECT AVG(pdp.Value) as avg_engagement_rate
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
@@ -368,13 +434,21 @@ function getKeyMetrics($conn, $uploadId = null) {
         $stmt->bind_param("i", $uploadId);
         $stmt->execute();
         $result = $stmt->get_result();
+        
         if ($result && $row = $result->fetch_assoc()) {
             $engagementRate = $row['avg_engagement_rate'] ?: 0;
             if ($engagementRate > 0) {
                 // Convert engagement rate to bounce rate
                 $bounceRate = (1 - $engagementRate) * 100;
                 $metrics['bounce_rate'] = round($bounceRate, 1);
+                error_log("Calculated bounce rate from engagement rate: " . $metrics['bounce_rate'] . "%");
+            } else {
+                error_log("No engagement rate data found - keeping bounce rate as N/A");
+                // Keep as 'N/A' - don't use default value
             }
+        } else {
+            error_log("No engagement rate or bounce rate data available - keeping bounce rate as N/A");
+            // Keep as 'N/A' - no data available
         }
         
     } catch (Exception $e) {
