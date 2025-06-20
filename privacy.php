@@ -10,27 +10,7 @@ session_start();
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header>
-        <a href="index.php" class="logo">
-            <div class="logo-icon">T</div>
-            TrafAnalyz
-        </a>
-        <nav>
-            <ul>
-                <?php if (isset($_SESSION['user_id'])): ?>
-                    <?php if ($_SESSION['role'] === 'Admin'): ?>
-                        <li><a href="admin/index.php">Admin Dashboard</a></li>
-                    <?php else: ?>
-                        <li><a href="user/index.php">Dashboard</a></li>
-                    <?php endif; ?>
-                    <li><a href="logout.php">Logout</a></li>
-                <?php else: ?>
-                    <li><a href="login.php">Login</a></li>
-                    <li><a href="register.php">Register</a></li>
-                <?php endif; ?>
-            </ul>
-        </nav>
-    </header>
+    <?php include 'header.php'; ?>
 
     <main class="content-page">
         <div class="privacy-content">

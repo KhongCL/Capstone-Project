@@ -21,18 +21,7 @@ if (isset($_SESSION['user_id'])) {
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <header>
-        <a href="index.php" class="logo">
-            <div class="logo-icon">T</div>
-            TrafAnalyz
-        </a>
-        <nav>
-            <ul>
-                <li><a href="login.php">Login</a></li>
-                <li><a href="register.php">Register</a></li>
-            </ul>
-        </nav>
-    </header>
+    <?php include 'header.php'; ?>
 
     <section class="hero">
         <div class="hero-content">

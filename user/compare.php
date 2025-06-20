@@ -398,479 +398,14 @@ function calculateStats($values) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .comparison-card {
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            background: white;
-            padding: 20px;
-        }
-        .metric-box {
-            background: #f8f9fa;
-            border-radius: 6px;
-            padding: 15px;
-            text-align: center;
-            margin-bottom: 10px;
-            border: 1px solid #e9ecef;
-        }
-        
-        /* Add styles for user-prefixed classes */
-        .user-metric-box {
-            background: #f8f9fa;
-            border-radius: 6px;
-            padding: 15px;
-            text-align: center;
-            margin-bottom: 10px;
-            border: 1px solid #e9ecef;
-        }
-        
-        .user-metric-box h4 {
-            color: #000 !important; /* Force black color */
-            margin: 0 0 5px 0;
-        }
-        
-        .user-metric-box small {
-            color: #000 !important; /* Force black color */
-            font-weight: 500;
-        }
-        
-        .improved { color: #28a745; }
-        .declined { color: #dc3545; }
-        .unchanged { color: #6c757d; }
-        .neutral { color: #17a2b8; }
-        .table-container {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .metric-summary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        /* Override the gradient background text color specifically for metric boxes inside metric-summary */
-        .metric-summary .user-metric-box h4,
-        .metric-summary .user-metric-box small {
-            color: #000 !important; /* Black text even inside the gradient background */
-        }
-        
-        .upload-form {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .user-upload-form {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .file-input-group {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .user-file-input-group {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .file-input-group > div,
-        .user-file-input-group > div {
-            flex: 1;
-        }
-        
-        .file-input-group label,
-        .user-file-input-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        
-        .file-input-group input,
-        .user-file-input-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        
-        .file-input-group small,
-        .user-file-input-group small {
-            color: #666;
-            font-size: 12px;
-        }
-        
-        .btn-submit,
-        .user-btn-submit {
-            background: #007bff;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        
-        .btn-submit:hover,
-        .user-btn-submit:hover {
-            background: #0056b3;
-        }
-        
-        .alert {
-            padding: 12px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-        
-        .user-alert {
-            padding: 12px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-        
-        .alert-danger,
-        .user-alert-danger {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .alert-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        .stats-grid,
-        .user-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .metric-card {
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-        }
-        .metric-header {
-            background: #f8f9fa;
-            padding: 10px 15px;
-            border-bottom: 1px solid #ddd;
-            font-weight: bold;
-        }
-        .metric-header.success { background: #28a745; color: white; }
-        .metric-header.primary { background: #007bff; color: white; }
-        .metric-header.secondary { background: #6c757d; color: white; }
-
-        /* Enhanced Detailed Analytics Comparison Styles */
-        .comparison-item {
-            background: white;
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            transition: box-shadow 0.3s ease;
-        }
-        
-        .comparison-item:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        
-        .comparison-item h5 {
-            color: #495057;
-            margin-bottom: 15px;
-            font-size: 0.95em; /* Reduced from 1.1em */
-            font-weight: 600;
-            text-transform: capitalize;
-        }
-        
-        .period-comparison {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            padding: 15px;
-        }
-        
-        .period-data {
-            text-align: center;
-            flex: 1;
-        }
-        
-        .period-data h6 {
-            font-size: 0.75em; /* Reduced from 0.85em */
-            color: #6c757d;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-        
-        .period-data .value {
-            font-size: 1.1em; /* Reduced from 1.4em */
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
-        
-        .period-data small {
-            color: #6c757d;
-            font-size: 0.7em; /* Reduced from 0.8em */
-        }
-        
-        .vs-divider {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 15px;
-            color: #adb5bd;
-            font-weight: bold;
-            font-size: 0.8em; /* Reduced from 0.9em */
-        }
-        
-        .change-summary {
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            font-size: 0.85em; /* Reduced from 0.95em */
-            border-left: 4px solid #dee2e6;
-        }
-        
-        .change-summary .improved {
-            border-left-color: #28a745;
-        }
-        
-        .change-summary .declined {
-            border-left-color: #dc3545;
-        }
-        
-        .change-summary .unchanged {
-            border-left-color: #6c757d;
-        }
-        
-        .metric-percentage {
-            font-size: 0.9em; /* Reduced from 1.1em */
-            font-weight: 600;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: #f8f9fa;
-        }
-        
-        .metric-percentage.improved {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .metric-percentage.declined {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .metric-percentage.unchanged {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-        
-        /* Fix the inconsistent VS section */
-        .detailed-vs-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            padding: 15px;
-        }
-        
-        .detailed-period-data {
-            text-align: center;
-            flex: 1;
-        }
-        
-        .detailed-period-data h6 {
-            font-size: 0.75em; /* Reduced from 0.85em */
-            color: #6c757d;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-        
-        .detailed-period-data .period-value {
-            font-size: 1.1em; /* Reduced from 1.4em */
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
-        
-        .detailed-period-data .period-avg {
-            color: #6c757d;
-            font-size: 0.7em; /* Reduced from 0.8em */
-            font-weight: 500;
-        }
-
-        .data-preview-section {
-            display: block;
-        }
-        
-        .preview-column {
-            margin-bottom: 25px;
-        }
-        
-        .preview-column h4 {
-            color: #495057;
-            margin-bottom: 15px;
-            font-size: 1.1em;
-            font-weight: 600;
-        }
-        
-        .table-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            background: white;
-        }
-        
-        .preview-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85em;
-            margin: 0;
-        }
-        
-        .preview-table th {
-            background: #f8f9fa;
-            color: #495057;
-            font-weight: 600;
-            padding: 12px 8px;
-            text-align: left;
-            border-bottom: 2px solid #dee2e6;
-            border-right: 1px solid #dee2e6;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        
-        .preview-table th:last-child {
-            border-right: none;
-        }
-        
-        .preview-table td {
-            padding: 10px 8px;
-            border-bottom: 1px solid #f1f3f4;
-            border-right: 1px solid #f1f3f4;
-            color: #495057;
-        }
-        
-        .preview-table td:last-child {
-            border-right: none;
-        }
-        
-        .preview-table tbody tr:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .preview-table tbody tr:nth-child(even) {
-            background-color: #fdfdfd;
-        }
-        
-        .preview-table tbody tr:nth-child(even):hover {
-            background-color: #f8f9fa;
-        }
-        
-        /* Responsive table scroll */
-        .table-container::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        
-        .table-container::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-        
-        .table-container::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 4px;
-        }
-        
-        .table-container::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-
-        .user-alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .comparison-container {
-        max-width: 800px;
-        margin: 20px auto;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-    }
-
-    .saved-comparisons {
-        background-color: #f9f9f9;
-        padding: 15px;
-        border-radius: 5px;
-        margin-bottom: 20px;
-    }
-
-    .file-selection, .comparison-name {
-        margin-bottom: 15px;
-    }
-
-    .file-selection label, .comparison-name label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-    }
-
-    .file-selection select, .comparison-name input {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-
-    button {
-        background-color: #007cba;
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-
-    button:hover {
-        background-color: #005a87;
-    }
-    </style>
 </head>
 <body>
-    <div class="container user-compare-container" id="dashboard">
+    <div class="container compare-user-compare-container" id="dashboard">
         <header>
+            <a href="../index.php" class="logo">
+                <div class="logo-icon">T</div>
+                TrafAnalyz
+            </a>
             <h1>Web Traffic Analysis Dashboard</h1>
             <nav>
                 <ul>
@@ -888,23 +423,23 @@ function calculateStats($values) {
             <p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
 
             <!-- Upload Form -->
-            <div class="user-upload-form">
+            <div class="compare-user-upload-form">
                 <h3><i class="fas fa-upload"></i> Upload Analytics CSV Files</h3>
                 
                 <?php if ($error_message): ?>
-                    <div class="user-alert user-alert-danger">
+                    <div class="compare-user-alert compare-user-alert-danger">
                         <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
                     </div>
                 <?php endif; ?>
                 
                 <?php if ($success_message): ?>
-                    <div class="user-alert user-alert-success">
+                    <div class="compare-user-alert compare-user-alert-success">
                         <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success_message); ?>
                     </div>
                 <?php endif; ?>
 
                 <form method="post" enctype="multipart/form-data">
-                    <div class="user-file-input-group">
+                    <div class="compare-user-file-input-group">
                         <div>
                             <label for="csv_file1">First Period CSV File</label>
                             <input type="file" id="csv_file1" name="csv_file1" accept=".csv" required>
@@ -916,18 +451,18 @@ function calculateStats($values) {
                             <small>Upload your second analytics period data</small>
                         </div>
                     </div>
-                    <button type="submit" class="user-btn-submit">
+                    <button type="submit" class="compare-user-btn-submit">
                         <i class="fas fa-chart-bar"></i> Compare Analytics Data
                     </button>
                 </form>
             </div>
 
-            <div class="comparison-container">
+            <div class="compare-comparison-container">
                 <h3>Compare CSV Files</h3>
                             
                 <!-- Load Saved Comparison -->
                 <?php if (!empty($savedComparisons)): ?>
-                <div class="saved-comparisons">
+                <div class="compare-saved-comparisons">
                     <h4>Load Saved Comparison</h4>
                     <form method="POST">
                         <select name="saved_comparison_id" required>
@@ -938,7 +473,7 @@ function calculateStats($values) {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <button type="submit" name="load_comparison">Load Comparison</button>
+                        <button type="submit" name="load_comparison" class="compare-button">Load Comparison</button>
                     </form>
                     <hr>
                 </div>
@@ -946,7 +481,7 @@ function calculateStats($values) {
                             
                 <!-- New Comparison -->
                 <form method="POST">
-                    <div class="file-selection">
+                    <div class="compare-file-selection">
                         <label>First CSV File:</label>
                         <select name="upload1" required>
                             <option value="">Select first file...</option>
@@ -959,7 +494,7 @@ function calculateStats($values) {
                         </select>
                     </div>
                             
-                    <div class="file-selection">
+                    <div class="compare-file-selection">
                         <label>Second CSV File:</label>
                         <select name="upload2" required>
                             <option value="">Select second file...</option>
@@ -972,12 +507,12 @@ function calculateStats($values) {
                         </select>
                     </div>
                             
-                    <div class="comparison-name">
+                    <div class="compare-comparison-name">
                         <label>Comparison Name (optional):</label>
                         <input type="text" name="comparisonName" placeholder="Enter a name to save this comparison">
                     </div>
                             
-                    <button type="submit" name="compare">Compare Files</button>
+                    <button type="submit" name="compare" class="compare-button">Compare Files</button>
                 </form>
             </div>
 
@@ -985,7 +520,7 @@ function calculateStats($values) {
             <!-- Comparison Results -->
             <?php if ($comparison_results): ?>
                 <!-- Debug Information -->
-                <div class="alert alert-info">
+                <div class="compare-alert compare-alert-info">
                     <h4><i class="fas fa-bug"></i> Debug Information</h4>
                     <p><strong>Available CSV Headers:</strong><br>
                     <small><?php echo implode(' | ', $comparison_results['headers']['common_headers']); ?></small></p>
@@ -1025,18 +560,18 @@ function calculateStats($values) {
 
             <!-- Performance Overview -->
             <?php if (!empty($comparison_results['summary_comparison'])): ?>
-                <div class="metric-summary">
+                <div class="compare-metric-summary">
                     <h3><i class="fas fa-tachometer-alt"></i> Performance Overview</h3>
-                    <div class="user-stats-grid">
+                    <div class="compare-user-stats-grid">
                         <?php 
                         // Dynamically show all available metrics from summary_comparison
                         foreach ($comparison_results['summary_comparison'] as $metric => $data): 
                         ?>
-                            <div class="user-metric-box">
+                            <div class="compare-user-metric-box">
                                 <h4><?php echo number_format($data['file1_total']); ?></h4>
                                 <small><?php echo ucwords(str_replace('_', ' ', $metric)); ?></small>
                                 <div style="margin-top: 5px;">
-                                    <span class="<?php echo $data['status'] === 'improved' ? 'improved' : ($data['status'] === 'declined' ? 'declined' : 'unchanged'); ?>">
+                                    <span class="compare-<?php echo $data['status'] === 'improved' ? 'improved' : ($data['status'] === 'declined' ? 'declined' : 'unchanged'); ?>">
                                         <?php echo $data['percent_change']; ?>%
                                         <i class="fas <?php echo $data['percent_change'] > 0 ? 'fa-arrow-up' : ($data['percent_change'] < 0 ? 'fa-arrow-down' : 'fa-minus'); ?>"></i>
                                     </span>
@@ -1051,38 +586,38 @@ function calculateStats($values) {
 
             <!-- Detailed Analytics Comparison -->
             <?php if (!empty($comparison_results['analytics_metrics'])): ?>
-                <div class="comparison-card">
-                    <div class="metric-header success">
+                <div class="compare-comparison-card">
+                    <div class="compare-metric-header success">
                         <i class="fas fa-chart-bar"></i> Detailed Analytics Comparison
                     </div>
-                    <div class="user-stats-grid">
+                    <div class="compare-user-stats-grid">
                         <?php foreach ($comparison_results['analytics_metrics'] as $metric => $analysis): ?>
-                            <div class="comparison-item">
+                            <div class="compare-comparison-item">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                                     <h5><?php echo ucwords(str_replace('_', ' ', $metric)); ?></h5>
-                                    <span class="metric-percentage <?php echo $analysis['comparison']['improvement']; ?>">
+                                    <span class="compare-metric-percentage compare-<?php echo $analysis['comparison']['improvement']; ?>">
                                         <?php echo $analysis['comparison']['percent_change'] > 0 ? '+' : ''; ?>
                                         <?php echo $analysis['comparison']['percent_change']; ?>%
                                     </span>
                                 </div>
 
-                                <div class="detailed-vs-section">
-                                    <div class="detailed-period-data">
+                                <div class="compare-detailed-vs-section">
+                                    <div class="compare-detailed-period-data">
                                         <h6>Period 1</h6>
                                         <div class="period-value"><?php echo number_format($analysis['file1_stats']['sum']); ?></div>
                                         <div class="period-avg">Avg: <?php echo number_format($analysis['file1_stats']['mean'], 1); ?></div>
                                     </div>
 
-                                    <div class="vs-divider">VS</div>
+                                    <div class="compare-vs-divider">VS</div>
 
-                                    <div class="detailed-period-data">
+                                    <div class="compare-detailed-period-data">
                                         <h6>Period 2</h6>
                                         <div class="period-value"><?php echo number_format($analysis['file2_stats']['sum']); ?></div>
                                         <div class="period-avg">Avg: <?php echo number_format($analysis['file2_stats']['mean'], 1); ?></div>
                                     </div>
                                 </div>
 
-                                <div class="change-summary <?php echo $analysis['comparison']['improvement']; ?>">
+                                <div class="compare-change-summary compare-<?php echo $analysis['comparison']['improvement']; ?>">
                                     <strong>
                                         Change: <?php echo $analysis['comparison']['total_diff'] > 0 ? '+' : ''; ?>
                                         <?php echo number_format($analysis['comparison']['total_diff']); ?>
@@ -1096,24 +631,24 @@ function calculateStats($values) {
             <?php endif; ?>
 
                 <!-- Basic File Information -->
-                <div class="comparison-card">
-                    <div class="metric-header primary">
+                <div class="compare-comparison-card">
+                    <div class="compare-metric-header primary">
                         <i class="fas fa-info-circle"></i> File Information
                     </div>
-                    <div class="user-stats-grid">
-                        <div class="user-metric-box">
+                    <div class="compare-user-stats-grid">
+                        <div class="compare-user-metric-box">
                             <h4><?php echo $comparison_results['basic_metrics']['file1_rows']; ?></h4>
                             <small>Period 1 Records</small>
                         </div>
-                        <div class="user-metric-box">
+                        <div class="compare-user-metric-box">
                             <h4><?php echo $comparison_results['basic_metrics']['file2_rows']; ?></h4>
                             <small>Period 2 Records</small>
                         </div>
-                        <div class="user-metric-box">
+                        <div class="compare-user-metric-box">
                             <h4><?php echo $comparison_results['basic_metrics']['file1_columns']; ?></h4>
                             <small>Total Columns</small>
                         </div>
-                        <div class="user-metric-box">
+                        <div class="compare-user-metric-box">
                             <h4><?php echo count($comparison_results['headers']['common_headers']); ?></h4>
                             <small>Common Columns</small>
                         </div>
@@ -1121,15 +656,15 @@ function calculateStats($values) {
                 </div>
 
                 <!-- Data Samples -->
-                <div class="comparison-card">
-                    <div class="metric-header secondary">
+                <div class="compare-comparison-card">
+                    <div class="compare-metric-header secondary">
                         <i class="fas fa-eye"></i> Data Preview (First 5 Records)
                     </div>
-                    <div class="data-preview-section">
-                        <div class="preview-column">
+                    <div class="compare-data-preview-section">
+                        <div class="compare-preview-column">
                             <h4>Period 1 Sample</h4>
-                            <div class="table-container">
-                                <table class="preview-table">
+                            <div class="compare-table-container">
+                                <table class="compare-preview-table">
                                     <?php if (!empty($comparison_results['data_sample']['file1_sample'])): ?>
                                         <thead>
                                             <tr>
@@ -1152,10 +687,10 @@ function calculateStats($values) {
                             </div>
                         </div>
                                                     
-                        <div class="preview-column">
+                        <div class="compare-preview-column">
                             <h4>Period 2 Sample</h4>
-                            <div class="table-container">
-                                <table class="preview-table">
+                            <div class="compare-table-container">
+                                <table class="compare-preview-table">
                                     <?php if (!empty($comparison_results['data_sample']['file2_sample'])): ?>
                                         <thead>
                                             <tr>
