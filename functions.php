@@ -58,15 +58,19 @@ function handleCsvUpload($conn, $file) {
         file_put_contents(__DIR__ . '/config/csv_mappings.json', json_encode($defaultMappings, JSON_PRETTY_PRINT));
     }
     
-    // Move uploaded file to a temporary location
+    // Create uploads directory if it doesn't exist
     $uploadDir = __DIR__ . '/uploads/';
     if (!is_dir($uploadDir)) {
         mkdir($uploadDir, 0755, true);
     }
     
-    $fileName = uniqid() . '_' . basename($file['name']);
+    // Generate unique hash-based filename to avoid conflicts
+    $originalName = basename($file['name']);
+    $shortHash = substr(hash('md5', $originalName . time()), 0, 8); // Only 8 characters
+    $fileName = $shortHash . '_' . $originalName;
     $filePath = $uploadDir . $fileName;
     
+    // Move uploaded file to permanent location with unique name
     if (!move_uploaded_file($file['tmp_name'], $filePath)) {
         return [
             'type' => 'error',
@@ -97,7 +101,7 @@ function handleCsvUpload($conn, $file) {
             }
             $_SESSION['csv_metadata'] = $metadata;
             $_SESSION['uploaded_csv'] = $filePath;
-            $_SESSION['uploaded_file_name'] = basename($file['name']);
+            $_SESSION['uploaded_file_name'] = $fileName; // Use the unique filename with hash
 
             // CRITICAL FIX: Actually check the result from saveTransformedData
             $saveResult = saveTransformedData($conn, $transformedData);
@@ -109,12 +113,8 @@ function handleCsvUpload($conn, $file) {
                     $errorCount = count($_SESSION['validation_errors']);
                     $validationErrors = $_SESSION['validation_errors'];
                     
-                    // Clean up temporary file on success
-                    if (file_exists($filePath)) {
-                        unlink($filePath);
-                    }
-                    
-                    // Clear session data but keep validation errors for display
+                    // DON'T delete the file - keep it in uploads directory for future comparisons
+                    // Clean up session data but keep validation errors for display
                     unset($_SESSION['uploaded_csv']);
                     unset($_SESSION['csv_metadata']);
                     // Don't unset validation_errors here - let index.php handle it
@@ -122,15 +122,13 @@ function handleCsvUpload($conn, $file) {
                     return [
                         'type' => 'warning',
                         'message' => "Data imported with $errorCount validation warnings. Some rows had errors but valid data was processed.",
-                        'validation_errors' => $validationErrors
+                        'validation_errors' => $validationErrors,
+                        'file_path' => $filePath // Return file path for comparison use
                     ];
                 }
                 
                 // Normal success case (no warnings)
-                // Clean up temporary file on success
-                if (file_exists($filePath)) {
-                    unlink($filePath);
-                }
+                // DON'T delete the file - keep it in uploads directory for future comparisons
                 
                 // CRITICAL: Clear ALL session data for clean state
                 unset($_SESSION['uploaded_csv']);
@@ -140,21 +138,22 @@ function handleCsvUpload($conn, $file) {
                 
                 return [
                     'type' => 'success',
-                    'message' => 'CSV data successfully imported and processed.'
+                    'message' => 'CSV data successfully imported and processed.',
+                    'file_path' => $filePath // Return file path for comparison use
                 ];
             } else {
                 // CRITICAL: Return the actual error message from saveTransformedData
                 error_log("Save failed with message: " . $saveResult['message']);
                 
-                // Clean up temporary file on error
-                    if (file_exists($filePath)) {
-                        unlink($filePath);
-                    }
+                // Clean up file on error only
+                if (file_exists($filePath)) {
+                    unlink($filePath);
+                }
                 
-                    return [
-                        'type' => 'error',
+                return [
+                    'type' => 'error',
                     'message' => $saveResult['message']
-                    ];
+                ];
             }
         } else if ($result['status'] === 'needs_mapping') {
             // Store file path and mapping info in session for the mapping page
