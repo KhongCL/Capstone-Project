@@ -8,10 +8,18 @@ require_once '../config.php';
 require_once '../classes/CsvProcessor.php';
 include '../functions.php';
 
+// Add more debugging at the top
+error_log("=== UPLOAD HANDLER START ===");
+error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
+error_log("Files received: " . print_r($_FILES, true));
+error_log("POST data: " . print_r($_POST, true));
+
 // Ensure this is an AJAX request
 if (!isset($_SERVER['HTTP_X_REQUESTED_WITH']) || strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) !== 'xmlhttprequest') {
+    error_log("ERROR: Not an AJAX request");
     http_response_code(400);
-    exit('Bad Request');
+    echo json_encode(['success' => false, 'message' => 'Bad Request - Not AJAX']);
+    exit;
 }
 
 // Add debugging

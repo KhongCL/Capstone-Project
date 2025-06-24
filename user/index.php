@@ -9,6 +9,18 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// CRITICAL FIX: Clear validation errors when page loads fresh (not from form submission)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['from_upload'])) {
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // Clear any lingering validation errors and upload messages
+    unset($_SESSION['validation_errors']);
+    unset($_SESSION['upload_message']);
+    error_log("Cleared validation errors on fresh page load");
+}
+
 // Set page variables for header
 $title = "Dashboard Home";
 $active_page = "home";
@@ -296,5 +308,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset
         </div>
     </div>
 <script src="upload_progress.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we came from a successful upload
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('from_upload') === 'success') {
+        // Clean the URL without triggering a reload
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Optionally show a brief success message
+        const uploadSection = document.querySelector('.upload-section');
+        if (uploadSection) {
+            const successMessage = document.createElement('div');
+            successMessage.className = 'message success';
+            successMessage.innerHTML = '<i class="fas fa-check-circle"></i> File uploaded successfully!';
+            
+            const form = uploadSection.querySelector('form');
+            if (form) {
+                form.parentNode.insertBefore(successMessage, form);
+                
+                // Auto-hide after 3 seconds
+                setTimeout(() => {
+                    successMessage.remove();
+                }, 3000);
+            }
+        }
+    }
+});
+</script>
 </body>
 </html>

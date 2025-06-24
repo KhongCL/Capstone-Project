@@ -13,6 +13,7 @@ class UploadProgressTracker {
         this.simulationTimeouts = [];
         this.serverResponseReceived = false;
         this.serverResponse = null;
+        this.isUploading = false;
         
         this.initializeEventListeners();
     }
@@ -30,10 +31,21 @@ class UploadProgressTracker {
         // Form submission handler
         uploadForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            console.log('Form submitted'); // Debug log
+            
+            // CRITICAL: Prevent multiple simultaneous uploads
+            if (this.isUploading) {
+                console.log('Upload already in progress, ignoring submission');
+                return;
+            }
             
             const file = fileInput.files[0];
             if (file) {
+                console.log('File selected:', file.name, file.size); // Debug log
                 this.startUpload(file);
+            } else {
+                console.error('No file selected'); // Debug log
+                alert('Please select a file before uploading.');
             }
         });
 
@@ -46,6 +58,14 @@ class UploadProgressTracker {
     handleFileSelection(file) {
         if (!file) return;
 
+        console.log('New file selected:', file.name); // Debug log
+
+        // CRITICAL: Reset the entire component state when new file is selected
+        this.resetComponentState();
+
+        // Clear any existing messages when new file is selected
+        this.clearExistingMessages();
+
         const fileInfo = document.getElementById('fileInfo');
         const fileName = fileInfo.querySelector('.file-name');
         const fileSize = fileInfo.querySelector('.file-size');
@@ -53,6 +73,57 @@ class UploadProgressTracker {
         fileName.textContent = file.name;
         fileSize.textContent = this.formatFileSize(file.size);
         fileInfo.style.display = 'block';
+    }
+
+    // NEW METHOD: Reset entire component state
+    resetComponentState() {
+        console.log('Resetting component state...');
+        
+        // Cancel any ongoing upload
+        if (this.xhr && this.xhr.readyState !== XMLHttpRequest.DONE) {
+            this.xhr.abort();
+        }
+        
+        // Clear all timeouts
+        this.clearSimulationTimeouts();
+        
+        // Reset all state variables
+        this.cancelled = false;
+        this.serverResponseReceived = false;
+        this.serverResponse = null;
+        this.isUploading = false;
+        this.xhr = null;
+        this.currentStage = 0;
+        
+        // Reset UI elements
+        this.resetUIState();
+    }
+
+    // NEW METHOD: Reset UI state
+    resetUIState() {
+        const uploadProgress = document.getElementById('uploadProgress');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        
+        // Hide progress container
+        if (uploadProgress) {
+            uploadProgress.style.display = 'none';
+        }
+        
+        // CRITICAL: Re-enable upload button and show it
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.style.display = 'inline-block';
+            console.log('Upload button re-enabled and shown');
+        }
+        
+        // Hide cancel button
+        if (cancelBtn) {
+            cancelBtn.style.display = 'none';
+        }
+        
+        // Reset all stages
+        this.resetAllStages();
     }
 
     formatFileSize(bytes) {
@@ -64,24 +135,70 @@ class UploadProgressTracker {
     }
 
     startUpload(file) {
-        this.uploadStartTime = Date.now();
+        console.log('Starting upload for file:', file.name);
+        
+        // CRITICAL: Set upload state to prevent multiple uploads
+        this.isUploading = true;
+        
+        // Clear any existing error/warning messages immediately
+        this.clearExistingMessages();
+        
+        // Reset upload state
         this.cancelled = false;
-        this.currentStage = 0;
-        this.simulationTimeouts = [];
         this.serverResponseReceived = false;
         this.serverResponse = null;
-
-        // Show progress container and hide upload button
-        this.showProgressContainer();
-
-        // Reset all stages
+        
+        // Show progress container and hide form
+        const uploadProgress = document.getElementById('uploadProgress');
+        const form = document.getElementById('uploadForm');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        
+        if (uploadProgress) uploadProgress.style.display = 'block';
+        if (cancelBtn) cancelBtn.style.display = 'inline-block';
+        if (uploadBtn) {
+            uploadBtn.disabled = true;
+            console.log('Upload button disabled during upload');
+        }
+        
+        // CRITICAL: Reset all stages before starting
         this.resetAllStages();
-
-        // Activate first stage
-        this.activateStage(0);
-
+        this.activateStage(0); // Activate the first stage
+        
+        // Update file details
+        this.updateFileDetails(file);
+        
         // Start the upload
         this.uploadFile(file);
+    }
+
+    updateFileDetails(file) {
+        const fileSizeDetail = document.getElementById('fileSizeDetail');
+        const rowsProcessed = document.getElementById('rowsProcessed');
+        
+        if (fileSizeDetail) {
+            fileSizeDetail.textContent = this.formatFileSize(file.size);
+        }
+        if (rowsProcessed) {
+            rowsProcessed.textContent = '0';
+        }
+        
+        // Set upload start time for speed calculation
+        this.uploadStartTime = Date.now();
+    }
+
+    // Add new method to clear existing messages
+    clearExistingMessages() {
+        const uploadSection = document.querySelector('.upload-section');
+        if (uploadSection) {
+            // Remove all existing error/warning messages
+            const existingMessages = uploadSection.querySelectorAll(
+                '.error-container, .validation-help, .message, .upload-result, .user-alert'
+            );
+            existingMessages.forEach(element => {
+                element.remove();
+            });
+        }
     }
 
     showProgressContainer() {
@@ -95,13 +212,22 @@ class UploadProgressTracker {
     }
 
     hideProgressContainer() {
-        const uploadProgress = document.getElementById('uploadProgress');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
+            const uploadProgress = document.getElementById('uploadProgress');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
 
-        uploadProgress.style.display = 'none';
-        uploadBtn.style.display = 'inline-block';
-        cancelBtn.style.display = 'none';
+            uploadProgress.style.display = 'none';
+            cancelBtn.style.display = 'none';
+            
+            // CRITICAL: Re-enable upload button when hiding progress
+            if (uploadBtn) {
+                uploadBtn.style.display = 'inline-block';
+                uploadBtn.disabled = false;
+                console.log('Upload button re-enabled in hideProgressContainer');
+            }
+            
+            // CRITICAL: Reset upload state
+            this.isUploading = false;
     }
 
     resetAllStages() {
@@ -245,26 +371,42 @@ class UploadProgressTracker {
 
         this.xhr = new XMLHttpRequest();
 
+        // Add readystate change handler for debugging
+        this.xhr.addEventListener('readystatechange', () => {
+            console.log('ReadyState changed to:', this.xhr.readyState, 
+                    'Status:', this.xhr.status, 'StatusText:', this.xhr.statusText);
+        });
+
         // Track upload progress (Stage 1 - File Upload)
         this.xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable) {
                 const percent = (e.loaded / e.total) * 100;
+                console.log(`Upload progress: ${Math.round(percent)}% (${e.loaded}/${e.total})`);
                 this.updateStageProgress(0, percent);
                 this.updateOverallProgress(percent * 0.25, 'Uploading file...');
                 this.updateUploadSpeed(e.loaded, e.total);
             }
         });
 
+        // Add loadstart event
+        this.xhr.upload.addEventListener('loadstart', () => {
+            console.log('Upload started');
+            this.updateOverallProgress(1, 'Starting upload...');
+        });
+
         // Handle upload completion
         this.xhr.addEventListener('load', () => {
+            console.log('Upload completed. Status:', this.xhr.status);
+            console.log('Response text:', this.xhr.responseText);
+            
             if (this.xhr.status === 200) {
                 this.completeStage(0);
                 this.updateOverallProgress(25, 'File uploaded successfully');
                 
-                // Process the server response first to determine if there will be errors
+                // Process the server response
                 this.handleServerResponse(this.xhr.responseText);
                 
-                // Always start simulation to show structure validation
+                // Start simulation
                 this.simulateServerProcessing();
             } else {
                 this.handleError('Upload failed with status: ' + this.xhr.status);
@@ -272,18 +414,23 @@ class UploadProgressTracker {
         });
 
         // Handle upload error
-        this.xhr.addEventListener('error', () => {
+        this.xhr.addEventListener('error', (e) => {
+            console.error('Upload error event:', e);
             this.handleError('Upload failed due to network error.');
         });
 
         // Handle upload abort
         this.xhr.addEventListener('abort', () => {
+            console.log('Upload aborted');
             this.handleError('Upload cancelled by user.');
         });
 
-        // Send to our AJAX handler - ADD THE MISSING HEADER
+        // Send request
+        console.log('Opening connection to upload_handler.php...');
         this.xhr.open('POST', 'upload_handler.php', true);
-        this.xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest'); // ← ADD THIS LINE
+        this.xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        
+        console.log('Sending file:', file.name, 'Size:', file.size);
         this.xhr.send(formData);
     }
 
@@ -367,7 +514,7 @@ class UploadProgressTracker {
             
             // Show detailed error message after a brief pause
             setTimeout(() => {
-                this.hideProgressContainer();
+                this.hideProgressContainer(); // This will re-enable the button
                 this.showDetailedErrors(this.serverResponse);
             }, 2000);
         }, 500);
@@ -750,7 +897,7 @@ class UploadProgressTracker {
             
             // Show detailed error message after a brief pause
             setTimeout(() => {
-                this.hideProgressContainer();
+                this.hideProgressContainer(); // This will re-enable the button
                 this.showDetailedErrors(this.serverResponse);
             }, 2000);
         }, 500);
@@ -791,42 +938,25 @@ class UploadProgressTracker {
                 this.completeStage(0); // File upload ✅ 100%
                 this.completeStage(1); // Structure validation ✅ 100%
                 
-                // Do NOT complete stages 2 and 3 - they should remain at 0%
-                // Just show that we're transitioning to manual mapping
                 this.updateOverallProgress(50, 'Redirecting to column mapping...');
                 
                 setTimeout(() => {
                     window.location.href = response.redirect;
-                }, 1000); // Reduced delay for faster transition
+                }, 1000);
             } else if (response.validation_errors && response.validation_errors.length > 0) {
-                // NEW: Handle validation warnings - show processing failed at stage 3
-                this.completeStage(0); // File upload ✅ 100%
-                this.completeStage(1); // Structure validation ✅ 100%
-                this.completeStage(2); // Data processing ✅ 100%
-                
-                // CRITICAL FIX: Show stage 3 (Database save) as FAILED, not completed
-                this.activateStage(3); // Activate stage 3 first
+                // Handle validation warnings - complete stages and show warnings
+                this.completeStage(0); // File upload ✅
+                this.completeStage(1); // Structure validation ✅  
+                this.completeStage(2); // Data processing ✅
+                this.completeStage(3); // Database save ✅
+                this.updateOverallProgress(100, 'Upload completed with warnings');
                 
                 setTimeout(() => {
-                    // Show stage 3 as failed with 0% progress
-                    const stageElement = document.getElementById(this.stages[3].id);
-                    stageElement.classList.remove('active');
-                    stageElement.classList.add('error');
-                    
-                    const icon = stageElement.querySelector('.stage-icon');
-                    icon.textContent = '⚠️'; // Use warning icon instead of ❌
-                    
-                    // Keep progress at 0% to show it failed
-                    this.updateStageProgress(3, 0);
-                    this.updateOverallProgress(75, 'Data saved with validation warnings');
-                    
-                    setTimeout(() => {
-                        this.hideProgressContainer();
-                        this.showValidationWarnings(response.message, response.validation_errors);
-                    }, 1500);
-                }, 500);
+                    this.hideProgressContainer(); // This will re-enable the button
+                    this.showValidationWarnings(response.message, response.validation_errors);
+                }, 1500);
             } else {
-                // Complete all stages for automatic processing
+                // Complete success - force page refresh to clear any cached messages
                 this.completeStage(0); // File upload ✅
                 this.completeStage(1); // Structure validation ✅  
                 this.completeStage(2); // Data processing ✅
@@ -834,11 +964,12 @@ class UploadProgressTracker {
                 this.updateOverallProgress(100, 'Upload completed successfully!');
                 
                 setTimeout(() => {
-                    window.location.href = response.redirect || 'overview.php';
+                    // CRITICAL: Force page reload to clear any cached session data
+                    window.location.href = 'index.php?from_upload=success';
                 }, 2000);
             }
         } else {
-            // Error handling
+            // Error handling - these methods will call hideProgressContainer
             if (this.hasStructureErrors()) {
                 this.showErrorAtStructureStage();
             } else {
@@ -1099,7 +1230,7 @@ class UploadProgressTracker {
         validationHelp.appendChild(errorFooter);
     }
 
-    handleError(message) {
+handleError(message) {
         this.clearSimulationTimeouts();
         
         // Show error state
@@ -1125,31 +1256,35 @@ class UploadProgressTracker {
             if (form && form.parentNode) {
                 form.parentNode.insertBefore(errorDiv, form.nextSibling);
             }
+            
+            // CRITICAL: Reset upload state
+            this.isUploading = false;
         }, 3000);
     }
 
     cancelUpload() {
-        this.cancelled = true;
-        this.clearSimulationTimeouts();
-        
-        if (this.xhr) {
-            this.xhr.abort();
-        }
-        
-        // Show error state
-        const currentStageElement = document.getElementById(this.stages[this.currentStage].id);
-        currentStageElement.classList.remove('active');
-        currentStageElement.classList.add('error');
-        
-        const icon = currentStageElement.querySelector('.stage-icon');
-        icon.textContent = '❌';
-        
-        this.updateOverallProgress(0, 'Upload cancelled by user');
-        
-        // Hide progress and show upload button again
-        setTimeout(() => {
-            this.hideProgressContainer();
-        }, 2000);
+            this.cancelled = true;
+            this.clearSimulationTimeouts();
+            
+            if (this.xhr) {
+                this.xhr.abort();
+            }
+            
+            // Show error state
+            const currentStageElement = document.getElementById(this.stages[this.currentStage].id);
+            currentStageElement.classList.remove('active');
+            currentStageElement.classList.add('error');
+            
+            const icon = currentStageElement.querySelector('.stage-icon');
+            icon.textContent = '❌';
+            
+            this.updateOverallProgress(0, 'Upload cancelled by user');
+            
+            // Hide progress and show upload button again
+            setTimeout(() => {
+                this.hideProgressContainer();
+                // isUploading is reset in hideProgressContainer
+            }, 2000);
     }
 }
 
