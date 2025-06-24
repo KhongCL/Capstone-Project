@@ -429,20 +429,27 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 
     function exportToCSV() {
       const metricCards = document.querySelectorAll('.user-metric-card');
-      const totalPageViews = metricCards[0].querySelector('.user-metric-value').textContent;
-      const uniqueVisitors = metricCards[1].querySelector('.user-metric-value').textContent;
-      const avgSessionDuration = metricCards[2].querySelector('.user-metric-value').textContent;
-      const bounceRate = metricCards[3].querySelector('.user-metric-value').textContent;
         
-      // CSV generation - only key metrics
+      // Extract values more carefully, handling N/A cases
+      const totalPageViews = metricCards[0].querySelector('.user-metric-value').textContent.trim().replace(/,/g, '');
+      const uniqueVisitorsElement = metricCards[1].querySelector('.user-metric-value');
+      const uniqueVisitors = uniqueVisitorsElement.textContent.trim().includes('N/A') ? 'N/A' : uniqueVisitorsElement.textContent.trim().replace(/,/g, '');
+        
+      const avgSessionElement = metricCards[2].querySelector('.user-metric-value');
+      const avgSessionDuration = avgSessionElement.textContent.trim().includes('N/A') ? 'N/A' : avgSessionElement.textContent.trim();
+        
+      const bounceRateElement = metricCards[3].querySelector('.user-metric-value');
+      const bounceRate = bounceRateElement.textContent.trim().includes('N/A') ? 'N/A' : bounceRateElement.textContent.trim();
+        
+      // CSV generation with proper formatting
       let csv = 'Metric,Value\n';
-      csv += `Total Page Views,${totalPageViews.replace(/,/g, '')}\n`;
-      csv += `Unique Visitors,${uniqueVisitors.replace(/,/g, '')}\n`;
-      csv += `Average Session Duration,${avgSessionDuration}\n`;
-      csv += `Bounce Rate,${bounceRate}\n`;
+      csv += `"Total Page Views","${totalPageViews}"\n`;
+      csv += `"Unique Visitors","${uniqueVisitors}"\n`;
+      csv += `"Average Session Duration","${avgSessionDuration}"\n`;
+      csv += `"Bounce Rate","${bounceRate}"\n`;
         
       // Trigger download
-      const blob = new Blob([csv], { type: 'text/csv' });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -450,6 +457,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      URL.revokeObjectURL(url);
         
       // Log export in DB
       fetch('log_export.php', {
@@ -463,6 +471,9 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
           if (!data.success) {
             console.warn('Export log failed:', data.message);
           }
+        })
+        .catch(error => {
+          console.error('Error logging export:', error);
         });
     }
 
