@@ -174,18 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
 </head>
 <body>
     <div class="container user-map-columns-container">
-        <header>
-            <h1>Web Traffic Analysis Dashboard</h1>
-            <nav>
-                <ul>
-                    <li><a href="index.php">Home</a></li>
-                    <li><a href="overview.php">Overview</a></li>
-                    <li><a href="traffic_sources.php">Traffic Sources</a></li>
-                    <li><a href="pages.php">Pages</a></li>
-                    <li><a href="compare.php">Compare</a></li>
-                </ul>
-            </nav>
-        </header>
+        <?php include 'user_header.php'; ?>
         
         <main>
             <section class="user-mapping-section">
