@@ -275,7 +275,31 @@ function updateUploadProgress($stage, $percent, $message, $rowsProcessed = 0, $t
     error_log("Progress updated: Stage $stage, {$percent}%, $message");
 }
 
+// Update getKeyMetrics function to use getCurrentUploadId
 function getKeyMetrics($conn, $uploadId = null) {
+    // If no uploadId provided, get it using the sample-aware function
+    if (!$uploadId) {
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            return [
+                'total_page_views' => 'N/A',
+                'unique_visitors' => 'N/A',
+                'avg_session_duration' => 'N/A',
+                'bounce_rate' => 'N/A'
+            ];
+        }
+        $uploadId = getCurrentUploadId($conn, $userId);
+    }
+
+    if (!$uploadId) {
+        return [
+            'total_page_views' => 'N/A',
+            'unique_visitors' => 'N/A',
+            'avg_session_duration' => 'N/A',
+            'bounce_rate' => 'N/A'
+        ];
+    }
+
     $metrics = [
         'total_page_views' => 0,
         'unique_visitors' => 'N/A',
@@ -284,41 +308,7 @@ function getKeyMetrics($conn, $uploadId = null) {
     ];
     
     try {
-        // Get upload ID logic (keep existing)...
-        if ($uploadId === null) {
-            if (session_status() == PHP_SESSION_NONE) {
-                session_start();
-            }
-            
-            $userId = $_SESSION['user_id'] ?? 7;
-            
-            $query = "SELECT UploadID, FileName, UploadDate FROM CSV_UPLOAD 
-                     WHERE UserID = ? AND IsValidated = 1 
-                     ORDER BY UploadDate DESC, UploadID DESC LIMIT 1";
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-        
-            if ($result && $row = $result->fetch_assoc()) {
-                $uploadId = $row['UploadID'];
-                error_log("🔄 FORCED REFRESH: Using latest upload ID: $uploadId (File: {$row['FileName']}, Date: {$row['UploadDate']})");
-                
-                unset($_SESSION['latest_upload_id']);
-                unset($_SESSION['cached_metrics']);
-                $_SESSION['latest_upload_id'] = $uploadId;
-            } else {
-                error_log("❌ No uploads found for user $userId");
-                return $metrics;
-            }
-        }
-        
         error_log("📊 Getting metrics for Upload ID: $uploadId");
-        
-        if (!$uploadId) {
-            error_log("No upload ID found, returning default metrics");
-            return $metrics;
-        }
         
         // 1. Get Page Views - FIXED to prioritize correctly
         $query = "SELECT mt.MetricName
@@ -392,8 +382,6 @@ function getKeyMetrics($conn, $uploadId = null) {
                 if ($uniqueVisitors > 0) {
                     $metrics['unique_visitors'] = $uniqueVisitors;
                     error_log("Using $selectedMetric for unique visitors: " . $metrics['unique_visitors']);
-                } else {
-                    error_log("No unique visitor data available");
                 }
             }
         }
@@ -455,13 +443,7 @@ function getKeyMetrics($conn, $uploadId = null) {
                 $bounceRate = (1 - $engagementRate) * 100;
                 $metrics['bounce_rate'] = round($bounceRate, 1);
                 error_log("Calculated bounce rate from engagement rate: " . $metrics['bounce_rate'] . "%");
-            } else {
-                error_log("No engagement rate data found - keeping bounce rate as N/A");
-                // Keep as 'N/A' - don't use default value
             }
-        } else {
-            error_log("No engagement rate or bounce rate data available - keeping bounce rate as N/A");
-            // Keep as 'N/A' - no data available
         }
         
     } catch (Exception $e) {
@@ -471,20 +453,20 @@ function getKeyMetrics($conn, $uploadId = null) {
     return $metrics;
 }
 
-// Get traffic over time data for charts
+// Update getTrafficOverTime function
 function getTrafficOverTime($conn, $interval = 'day', $uploadId = null) {
+    // If no uploadId provided, get it using the sample-aware function
+    if (!$uploadId) {
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) return [];
+        $uploadId = getCurrentUploadId($conn, $userId);
+    }
+    
+    if (!$uploadId) return [];
+    
     $data = [];
     
     try {
-        // If no uploadId provided, get the most recent upload ID
-        if (!$uploadId) {
-            $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
-            $result = $conn->query($query);
-            if ($result && $row = $result->fetch_assoc()) {
-                $uploadId = $row['latest_upload'];
-            }
-        }
-        
         // Get sessions data by date for the specified upload
         $query = "SELECT 
                     pdp.DataDate as time_period,
@@ -514,53 +496,36 @@ function getTrafficOverTime($conn, $interval = 'day', $uploadId = null) {
     return $data;
 }
 
-// Get traffic sources distribution data
-function getTrafficSourcesDistribution($conn) {
+// Update getTrafficSourcesDistribution function
+function getTrafficSourcesDistribution($conn, $uploadId = null) {
+    // If no uploadId provided, get it using the sample-aware function
+    if (!$uploadId) {
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) return [];
+        $uploadId = getCurrentUploadId($conn, $userId);
+    }
+    
+    if (!$uploadId) return [];
+    
     $data = [];
     
     try {
-        // ENHANCED: Use session upload ID first, then fall back to MAX
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
+        error_log("Getting traffic sources for upload ID: $uploadId");
         
-        $latestUpload = 0;
-        if (isset($_SESSION['latest_upload_id'])) {
-            $latestUpload = $_SESSION['latest_upload_id'];
-            error_log("Using session upload ID for traffic sources: $latestUpload");
-        } else {
-            // Fall back to getting the most recent upload ID for current user
-            $userId = $_SESSION['user_id'] ?? 1;
-            $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD WHERE UserID = ? AND IsValidated = 1";
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($result && $row = $result->fetch_assoc()) {
-                $latestUpload = $row['latest_upload'];
-                error_log("Using latest upload ID for traffic sources (user $userId): $latestUpload");
-            }
-        }
-        
-        if (!$latestUpload) {
-            error_log("No upload ID found for traffic sources");
-            return $data;
-        }
-        
-        // FIXED: Use 'Sessions' instead of 'Sessions' (they should be the same, but let's be explicit)
+        // Use SourceTypeName from SOURCE_TYPE table instead of SourceName
         $query = "SELECT 
-                    st.SourceName as traffic_source,
+                    st.SourceTypeName as traffic_source,
                     SUM(pdp.Value) as visit_count
                   FROM PROCESSED_DATA_POINT pdp
                   JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
                   JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
                   WHERE mt.MetricName = 'Sessions'
                   AND pdp.UploadID = ?
-                  GROUP BY st.SourceName
+                  GROUP BY st.SourceTypeName
                   ORDER BY visit_count DESC";
                   
         $stmt = $conn->prepare($query);
-        $stmt->bind_param("i", $latestUpload);
+        $stmt->bind_param("i", $uploadId);
         $stmt->execute();
         $result = $stmt->get_result();
         
@@ -1186,5 +1151,48 @@ function deleteUser($conn, $userId) {
         error_log("Error deleting user: " . $e->getMessage());
         return false;
     }
+}
+
+/**
+ * Get upload ID for current user (including sample data)
+ */
+function getCurrentUploadId($conn, $userId) {
+    // Check if user is using sample data
+    if (isset($_SESSION['using_sample_data']) && isset($_SESSION['sample_upload_id'])) {
+        error_log("Using sample data upload ID: " . $_SESSION['sample_upload_id']);
+        return $_SESSION['sample_upload_id'];
+    }
+    
+    // Get most recent user upload
+    $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE UserID = ? AND (IsSampleData = 0 OR IsSampleData IS NULL) ORDER BY UploadDate DESC LIMIT 1");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    
+    $uploadId = $row ? $row['UploadID'] : null;
+    error_log("Using user upload ID: " . ($uploadId ?? 'NULL'));
+    return $uploadId;
+}
+
+/**
+ * Check if current data is sample data
+ */
+function isUsingSampleData() {
+    return isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data'] === true;
+}
+
+/**
+ * Get sample data notice for display
+ */
+function getSampleDataNotice() {
+    if (isUsingSampleData()) {
+        return [
+            'is_sample' => true,
+            'message' => 'You are currently viewing sample data for demonstration purposes.',
+            'action' => '<a href="index.php?clear_sample=1" class="btn btn-sm">Use Your Own Data</a>'
+        ];
+    }
+    return ['is_sample' => false];
 }
 ?>

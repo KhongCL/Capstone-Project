@@ -196,14 +196,34 @@ function saveSampleData($conn, $data, $fileName, $fileSize, $reportType, $metada
         // Process data points
         foreach ($data as $row) {
             $sourceType = $row['traffic_source'] ?? 'Unknown';
-            $sourceTypeId = getSourceTypeId($conn, $sourceType);
             
+            // Create or get source type with SourceTypeName (not SourceName)
+            $stmt = $conn->prepare("SELECT SourceTypeID FROM SOURCE_TYPE WHERE SourceTypeName = ?");
+            $stmt->bind_param("s", $sourceType);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($row = $result->fetch_assoc()) {
+                $sourceTypeId = $row['SourceTypeID'];
+            } else {
+                // Create new source type with SourceTypeName
+                $stmt = $conn->prepare("INSERT INTO SOURCE_TYPE (SourceTypeName) VALUES (?)");
+                $stmt->bind_param("s", $sourceType);
+                $stmt->execute();
+                $sourceTypeId = $conn->insert_id;
+            }
+            
+            // Insert data points using the corrected functions
             if (isset($row['visits']) && $row['visits'] > 0) {
                 insertDataPoint($conn, $uploadId, $sourceTypeId, 'Sessions', $row['visits'], $startDate);
             }
             
             if (isset($row['engaged_sessions']) && $row['engaged_sessions'] > 0) {
                 insertDataPoint($conn, $uploadId, $sourceTypeId, 'Engaged sessions', $row['engaged_sessions'], $startDate);
+            }
+            
+            if (isset($row['users']) && $row['users'] > 0) {
+                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Users', $row['users'], $startDate);
             }
             
             if (isset($row['bounce_rate'])) {

@@ -3,56 +3,21 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
-// Add debugging at the top
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
+// Check if user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: ../login.php");
+    exit();
 }
 
 // Set page variables for header
-$title = "Overview Dashboard";
+$title = "Overview";
 $active_page = "overview";
 
-error_log("=== OVERVIEW PAGE DEBUG ===");
-error_log("Session latest_upload_id: " . ($_SESSION['latest_upload_id'] ?? 'NOT SET'));
-error_log("User ID: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+// Get uploadId - check for sample data first
+$uploadId = getCurrentUploadId($conn, $_SESSION['user_id']);
 
-// Check what uploads exist for this user
-$userId = $_SESSION['user_id'] ?? 1;
-$debugQuery = "SELECT UploadID, FileName, UploadDate, ReportType FROM CSV_UPLOAD WHERE UserID = ? ORDER BY UploadID DESC LIMIT 5";
-$debugStmt = $conn->prepare($debugQuery);
-$debugStmt->bind_param("i", $userId);
-$debugStmt->execute();
-$debugResult = $debugStmt->get_result();
-error_log("Recent uploads for user $userId:");
-while ($debugRow = $debugResult->fetch_assoc()) {
-    error_log("  Upload ID: {$debugRow['UploadID']}, File: {$debugRow['FileName']}, Date: {$debugRow['UploadDate']}, Type: {$debugRow['ReportType']}");
-}
-
-// Check data points
-$dataQuery = "SELECT COUNT(*) as count FROM PROCESSED_DATA_POINT pdp 
-              JOIN CSV_UPLOAD cu ON pdp.UploadID = cu.UploadID 
-              WHERE cu.UserID = ?";
-$dataStmt = $conn->prepare($dataQuery);
-$dataStmt->bind_param("i", $userId);
-$dataStmt->execute();
-$dataResult = $dataStmt->get_result();
-if ($dataRow = $dataResult->fetch_assoc()) {
-    error_log("Total data points for user $userId: " . $dataRow['count']);
-}
-error_log("=== END OVERVIEW DEBUG ===");
-
-// Get uploadId from URL parameter or most recent upload
-$uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null; 
-
-if (!$uploadId) {
-    // Get most recent upload for the current user
-    $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC LIMIT 1");
-    $stmt->bind_param("i", $_SESSION['user_id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $uploadId = $row ? $row['UploadID'] : null;
-}
+// Get sample data notice
+$sampleNotice = getSampleDataNotice();
 
 $metrics = getKeyMetrics($conn, $uploadId);
 $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
@@ -78,6 +43,18 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 
     <main>
       <h2>Overview Dashboard</h2>
+      
+      <!-- Sample Data Notice -->
+      <?php if ($sampleNotice['is_sample']): ?>
+        <div class="sample-data-notice">
+          <div class="notice-content">
+            <i class="fas fa-vial"></i>
+            <span><?php echo $sampleNotice['message']; ?></span>
+            <?php echo $sampleNotice['action']; ?>
+          </div>
+        </div>
+      <?php endif; ?>
+      
       <div class="user-export-controls">
         <button class="user-export-btn csv" onclick="exportToCSV()">
           <span class="icon">📊</span>
@@ -178,8 +155,10 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     // Only declare once
     const trafficData = <?php echo json_encode($trafficData); ?>;
     const uploadId = <?php echo $uploadId ? $uploadId : 'null'; ?>;
+    const isSampleData = <?php echo $sampleNotice['is_sample'] ? 'true' : 'false'; ?>;
 
-    Chart.register(window['chartjs-plugin-annotation']); // ✅ correct plugin registration
+    // Rest of your existing JavaScript remains the same
+    Chart.register(window['chartjs-plugin-annotation']);
 
     const ctx = document.getElementById('trafficChart').getContext('2d');
     const trafficChart = new Chart(ctx, {
@@ -211,10 +190,10 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
             plugins: {
                 title: {
                     display: true,
-                    text: 'Website Traffic Over Time'
+                    text: isSampleData ? 'Website Traffic Over Time (Sample Data)' : 'Website Traffic Over Time'
                 },
                 annotation: {
-                    annotations: {} // populated later by annotation logic
+                    annotations: {}
                 }
             },
             scales: {

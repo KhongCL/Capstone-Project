@@ -6,21 +6,15 @@ include '../functions.php';
 // Set page variables for header
 $title = "Traffic Sources";
 $active_page = "traffic_sources";
-// Get uploadId from URL parameter or most recent upload
-$uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null;
 
-if (!$uploadId) {
-    // Get most recent upload for the current user
-    $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC LIMIT 1");
-    $stmt->bind_param("i", $_SESSION['user_id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $uploadId = $row ? $row['UploadID'] : null;
-}
+// Get uploadId - check for sample data first
+$uploadId = getCurrentUploadId($conn, $_SESSION['user_id']);
+
+// Get sample data notice
+$sampleNotice = getSampleDataNotice();
 
 // Get traffic sources data
-$sourcesData = getTrafficSourcesDistribution($conn);
+$sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 ?>
 
 <!DOCTYPE html>
@@ -37,10 +31,21 @@ $sourcesData = getTrafficSourcesDistribution($conn);
 </head>
 <body>
   <div class="container user-traffic-sources-container">
-		<?php include 'user_header.php'; ?>
+    <?php include 'user_header.php'; ?>
     
     <main>
       <h2>Traffic Sources Dashboard</h2>
+
+      <!-- Sample Data Notice -->
+      <?php if ($sampleNotice['is_sample']): ?>
+        <div class="sample-data-notice">
+          <div class="notice-content">
+            <i class="fas fa-vial"></i>
+            <span><?php echo $sampleNotice['message']; ?></span>
+            <?php echo $sampleNotice['action']; ?>
+          </div>
+        </div>
+      <?php endif; ?>
 
       <section class="user-chart-section">
         <h3>Traffic Sources Distribution</h3>
@@ -97,11 +102,13 @@ $sourcesData = getTrafficSourcesDistribution($conn);
     // Parse PHP data to JavaScript
     const sourcesData = <?php echo json_encode($sourcesData); ?>;
     const uploadId = <?php echo $uploadId ? $uploadId : 'null'; ?>;
+    const isSampleData = <?php echo $sampleNotice['is_sample'] ? 'true' : 'false'; ?>;
     
     // Extract data points for Chart.js
     const labels = sourcesData.map(item => item.traffic_source);
     const visitCounts = sourcesData.map(item => parseInt(item.visit_count));
     const percentages = sourcesData.map(item => parseFloat(item.percentage));
+    
     // Define colors for the chart
     const backgroundColors = [
       'rgba(255, 99, 132, 0.7)',
@@ -124,6 +131,7 @@ $sourcesData = getTrafficSourcesDistribution($conn);
     function createChart(type) {
       // Destroy existing chart if it exists  
       if (currentChart) currentChart.destroy();
+      
       // Chart configuration
       const config = {
         type: type,
@@ -143,8 +151,8 @@ $sourcesData = getTrafficSourcesDistribution($conn);
             title: {
               display: true,
               text: type === 'pie'
-                ? 'Traffic Sources Distribution (%)'
-                : 'Traffic Sources by Visit Count'
+                ? (isSampleData ? 'Traffic Sources Distribution (%) - Sample Data' : 'Traffic Sources Distribution (%)')
+                : (isSampleData ? 'Traffic Sources by Visit Count - Sample Data' : 'Traffic Sources by Visit Count')
             },
             tooltip: {
               callbacks: {
@@ -166,6 +174,7 @@ $sourcesData = getTrafficSourcesDistribution($conn);
           } : {}
         }
       };
+      
       // If bar chart, add extra options
       if (type === 'bar') config.data.datasets[0].label = 'Visits';
       currentChart = new Chart(ctx, config);
@@ -174,11 +183,8 @@ $sourcesData = getTrafficSourcesDistribution($conn);
     // Chart type toggle
     document.querySelectorAll('.user-chart-type-toggle .btn').forEach(button => {
       button.addEventListener('click', function() {
-        // Get chart type
         const chartType = this.dataset.chartType;
-        // Create new chart with the selected type
         createChart(chartType);
-        // Update active button state
         document.querySelectorAll('.user-chart-type-toggle .btn').forEach(btn => btn.classList.remove('active'));
         this.classList.add('active');
       });

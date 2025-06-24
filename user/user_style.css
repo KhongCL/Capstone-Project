@@ -795,6 +795,211 @@ select:focus {
     margin-bottom: 15px;
 }
 
+/* Sample Data Styles */
+.sample-data-display {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin: 20px 0;
+    padding: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.sample-data-header {
+    padding: 30px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.sample-data-header h2 {
+    margin: 0 0 15px 0;
+    font-size: 2.2em;
+    font-weight: 600;
+}
+
+.sample-notice {
+    font-size: 1.1em;
+    margin: 15px 0 25px 0;
+    opacity: 0.9;
+}
+
+.sample-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.sample-actions .btn {
+    padding: 12px 24px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.sample-actions .btn-primary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.sample-actions .btn-primary:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.sample-actions .btn-secondary {
+    background: transparent;
+    color: white;
+}
+
+.sample-actions .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sample-data-info {
+    background: white;
+    color: #333;
+    padding: 25px 30px;
+    margin: 0;
+}
+
+.sample-data-info h3 {
+    margin: 0 0 20px 0;
+    color: #4c78d0;
+    font-size: 1.4em;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.info-item {
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #4c78d0;
+}
+
+.sample-data-table {
+    background: white;
+    color: #333;
+    padding: 25px 30px;
+    margin: 0;
+}
+
+.sample-data-table h3 {
+    margin: 0 0 20px 0;
+    color: #4c78d0;
+    font-size: 1.4em;
+}
+
+.table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.data-table th {
+    background: #4c78d0;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+}
+
+.data-table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.data-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.table-note {
+    margin: 20px 0 0 0;
+    padding: 15px;
+    background: #e3f2fd;
+    border-radius: 6px;
+    color: #1565c0;
+    border-left: 4px solid #2196f3;
+}
+
+/* Sample Data Notice for Dashboard Pages */
+.sample-data-notice {
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+    padding: 15px 20px;
+    margin: 20px 0;
+    border-radius: 8px;
+    color: #333;
+    box-shadow: 0 4px 12px rgba(255, 154, 158, 0.3);
+}
+
+.notice-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.notice-content i {
+    font-size: 1.2em;
+    margin-right: 10px;
+    color: #e91e63;
+}
+
+.notice-content span {
+    flex: 1;
+    font-weight: 500;
+}
+
+.notice-content .btn {
+    padding: 8px 16px;
+    font-size: 0.9em;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.2);
+    color: #333;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.notice-content .btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .sample-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .notice-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .sample-data-info,
+    .sample-data-table {
+        padding: 20px 15px;
+    }
+}
+
 /* =====================================================
    USER-SPECIFIC COMPONENTS
    ===================================================== */
@@ -2230,3 +2435,4 @@ select:focus {
     background-color: #545b62;
     border-color: #545b62;
 }
+
