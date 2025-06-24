@@ -32,7 +32,7 @@ $active_page = isset($active_page) ? $active_page : 'dashboard';
                 <li><a href="traffic_sources.php" <?php echo ($active_page == 'traffic_sources') ? 'class="active"' : ''; ?>>Traffic Sources</a></li>
                 <li><a href="pages.php" <?php echo ($active_page == 'pages') ? 'class="active"' : ''; ?>>Pages</a></li>
                 <li><a href="compare.php" <?php echo ($active_page == 'compare') ? 'class="active"' : ''; ?>>Compare</a></li>
-                <li><a href="../logout.php" <?php echo ($active_page == 'logout') ? 'class="active"' : ''; ?>>Logout</a></li>
+                <li><a href="../logout.php" class="logout" <?php echo ($active_page == 'logout') ? 'class="active"' : ''; ?>>Logout</a></li>
             </ul>
         </nav>
     </header>

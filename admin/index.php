@@ -179,64 +179,62 @@ function getReportTypes($conn) {
                 </div>
             </section>
 
-            <div class="two-column">
-                <section class="admin-section">
-                    <h3><i class="fas fa-clock"></i> Recent Uploads</h3>
-                    <table class="data-table">
-                        <thead>
+            <section class="admin-section" id="recent-uploads">
+                <h3><i class="fas fa-clock"></i> Recent Uploads</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Filename</th>
+                            <th>User</th>
+                            <th>Report Type</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (count($csvStats['recent']) > 0): ?>
+                            <?php foreach ($csvStats['recent'] as $upload): ?>
                             <tr>
-                                <th>Filename</th>
-                                <th>User</th>
-                                <th>Report Type</th>
-                                <th>Date</th>
-                                <th>Status</th>
+                                <td><?php echo htmlspecialchars($upload['FileName']); ?></td>
+                                <td><?php echo htmlspecialchars($upload['Username']); ?></td>
+                                <td><?php echo htmlspecialchars($upload['ReportType']); ?></td>
+                                <td><?php echo date('M d, Y H:i', strtotime($upload['UploadDate'])); ?></td>
+                                <td>
+                                    <span class="badge badge-success">Processed</span>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (count($csvStats['recent']) > 0): ?>
-                                <?php foreach ($csvStats['recent'] as $upload): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($upload['FileName']); ?></td>
-                                    <td><?php echo htmlspecialchars($upload['Username']); ?></td>
-                                    <td><?php echo htmlspecialchars($upload['ReportType']); ?></td>
-                                    <td><?php echo date('M d, Y H:i', strtotime($upload['UploadDate'])); ?></td>
-                                    <td>
-                                        <span class="badge badge-success">Processed</span>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="5" style="text-align: center;">No recent uploads found</td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </section>
-
-                <section class="admin-section">
-                    <h3><i class="fas fa-file-alt"></i> Supported Report Types</h3>
-                    <div class="report-types">
-                        <?php if (count($reportTypes) > 0): ?>
-                            <?php foreach ($reportTypes as $type): ?>
-                                <span class="report-type"><?php echo htmlspecialchars($type); ?></span>
                             <?php endforeach; ?>
                         <?php else: ?>
-                            <p>No report types defined yet. Configure the CSV mappings to add report types.</p>
+                            <tr>
+                                <td colspan="5" style="text-align: center;">No recent uploads found</td>
+                            </tr>
                         <?php endif; ?>
-                    </div>
-                    
-                    <div style="margin-top: 20px;">
-                        <a href="admin_mappings.php" class="btn btn-sm btn-secondary">Manage Report Types</a>
-                    </div>
-                </section>
-            </div>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="admin-section" id="report-types">
+                <h3><i class="fas fa-file-alt"></i> Supported Report Types</h3>
+                <div class="report-types">
+                    <?php if (count($reportTypes) > 0): ?>
+                        <?php foreach ($reportTypes as $type): ?>
+                            <span class="report-type"><?php echo htmlspecialchars($type); ?></span>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p>No report types defined yet. Configure the CSV mappings to add report types.</p>
+                    <?php endif; ?>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <a href="admin_mappings.php" class="btn btn-sm btn-secondary">Manage Report Types</a>
+                </div>
+            </section>
             
             <section class="admin-section">
                 <h3><i class="fas fa-shield-alt"></i> Admin Actions</h3>
                 <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <a href="../admin_register.php?key=trafanalyz" class="btn btn-primary">Register New Admin</a>
-                    <a href="export_users_pdf.php" target="_blank" class="btn btn-secondary">Export User Report</a>
+                    <button href="../admin_register.php?key=trafanalyz" class="btn btn-primary">Register New Admin</button>
+                    <button href="export_users_pdf.php" target="_blank" class="btn btn-primary">Export User Report</button>
                     <button id="clearSampleDataBtn" class="btn btn-danger">Clear Sample Data</button>
                 </div>
             </section>
