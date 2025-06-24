@@ -106,18 +106,18 @@ function handleCsvUpload($conn, $file) {
             if ($saveResult['type'] === 'success') {
                 // Check if there were validation warnings
                 if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
+                    $errorCount = count($_SESSION['validation_errors']);
                     $validationErrors = $_SESSION['validation_errors'];
-                    $errorCount = count($validationErrors);
                     
-                    // Clean up temporary file
+                    // Clean up temporary file on success
                     if (file_exists($filePath)) {
                         unlink($filePath);
                     }
                     
-                    // Clear session data
+                    // Clear session data but keep validation errors for display
                     unset($_SESSION['uploaded_csv']);
                     unset($_SESSION['csv_metadata']);
-                    unset($_SESSION['validation_errors']); // Clear the errors after using them
+                    // Don't unset validation_errors here - let index.php handle it
                     
                     return [
                         'type' => 'warning',
@@ -131,9 +131,12 @@ function handleCsvUpload($conn, $file) {
                 if (file_exists($filePath)) {
                     unlink($filePath);
                 }
-                // Clear session data
+                
+                // CRITICAL: Clear ALL session data for clean state
                 unset($_SESSION['uploaded_csv']);
                 unset($_SESSION['csv_metadata']);
+                unset($_SESSION['validation_errors']);
+                unset($_SESSION['upload_message']);
                 
                 return [
                     'type' => 'success',
@@ -1184,10 +1187,4 @@ function deleteUser($conn, $userId) {
         return false;
     }
 }
-
-
-
-
-
-
 ?>
