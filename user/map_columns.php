@@ -431,259 +431,335 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         
         <?php include 'user_footer.php'; ?>
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const fieldSelects = document.querySelectorAll('.user-field-select');
-            
-            // Function to update available options
-            function updateAvailableOptions() {
-                // Get all currently selected values
-                const selectedValues = Array.from(fieldSelects).map(select => select.value).filter(Boolean);
-                
-                // For each select element
-                fieldSelects.forEach(select => {
-                    const currentValue = select.value;
-                    
-                    // Check each option
-                    Array.from(select.options).forEach(option => {
-                        const optionValue = option.value;
-                        
-                        // Skip the empty option
-                        if (!optionValue) return;
-                        
-                        // If this option is selected in this select, keep it enabled
-                        if (optionValue === currentValue) {
-                            option.disabled = false;
-                            return;
-                        }
-                        
-                        // If this option is selected in another select, disable it
-                        option.disabled = selectedValues.includes(optionValue);
-                    });
-                });
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fieldSelects = document.querySelectorAll('.user-field-select');
+    
+    // String similarity calculation function
+    function calculateStringSimilarity(str1, str2) {
+        // Convert to lowercase for comparison
+        str1 = str1.toLowerCase().replace(/[_\s]/g, '');
+        str2 = str2.toLowerCase().replace(/[_\s]/g, '');
+        
+        // If exact match, return 100%
+        if (str1 === str2) return 100;
+        
+        // Calculate Levenshtein distance
+        const matrix = [];
+        const len1 = str1.length;
+        const len2 = str2.length;
+        
+        // Initialize matrix
+        for (let i = 0; i <= len1; i++) {
+            matrix[i] = [i];
+        }
+        for (let j = 0; j <= len2; j++) {
+            matrix[0][j] = j;
+        }
+        
+        // Fill matrix
+        for (let i = 1; i <= len1; i++) {
+            for (let j = 1; j <= len2; j++) {
+                if (str1.charAt(i - 1) === str2.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1, // substitution
+                        matrix[i][j - 1] + 1,     // insertion
+                        matrix[i - 1][j] + 1      // deletion
+                    );
+                }
             }
+        }
+        
+        // Calculate similarity percentage
+        const maxLen = Math.max(len1, len2);
+        const distance = matrix[len1][len2];
+        const similarity = ((maxLen - distance) / maxLen) * 100;
+        
+        // Boost similarity for partial matches
+        if (str1.includes(str2) || str2.includes(str1)) {
+            return Math.max(similarity, 75);
+        }
+        
+        // Check for common keywords
+        const keywords = {
+            'traffic': ['traffic', 'source', 'channel'],
+            'sessions': ['sessions', 'visits', 'session'],
+            'users': ['users', 'visitors', 'unique'],
+            'pageviews': ['pageviews', 'pages', 'views'],
+            'bounce': ['bounce', 'rate'],
+            'duration': ['duration', 'time', 'avg'],
+            'engaged': ['engaged', 'engagement'],
+            'events': ['events', 'event'],
+            'revenue': ['revenue', 'total', 'value']
+        };
+        
+        for (const [category, terms] of Object.entries(keywords)) {
+            if (terms.some(term => str1.includes(term)) && terms.some(term => str2.includes(term))) {
+                return Math.max(similarity, 80);
+            }
+        }
+        
+        return Math.max(similarity, 0);
+    }
+    
+    // Function to update confidence
+    function updateConfidence(selectElement) {
+        const csvColumn = selectElement.closest('tr').cells[0].textContent.trim();
+        const selectedField = selectElement.value;
+        const confidenceCell = selectElement.closest('tr').cells[3];
+        
+        if (!selectedField) {
+            confidenceCell.innerHTML = '';
+            return;
+        }
+        
+        // Calculate confidence based on string similarity
+        let confidence = calculateStringSimilarity(csvColumn, selectedField);
+        
+        // Determine confidence color and icon
+        let confidenceColor = '#dc3545'; // Red for low confidence
+        let confidenceIcon = '⚠️';
+        
+        if (confidence >= 85) {
+            confidenceColor = '#28a745'; // Green for high confidence
+            confidenceIcon = '✅';
+        } else if (confidence >= 60) {
+            confidenceColor = '#ffc107'; // Yellow for medium confidence
+            confidenceIcon = '⚡';
+        }
+        
+        // Update confidence bar with animation
+        confidenceCell.innerHTML = `
+            <div class="user-confidence-bar">
+                <div class="user-confidence-fill" style="width: ${confidence}%; background-color: ${confidenceColor}; transition: all 0.3s ease;"></div>
+                <span style="color: ${confidenceColor}; font-weight: 600;">${confidenceIcon} ${Math.round(confidence)}%</span>
+            </div>
+        `;
+    }
+    
+    // Function to update available options
+    function updateAvailableOptions() {
+        // Get all currently selected values
+        const selectedValues = Array.from(fieldSelects).map(select => select.value).filter(Boolean);
+        
+        // For each select element
+        fieldSelects.forEach(select => {
+            const currentValue = select.value;
             
-            // Add change event listeners to all selects
-            fieldSelects.forEach(select => {
-                select.addEventListener('change', updateAvailableOptions);
+            // Check each option
+            Array.from(select.options).forEach(option => {
+                const optionValue = option.value;
+                
+                // Skip the empty option
+                if (!optionValue) return;
+                
+                // If this option is selected in this select, keep it enabled
+                if (optionValue === currentValue) {
+                    option.disabled = false;
+                    return;
+                }
+                
+                // If this option is selected in another select, disable it
+                option.disabled = selectedValues.includes(optionValue);
             });
-            
-            // Initial update
-            updateAvailableOptions();
         });
+    }
+    
+    // Add change event listeners to all selects
+    fieldSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            updateAvailableOptions();
+            updateConfidence(this); // This will now work properly
+        });
+    });
+    
+    // Initial update of available options and confidence
+    updateAvailableOptions();
+    
+    // Calculate initial confidence for pre-selected fields
+    fieldSelects.forEach(select => {
+        if (select.value) {
+            updateConfidence(select);
+        }
+    });
 
-        document.addEventListener('DOMContentLoaded', function() {
+    // Rest of your existing form submission code...
+    const form = document.querySelector('form');
+    const progressDiv = document.getElementById('mappingProgress');
+    let formSubmitted = false;
+    
+    form.addEventListener('submit', function(e) {
+        if (formSubmitted) return;
+        formSubmitted = true;
+        
+        progressDiv.style.display = 'block';
+        form.style.display = 'none';
+        
+        runProgressAnimation();
+        
+        setTimeout(() => {
+            console.log('Form processing completed, PHP will handle redirect');
+        }, 1000);
+    });
+    
+    // Your existing animation functions...
+    function runProgressAnimation() {
+        setTimeout(() => {
+            updateMappingProgress(3, 20, 'Initializing data validation...');
+        }, 200);
+        
+        setTimeout(() => {
+            updateMappingProgress(3, 50, 'Checking data types...');
+        }, 400);
+        
+        setTimeout(() => {
+            updateMappingProgress(3, 80, 'Validating data values...');
+        }, 600);
+        
+        setTimeout(() => {
+            updateMappingProgress(3, 100, 'Data validation completed ✓');
+            completeStage(3);
+            updateProcessingStatus('Validation Complete', 'Database Operations');
+        }, 800);
+        
+        setTimeout(() => {
+            activateStage(4);
+            updateMappingProgress(4, 25, 'Preparing database transaction...');
+            updateProcessingStatus('In Progress', 'Database Saving');
+        }, 900);
+        
+        setTimeout(() => {
+            updateMappingProgress(4, 50, 'Creating data records...');
+        }, 1000);
+        
+        setTimeout(() => {
+            updateMappingProgress(4, 75, 'Inserting traffic data...');
+        }, 1100);
+        
+        setTimeout(() => {
+            updateMappingProgress(4, 100, 'Data saved successfully! ✓');
+            completeStage(4);
+            updateOverallProgress(100, 'Import completed successfully! 🎉');
+            updateProcessingStatus('Complete', 'Ready');
+        }, 1200);
+    }
+    
+    function updateMappingProgress(stage, percent, message) {
+        const stageElement = document.getElementById(`mappingStage${stage}`);
+        const progressFill = stageElement.querySelector('.progress-fill');
+        const progressText = stageElement.querySelector('.progress-text');
+        
+        if (progressFill) {
+            progressFill.style.width = `${percent}%`;
+            
+            if (percent === 100) {
+                progressFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+                progressFill.style.boxShadow = '0 2px 8px rgba(40, 167, 69, 0.4)';
+            }
+        }
+        if (progressText) {
+            progressText.textContent = `${percent}%`;
+        }
+        
+        let overallPercent = 50;
+        if (stage === 3) {
+            overallPercent += (percent * 0.25);
+        } else if (stage === 4) {
+            overallPercent = 75 + (percent * 0.25);
+        }
+        
+        updateOverallProgress(overallPercent, message);
+    }
+    
+    function updateOverallProgress(percent, message) {
+        const overallFill = document.getElementById('mappingOverallFill');
+        const overallPercent = document.getElementById('mappingOverallPercent');
+        const currentTask = document.getElementById('mappingCurrentTask');
+        
+        if (overallFill) {
+            overallFill.style.width = `${Math.round(percent)}%`;
+            
+            if (percent >= 100) {
+                overallFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+                overallFill.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.5)';
+                overallFill.style.animation = 'pulse-success 1.5s infinite';
+            }
+        }
+        if (overallPercent) {
+            overallPercent.textContent = `${Math.round(percent)}%`;
+            
+            if (percent >= 100) {
+                overallPercent.style.color = '#28a745';
+                overallPercent.style.fontWeight = '700';
+            }
+        }
+        if (currentTask) {
+            currentTask.textContent = message;
+        }
+    }
+    
+    function updateProcessingStatus(status, stage) {
+        const processingStatus = document.getElementById('processingStatus');
+        const currentStage = document.getElementById('currentStage');
+        
+        if (processingStatus) {
+            processingStatus.textContent = status;
+            if (status === 'Complete') {
+                processingStatus.style.color = '#28a745';
+                processingStatus.style.fontWeight = '600';
+            }
+        }
+        if (currentStage) {
+            currentStage.textContent = stage;
+        }
+    }
+    
+    function activateStage(stageIndex) {
+        const stageElement = document.getElementById(`mappingStage${stageIndex}`);
+        stageElement.classList.remove('completed');
+        stageElement.classList.add('active');
+        
+        const icon = stageElement.querySelector('.stage-icon');
+        icon.textContent = '⚙️';
+        icon.style.animation = 'pulse 2s infinite';
+    }
+    
+    function completeStage(stageIndex) {
+        const stageElement = document.getElementById(`mappingStage${stageIndex}`);
+        stageElement.classList.remove('active');
+        stageElement.classList.add('completed');
+        
+        const icon = stageElement.querySelector('.stage-icon');
+        icon.textContent = '✅';
+        icon.style.animation = 'bounce 0.6s ease';
+        
+        const progressFill = stageElement.querySelector('.progress-fill');
+        const progressText = stageElement.querySelector('.progress-text');
+        
+        if (progressFill) {
+            progressFill.style.width = '100%';
+            progressFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+        }
+        if (progressText) {
+            progressText.textContent = '100%';
+            progressText.style.color = '#28a745';
+            progressText.style.fontWeight = '600';
+        }
+    }
+
+    // Handle browser back button to prevent stuck state
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
             const form = document.querySelector('form');
             const progressDiv = document.getElementById('mappingProgress');
-            let formSubmitted = false;
             
-            form.addEventListener('submit', function(e) {
-                if (formSubmitted) return; // Prevent multiple submissions
-                formSubmitted = true;
-                
-                // Show progress immediately when form is submitted
-                progressDiv.style.display = 'block';
-                form.style.display = 'none';
-                
-                // Start the animation sequence but DON'T prevent form submission
-                runProgressAnimation();
-                
-                // CRITICAL: Let the form submit normally after showing animation
-                // Don't prevent default here - let PHP handle the processing
-                setTimeout(() => {
-                    // The form will submit naturally since we didn't prevent default
-                    console.log('Form processing completed, PHP will handle redirect');
-                }, 1000);
-            });
-            
-            function runProgressAnimation() {
-                // Stage 3: Data Validation - Faster progression
-                setTimeout(() => {
-                    updateMappingProgress(3, 20, 'Initializing data validation...');
-                }, 200);
-                
-                setTimeout(() => {
-                    updateMappingProgress(3, 50, 'Checking data types...');
-                }, 400);
-                
-                setTimeout(() => {
-                    updateMappingProgress(3, 80, 'Validating data values...');
-                }, 600);
-                
-                setTimeout(() => {
-                    updateMappingProgress(3, 100, 'Data validation completed ✓');
-                    completeStage(3);
-                    updateProcessingStatus('Validation Complete', 'Database Operations');
-                }, 800);
-                
-                // Stage 4: Database Saving
-                setTimeout(() => {
-                    activateStage(4);
-                    updateMappingProgress(4, 25, 'Preparing database transaction...');
-                    updateProcessingStatus('In Progress', 'Database Saving');
-                }, 900);
-                
-                setTimeout(() => {
-                    updateMappingProgress(4, 50, 'Creating data records...');
-                }, 1000);
-                
-                setTimeout(() => {
-                    updateMappingProgress(4, 75, 'Inserting traffic data...');
-                }, 1100);
-                
-                setTimeout(() => {
-                    updateMappingProgress(4, 100, 'Data saved successfully! ✓');
-                    completeStage(4);
-                    updateOverallProgress(100, 'Import completed successfully! 🎉');
-                    updateProcessingStatus('Complete', 'Ready');
-                }, 1200);
-            }
-            
-            function updateMappingProgress(stage, percent, message) {
-                const stageElement = document.getElementById(`mappingStage${stage}`);
-                const progressFill = stageElement.querySelector('.progress-fill');
-                const progressText = stageElement.querySelector('.progress-text');
-                
-                if (progressFill) {
-                    progressFill.style.width = `${percent}%`;
-                    
-                    if (percent === 100) {
-                        progressFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
-                        progressFill.style.boxShadow = '0 2px 8px rgba(40, 167, 69, 0.4)';
-                    }
-                }
-                if (progressText) {
-                    progressText.textContent = `${percent}%`;
-                }
-                
-                // Calculate overall progress
-                let overallPercent = 50; // Start from 50% (stages 1&2 completed)
-                if (stage === 3) {
-                    overallPercent += (percent * 0.25);
-                } else if (stage === 4) {
-                    overallPercent = 75 + (percent * 0.25);
-                }
-                
-                updateOverallProgress(overallPercent, message);
-            }
-            
-            function updateOverallProgress(percent, message) {
-                const overallFill = document.getElementById('mappingOverallFill');
-                const overallPercent = document.getElementById('mappingOverallPercent');
-                const currentTask = document.getElementById('mappingCurrentTask');
-                
-                if (overallFill) {
-                    overallFill.style.width = `${Math.round(percent)}%`;
-                    
-                    if (percent >= 100) {
-                        overallFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
-                        overallFill.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.5)';
-                        overallFill.style.animation = 'pulse-success 1.5s infinite';
-                    }
-                }
-                if (overallPercent) {
-                    overallPercent.textContent = `${Math.round(percent)}%`;
-                    
-                    if (percent >= 100) {
-                        overallPercent.style.color = '#28a745';
-                        overallPercent.style.fontWeight = '700';
-                    }
-                }
-                if (currentTask) {
-                    currentTask.textContent = message;
-                }
-            }
-            
-            function updateProcessingStatus(status, stage) {
-                const processingStatus = document.getElementById('processingStatus');
-                const currentStage = document.getElementById('currentStage');
-                
-                if (processingStatus) {
-                    processingStatus.textContent = status;
-                    if (status === 'Complete') {
-                        processingStatus.style.color = '#28a745';
-                        processingStatus.style.fontWeight = '600';
-                    }
-                }
-                if (currentStage) {
-                    currentStage.textContent = stage;
-                }
-            }
-            
-            function activateStage(stageIndex) {
-                const stageElement = document.getElementById(`mappingStage${stageIndex}`);
-                stageElement.classList.remove('completed');
-                stageElement.classList.add('active');
-                
-                const icon = stageElement.querySelector('.stage-icon');
-                icon.textContent = '⚙️';
-                icon.style.animation = 'pulse 2s infinite';
-            }
-            
-            function completeStage(stageIndex) {
-                const stageElement = document.getElementById(`mappingStage${stageIndex}`);
-                stageElement.classList.remove('active');
-                stageElement.classList.add('completed');
-                
-                const icon = stageElement.querySelector('.stage-icon');
-                icon.textContent = '✅';
-                icon.style.animation = 'bounce 0.6s ease';
-                
-                const progressFill = stageElement.querySelector('.progress-fill');
-                const progressText = stageElement.querySelector('.progress-text');
-                
-                if (progressFill) {
-                    progressFill.style.width = '100%';
-                    progressFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
-                }
-                if (progressText) {
-                    progressText.textContent = '100%';
-                    progressText.style.color = '#28a745';
-                    progressText.style.fontWeight = '600';
-                }
-            }
-        });
-
-        function updateConfidence(selectElement) {
-            const csvColumn = selectElement.closest('tr').cells[0].textContent.trim();
-            const selectedField = selectElement.value;
-            const confidenceCell = selectElement.closest('tr').cells[3];
-            
-            if (!selectedField) {
-                confidenceCell.innerHTML = '';
-                return;
-            }
-            
-            // Calculate confidence based on string similarity
-            let confidence = calculateStringSimilarity(csvColumn, selectedField);
-            
-            // Update confidence bar
-            confidenceCell.innerHTML = `
-                <div class="user-confidence-bar">
-                    <div class="user-confidence-fill" style="width: ${confidence}%"></div>
-                    <span>${Math.round(confidence)}%</span>
-                </div>
-            `;
+            if (form) form.style.display = 'block';
+            if (progressDiv) progressDiv.style.display = 'none';
         }
-
-        // Add event listeners to all select elements
-        fieldSelects.forEach(select => {
-            select.addEventListener('change', function() {
-                updateAvailableOptions();
-                updateConfidence(this); // Add this line
-            });
-        });
-
-        // Handle browser back button to prevent stuck state
-        window.addEventListener('pageshow', function(event) {
-            if (event.persisted) {
-                const form = document.querySelector('form');
-                const progressDiv = document.getElementById('mappingProgress');
-                
-                if (form) form.style.display = 'block';
-                if (progressDiv) progressDiv.style.display = 'none';
-            }
-        });
-        </script>
+    });
+});
+</script>
 </body>
 </html>
