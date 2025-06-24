@@ -9,10 +9,21 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// CRITICAL FIX: Clear validation errors when page loads fresh (not from form submission)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['from_upload'])) {
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // Clear any lingering validation errors and upload messages
+    unset($_SESSION['validation_errors']);
+    unset($_SESSION['upload_message']);
+    error_log("Cleared validation errors on fresh page load");
+}
+
 // Set page variables for header
 $title = "Dashboard Home";
 $active_page = "home";
-
 
 // Handle CSV upload (fallback for non-JavaScript)
 $uploadMessage = '';
@@ -138,6 +149,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset
                     <?php endif; ?>
                 <?php endif; ?>
                 
+                <!-- ADD THIS NEW SECTION FOR VALIDATION WARNINGS -->
+                <?php if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])): ?>
+                    <?php 
+                    // Get validation errors and immediately clear them to prevent persistence
+                    $validationErrors = $_SESSION['validation_errors'];
+                    unset($_SESSION['validation_errors']); // Clear immediately after reading
+                    ?>
+                    
+                    <div class="message warning">
+                        <h4>📋 Upload Completed with Warnings</h4>
+                        <p>Data imported with <?php echo count($validationErrors); ?> validation warnings. Some rows had errors but valid data was processed.</p>
+                        
+                        <details>
+                            <summary>View validation errors (<?php echo count($validationErrors); ?>)</summary>
+                            <div class="validation-errors-list">
+                                <?php foreach ($validationErrors as $error): ?>
+                                    <div class="error-item">
+                                        <?php echo htmlspecialchars($error); ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </details>
+                        
+                        <p><a href="overview.php" class="btn">View Imported Data</a></p>
+                    </div>
+                <?php endif; ?>
+                <!-- END NEW SECTION -->
+                
                 <p>Upload your CSV file containing web traffic data. 
                     <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
                 </p>
@@ -260,9 +299,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset
             </section>
         </main>
 
-				<?php include 'user_footer.php'; ?>
+        <?php include 'user_footer.php'; ?>
 
     </div>
 <script src="upload_progress.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we came from a successful upload
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('from_upload') === 'success') {
+        // Clean the URL without triggering a reload
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Optionally show a brief success message
+        const uploadSection = document.querySelector('.upload-section');
+        if (uploadSection) {
+            const successMessage = document.createElement('div');
+            successMessage.className = 'message success';
+            successMessage.innerHTML = '<i class="fas fa-check-circle"></i> File uploaded successfully!';
+            
+            const form = uploadSection.querySelector('form');
+            if (form) {
+                form.parentNode.insertBefore(successMessage, form);
+                
+                // Auto-hide after 3 seconds
+                setTimeout(() => {
+                    successMessage.remove();
+                }, 3000);
+            }
+        }
+    }
+});
+</script>
 </body>
 </html>
