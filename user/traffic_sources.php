@@ -6,15 +6,21 @@ include '../functions.php';
 // Set page variables for header
 $title = "Traffic Sources";
 $active_page = "traffic_sources";
+// Get uploadId from URL parameter or most recent upload
+$uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null;
 
-// Get uploadId - check for sample data first
-$uploadId = getCurrentUploadId($conn, $_SESSION['user_id']);
-
-// Get sample data notice
-$sampleNotice = getSampleDataNotice();
+if (!$uploadId) {
+    // Get most recent upload for the current user
+    $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC LIMIT 1");
+    $stmt->bind_param("i", $_SESSION['user_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $uploadId = $row ? $row['UploadID'] : null;
+}
 
 // Get traffic sources data
-$sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
+$sourcesData = getTrafficSourcesDistribution($conn);
 ?>
 
 <!DOCTYPE html>
@@ -31,21 +37,10 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 </head>
 <body>
   <div class="container user-traffic-sources-container">
-    <?php include 'user_header.php'; ?>
+		<?php include 'user_header.php'; ?>
     
     <main>
       <h2>Traffic Sources Dashboard</h2>
-
-      <!-- Sample Data Notice -->
-      <?php if ($sampleNotice['is_sample']): ?>
-        <div class="sample-data-notice">
-          <div class="notice-content">
-            <i class="fas fa-vial"></i>
-            <span><?php echo $sampleNotice['message']; ?></span>
-            <?php echo $sampleNotice['action']; ?>
-          </div>
-        </div>
-      <?php endif; ?>
 
       <section class="user-chart-section">
         <h3>Traffic Sources Distribution</h3>
@@ -102,13 +97,11 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     // Parse PHP data to JavaScript
     const sourcesData = <?php echo json_encode($sourcesData); ?>;
     const uploadId = <?php echo $uploadId ? $uploadId : 'null'; ?>;
-    const isSampleData = <?php echo $sampleNotice['is_sample'] ? 'true' : 'false'; ?>;
     
     // Extract data points for Chart.js
     const labels = sourcesData.map(item => item.traffic_source);
     const visitCounts = sourcesData.map(item => parseInt(item.visit_count));
     const percentages = sourcesData.map(item => parseFloat(item.percentage));
-    
     // Define colors for the chart
     const backgroundColors = [
       'rgba(255, 99, 132, 0.7)',
@@ -131,7 +124,6 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     function createChart(type) {
       // Destroy existing chart if it exists  
       if (currentChart) currentChart.destroy();
-      
       // Chart configuration
       const config = {
         type: type,
@@ -151,8 +143,8 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
             title: {
               display: true,
               text: type === 'pie'
-                ? (isSampleData ? 'Traffic Sources Distribution (%) - Sample Data' : 'Traffic Sources Distribution (%)')
-                : (isSampleData ? 'Traffic Sources by Visit Count - Sample Data' : 'Traffic Sources by Visit Count')
+                ? 'Traffic Sources Distribution (%)'
+                : 'Traffic Sources by Visit Count'
             },
             tooltip: {
               callbacks: {
@@ -174,7 +166,6 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
           } : {}
         }
       };
-      
       // If bar chart, add extra options
       if (type === 'bar') config.data.datasets[0].label = 'Visits';
       currentChart = new Chart(ctx, config);
@@ -183,8 +174,11 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     // Chart type toggle
     document.querySelectorAll('.user-chart-type-toggle .btn').forEach(button => {
       button.addEventListener('click', function() {
+        // Get chart type
         const chartType = this.dataset.chartType;
+        // Create new chart with the selected type
         createChart(chartType);
+        // Update active button state
         document.querySelectorAll('.user-chart-type-toggle .btn').forEach(btn => btn.classList.remove('active'));
         this.classList.add('active');
       });
@@ -193,20 +187,15 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     // Initialize with pie chart
     createChart('pie');
 
-
-    // Add this function after the exportChartToPDF() function:
+    // Export table to CSV
     function exportTableToCSV() {
       const table = document.getElementById("sourcesTable");
       let csv = [];
-
-      // Get table rows
       for (let row of table.rows) {
-        let cols = Array.from(row.cells).map(cell => `"${cell.innerText.trim()}"`);
+        let cols = Array.from(row.cells).map(cell => `"${cell.innerText}"`);
         csv.push(cols.join(","));
       }
-
-      // Create and download CSV file
-      const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([csv.join("\n")], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -214,8 +203,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    
+
       // Log export in DB
       fetch('log_export.php', {
         method: 'POST',
@@ -234,226 +222,32 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         });
     }
 
-    // Replace the existing exportChartToPDF() function with this version that includes both charts:
+    // Export chart to PDF
     async function exportChartToPDF() {
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF('p', 'mm', 'a4');
-
-      // Get current date and time
-      const now = new Date();
-      const generatedDate = now.getFullYear() + '-' + 
-        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(now.getDate()).padStart(2, '0') + ' ' +
-        String(now.getHours()).padStart(2, '0') + ':' +
-        String(now.getMinutes()).padStart(2, '0') + ':' +
-        String(now.getSeconds()).padStart(2, '0');
-
-      // Get username from session
-      const username = '<?php echo $_SESSION['username'] ?? 'Unknown User'; ?>';
-
-      // PDF styling
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 20;
-      let yPosition = 30;
-
-      // Header
-      pdf.setFontSize(20);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('TrafAnalyz Traffic Sources Report', pageWidth/2, yPosition, { align: 'center' });
-
-      yPosition += 15;
-
-      // Generated info
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Generated on: ${generatedDate}`, pageWidth - margin, yPosition, { align: 'right' });
-      yPosition += 5;
-      pdf.text(`Generated by: ${username}`, pageWidth - margin, yPosition, { align: 'right' });
-
-      yPosition += 20;
-
-      // Traffic Sources Summary Section
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Traffic Sources Summary', margin, yPosition);
-      yPosition += 10;
-
-      // Calculate totals
-      const totalVisits = sourcesData.reduce((sum, source) => sum + parseInt(source.visit_count), 0);
-      const totalSources = sourcesData.length;
-
-      // Summary info
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Total Traffic Sources: ${totalSources}`, margin, yPosition);
-      yPosition += 8;
-      pdf.text(`Total Visits: ${totalVisits.toLocaleString()}`, margin, yPosition);
-      yPosition += 15;
-
-      // Traffic sources detailed table
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Traffic Sources Breakdown', margin, yPosition);
-      yPosition += 10;
-
-      const tableHeaders = ['Source', 'Visits', 'Percentage'];
-      const tableData = [tableHeaders];
-
-      // Add data rows
-      sourcesData.forEach(source => {
-        tableData.push([
-          source.traffic_source,
-          source.visit_count.toLocaleString(),
-          source.percentage + '%'
-        ]);
-      });
-
-      // Draw table
-      pdf.setFontSize(10);
-      tableData.forEach((row, index) => {
-        const isHeader = index === 0;
-        if (isHeader) {
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFillColor(240, 240, 240);
-          pdf.rect(margin, yPosition - 5, pageWidth - (margin * 2), 8, 'F');
-        } else {
-          pdf.setFont('helvetica', 'normal');
-        }
-
-        // Truncate long source names if needed
-        const sourceName = row[0].length > 25 ? row[0].substring(0, 25) + '...' : row[0];
-        pdf.text(sourceName, margin + 5, yPosition);
-        pdf.text(row[1], margin + 80, yPosition);
-        pdf.text(row[2], margin + 130, yPosition);
-
-        // Draw table lines
-        pdf.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
-
-        yPosition += 8;
-
-        // Check if we need a new page
-        if (yPosition > 250) {
-          pdf.addPage();
-          yPosition = 30;
-        }
-      });
-
-      // Add new page for charts
-      pdf.addPage();
-      yPosition = 30;
-
-      // Charts section header
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Traffic Sources Visualization', margin, yPosition);
-      yPosition += 15;
-
-      // Store current chart type
-      const currentActiveButton = document.querySelector('.user-chart-type-toggle .btn.active');
-      const currentChartType = currentActiveButton ? currentActiveButton.dataset.chartType : 'pie';
-
-      // Capture PIE CHART
-      // Switch to pie chart if not already
-      if (currentChartType !== 'pie') {
-        createChart('pie');
-        // Wait a moment for chart to render
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Pie Chart - Percentage Distribution', margin, yPosition);
-      yPosition += 10;
-
       const chartContainer = document.getElementById("chartContainer");
-      const pieChartImage = await html2canvas(chartContainer);
-      const pieImageData = pieChartImage.toDataURL("image/png");
-
-      // Add pie chart to PDF
-      const chartWidth = pageWidth - (margin * 2);
-      const chartHeight = 100;
-      pdf.addImage(pieImageData, 'PNG', margin, yPosition, chartWidth, chartHeight);
-      yPosition += chartHeight + 20;
-
-      // Capture BAR CHART
-      // Switch to bar chart
-      createChart('bar');
-      // Wait a moment for chart to render
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Bar Chart - Visit Count Comparison', margin, yPosition);
-      yPosition += 10;
-
-      const barChartImage = await html2canvas(chartContainer);
-      const barImageData = barChartImage.toDataURL("image/png");
-
-      // Add bar chart to PDF
-      pdf.addImage(barImageData, 'PNG', margin, yPosition, chartWidth, chartHeight);
-      yPosition += chartHeight + 15;
-
-      // Restore original chart type
-      createChart(currentChartType);
-
-      // Key Insights section
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Key Insights', margin, yPosition);
-      yPosition += 10;
-
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-
-      // Find top 3 sources
-      const sortedSources = [...sourcesData].sort((a, b) => parseInt(b.visit_count) - parseInt(a.visit_count));
-      const topSources = sortedSources.slice(0, 3);
-
-      pdf.text(`• Top traffic source: ${topSources[0].traffic_source} (${topSources[0].percentage}% of total traffic)`, margin, yPosition);
-      yPosition += 6;
-
-      if (topSources[1]) {
-        pdf.text(`• Second highest: ${topSources[1].traffic_source} (${topSources[1].percentage}% of total traffic)`, margin, yPosition);
-        yPosition += 6;
-      }
-
-      if (topSources[2]) {
-        pdf.text(`• Third highest: ${topSources[2].traffic_source} (${topSources[2].percentage}% of total traffic)`, margin, yPosition);
-        yPosition += 6;
-      }
-
-      yPosition += 10;
-
-      // Report Information section
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Report Information', margin, yPosition);
-      yPosition += 8;
-
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
-      pdf.text(`Upload ID: ${uploadId || 'N/A'}`, margin, yPosition);
-      yPosition += 5;
-      pdf.text(`Report Type: Traffic Sources Analysis`, margin, yPosition);
-      yPosition += 5;
-      pdf.text(`Charts Included: Pie Chart & Bar Chart`, margin, yPosition);
-      yPosition += 5;
-      pdf.text(`Data Source: CSV Upload`, margin, yPosition);
-      yPosition += 5;
-      pdf.text(`Total Traffic Sources: ${totalSources}`, margin, yPosition);
-      yPosition += 5;
-      pdf.text(`Total Visits Analyzed: ${totalVisits.toLocaleString()}`, margin, yPosition);
-
-      // Save PDF with descriptive filename
-      pdf.save(`TrafAnalyz_Traffic_Sources_Complete_Report_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.pdf`);
-
-      // Log the PDF export into the database
+      const canvasImage = await html2canvas(chartContainer);
+      const imageData = canvasImage.toDataURL("image/png");
+        
+      // Determine current chart type
+      const activeButton = document.querySelector('.user-chart-type-toggle .btn.active');
+      const chartType = activeButton ? activeButton.dataset.chartType : 'pie';
+      const chartTypeText = chartType === 'pie' ? 'pie chart' : 'bar chart';
+        
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+      const imgProps = pdf.getImageProperties(imageData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      pdf.addImage(imageData, "PNG", 10, 10, pdfWidth - 20, pdfHeight);
+      pdf.save(`traffic_sources_${chartType}_chart.pdf`);
+        
+      // Log the PDF export into the database with specific chart type
       fetch('log_export.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `exportType=PDF&description=Exported traffic sources complete report with both pie and bar charts as PDF (uploadId: ${uploadId})`
+        body: `exportType=PDF&description=Exported traffic sources ${chartTypeText} as PDF (uploadId: ${uploadId})`
       }).then(response => response.json())
         .then(data => {
           if (!data.success) {

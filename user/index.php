@@ -9,130 +9,15 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
-// Handle sample data loading
-$sampleDataLoaded = false;
-$sampleDataInfo = null;
-$sampleCsvData = null;
-
-if (isset($_GET['load_sample']) && $_GET['load_sample'] == '1') {
-    // Get the most recent sample data upload
-    $stmt = $conn->prepare("
-        SELECT cu.UploadID, cu.FileName, cu.ReportType, cu.UploadDate, 
-               cu.AccountName, cu.PropertyName, cu.DataDateStart, cu.DataDateEnd
-        FROM csv_upload cu 
-        WHERE cu.IsSampleData = 1 
-        ORDER BY cu.UploadDate DESC 
-        LIMIT 1
-    ");
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows > 0) {
-        $sampleDataInfo = $result->fetch_assoc();
-        
-        // Set the sample upload as the current user's active upload
-        $_SESSION['sample_upload_id'] = $sampleDataInfo['UploadID'];
-        $_SESSION['using_sample_data'] = true;
-        
-        // Get sample CSV data for display
-        $sampleCsvData = getSampleDataForDisplay($conn, $sampleDataInfo['UploadID']);
-        $sampleDataLoaded = true;
-        
-        error_log("Sample data loaded: Upload ID " . $sampleDataInfo['UploadID']);
-    }
-}
-
-// Clear sample data if requested
-if (isset($_GET['clear_sample']) && $_GET['clear_sample'] == '1') {
-    unset($_SESSION['sample_upload_id']);
-    unset($_SESSION['using_sample_data']);
-    header('Location: index.php');
-    exit();
-}
-
-// CRITICAL FIX: Clear validation errors when page loads fresh (not from form submission)
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['from_upload']) && !isset($_GET['load_sample'])) {
-    if (session_status() == PHP_SESSION_NONE) {
-        session_start();
-    }
-    
-    // Clear any lingering validation errors and upload messages
-    unset($_SESSION['validation_errors']);
-    unset($_SESSION['upload_message']);
-    error_log("Cleared validation errors on fresh page load");
-}
-
 // Set page variables for header
 $title = "Dashboard Home";
 $active_page = "home";
 
+
 // Handle CSV upload (fallback for non-JavaScript)
 $uploadMessage = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-    // Clear sample data when user uploads their own file
-    unset($_SESSION['sample_upload_id']);
-    unset($_SESSION['using_sample_data']);
     $uploadMessage = handleCsvUpload($conn, $_FILES['csvFile']);
-}
-
-/**
- * Get sample data for display in table format
- */
-function getSampleDataForDisplay($conn, $uploadId) {
-    $data = [];
-    
-    // Get traffic sources and their metrics
-    $sql = "
-        SELECT 
-            st.SourceTypeName as traffic_source,
-            SUM(CASE WHEN mt.MetricName = 'Sessions' THEN pdp.Value ELSE 0 END) as sessions,
-            SUM(CASE WHEN mt.MetricName = 'Users' THEN pdp.Value ELSE 0 END) as users,
-            SUM(CASE WHEN mt.MetricName = 'Engaged sessions' THEN pdp.Value ELSE 0 END) as engaged_sessions,
-            AVG(CASE WHEN mt.MetricName = 'Bounce Rate' THEN pdp.Value ELSE NULL END) as bounce_rate,
-            AVG(CASE WHEN mt.MetricName = 'Avg. Session Duration' THEN pdp.Value ELSE NULL END) as avg_session_duration
-        FROM PROCESSED_DATA_POINT pdp
-        JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
-        JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-        WHERE pdp.UploadID = ?
-        GROUP BY st.SourceTypeID, st.SourceTypeName
-        ORDER BY sessions DESC
-        LIMIT 10
-    ";
-    
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $uploadId);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    while ($row = $result->fetch_assoc()) {
-        $data[] = [
-            'traffic_source' => $row['traffic_source'],
-            'sessions' => (int)$row['sessions'],
-            'users' => (int)$row['users'],
-            'engaged_sessions' => (int)$row['engaged_sessions'],
-            'bounce_rate' => $row['bounce_rate'] ? round($row['bounce_rate'] * 100, 2) . '%' : 'N/A',
-            'avg_session_duration' => $row['avg_session_duration'] ? formatDuration($row['avg_session_duration']) : 'N/A'
-        ];
-    }
-    
-    return $data;
-}
-
-/**
- * Format duration in seconds to readable format
- */
-function formatDuration($seconds) {
-    if ($seconds < 60) {
-        return round($seconds) . 's';
-    } elseif ($seconds < 3600) {
-        $minutes = floor($seconds / 60);
-        $secs = $seconds % 60;
-        return $minutes . 'm ' . round($secs) . 's';
-    } else {
-        $hours = floor($seconds / 3600);
-        $minutes = floor(($seconds % 3600) / 60);
-        return $hours . 'h ' . $minutes . 'm';
-    }
 }
 ?>
 
@@ -158,87 +43,7 @@ function formatDuration($seconds) {
                 <p>Your one-stop solution for analyzing web traffic data. Upload your data and start exploring!</p>
             </section>
             
-            <!-- Sample Data Display Section -->
-            <?php if ($sampleDataLoaded && $sampleDataInfo): ?>
-                <section class="sample-data-display">
-                    <div class="sample-data-header">
-                        <h2><i class="fas fa-vial"></i> Sample Data Loaded</h2>
-                        <p class="sample-notice">
-                            <i class="fas fa-info-circle"></i>
-                            You are now viewing sample data for demonstration purposes. 
-                            This data shows how TrafAnalyz works with real analytics data.
-                        </p>
-                        <div class="sample-actions">
-                            <a href="overview.php" class="btn btn-primary">
-                                <i class="fas fa-chart-line"></i> View Sample Dashboard
-                            </a>
-                            <a href="?clear_sample=1" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Clear Sample Data
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <div class="sample-data-info">
-                        <h3>Sample Dataset Information</h3>
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <strong>Report Type:</strong> <?php echo htmlspecialchars($sampleDataInfo['ReportType']); ?>
-                            </div>
-                            <div class="info-item">
-                                <strong>Date Range:</strong> 
-                                <?php echo date('M d, Y', strtotime($sampleDataInfo['DataDateStart'])); ?> - 
-                                <?php echo date('M d, Y', strtotime($sampleDataInfo['DataDateEnd'])); ?>
-                            </div>
-                            <div class="info-item">
-                                <strong>Property:</strong> <?php echo htmlspecialchars($sampleDataInfo['PropertyName'] ?: 'Sample Website'); ?>
-                            </div>
-                            <div class="info-item">
-                                <strong>Uploaded:</strong> <?php echo date('M d, Y H:i', strtotime($sampleDataInfo['UploadDate'])); ?>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <?php if (!empty($sampleCsvData)): ?>
-                        <div class="sample-data-table">
-                            <h3>Sample Data Preview</h3>
-                            <div class="table-container">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Traffic Source</th>
-                                            <th>Sessions</th>
-                                            <th>Users</th>
-                                            <th>Engaged Sessions</th>
-                                            <th>Bounce Rate</th>
-                                            <th>Avg Session Duration</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($sampleCsvData as $row): ?>
-                                            <tr>
-                                                <td><?php echo htmlspecialchars($row['traffic_source']); ?></td>
-                                                <td><?php echo number_format($row['sessions']); ?></td>
-                                                <td><?php echo number_format($row['users']); ?></td>
-                                                <td><?php echo number_format($row['engaged_sessions']); ?></td>
-                                                <td><?php echo $row['bounce_rate']; ?></td>
-                                                <td><?php echo $row['avg_session_duration']; ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                            <p class="table-note">
-                                <i class="fas fa-lightbulb"></i>
-                                This sample data demonstrates typical web analytics metrics. 
-                                Use the dashboard navigation below to explore different views and insights.
-                            </p>
-                        </div>
-                    <?php endif; ?>
-                </section>
-            <?php endif; ?>
-            
-            <!-- Regular Upload Section (hidden when sample data is loaded) -->
-            <section class="upload-section" <?php echo $sampleDataLoaded ? 'style="display: none;"' : ''; ?>>
+            <section class="upload-section">
                 <h2>Upload Traffic Data</h2>
                 
                 <?php if (!empty($uploadMessage)): ?>
@@ -251,10 +56,80 @@ function formatDuration($seconds) {
                     
                     <?php if ($uploadMessage['type'] === 'error' && 
                               strpos($uploadMessage['message'], 'Data validation errors') !== false): ?>
-                        <!-- Error handling code remains the same -->
+                        <?php
+                        // Enhanced error message parsing to extract suggestions
+                        $errorMessage = $uploadMessage['message'];
+                        $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
+                        $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
+                        
+                        // Split by semicolons and parse suggestions
+                        $errorList = explode(';', $errorMessage);
+                        ?>
+                        
                         <div class="error-container">
-                            <!-- ... existing error handling code ... -->
+                            <p class="error-summary">Found <?php echo count($errorList); ?> validation errors in your CSV file:</p>
+                            <ul class="error-list">
+                                <?php foreach($errorList as $error): ?>
+                                    <?php $error = trim($error); ?>
+                                    <?php if(!empty($error)): ?>
+                                        <?php
+                                        // Parse error and suggestions
+                                        $parts = explode(' Suggestions: ', $error);
+                                        $mainError = $parts[0];
+                                        $suggestions = isset($parts[1]) ? $parts[1] : '';
+                                        ?>
+                                        <li class="error-item">
+                                            <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
+                                            <?php if (!empty($suggestions)): ?>
+                                                <div class="error-suggestions">
+                                                    <strong>💡 Suggestions:</strong> 
+                                                    <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
+                                                </div>
+                                            <?php endif; ?>
+                                        </li>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </ul>
                         </div>
+                        
+                        <div class="validation-help">
+                            <h4>Quick Fix Guide:</h4>
+                            <div class="fix-guide">
+                                <div class="fix-item">
+                                    <strong>🔢 Integer Issues:</strong>
+                                    <ul>
+                                        <li>Remove letters: "15a" → "15"</li>
+                                        <li>Evaluate expressions: "42+3" → "45"</li>
+                                        <li>Convert Unicode: "５０" → "50"</li>
+                                    </ul>
+                                </div>
+                                <div class="fix-item">
+                                    <strong>📊 Float/Decimal Issues:</strong>
+                                    <ul>
+                                        <li>Fix multiple decimals: "8..5" → "8.5"</li>
+                                        <li>Convert scientific: "1.2e3" → "1200"</li>
+                                        <li>Remove special chars: "~5.3" → "5.3"</li>
+                                    </ul>
+                                </div>
+                                <div class="fix-item">
+                                    <strong>⏰ Time Format Issues:</strong>
+                                    <ul>
+                                        <li>Use proper format: "10:65:30" → "11:05:30"</li>
+                                        <li>Convert units: "12m30s" → "12:30" or "750"</li>
+                                    </ul>
+                                </div>
+                                <div class="fix-item">
+                                    <strong>💰 Currency Issues:</strong>
+                                    <ul>
+                                        <li>Remove symbols: "$1,200" → "1200"</li>
+                                        <li>Remove commas: "500.abc" → "500"</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <p class="error-footer">Please correct these issues and upload again.</p>
+                        
                     <?php else: ?>
                         <!-- Display other types of messages -->
                         <div class="message <?php echo $uploadMessage['type']; ?>">
@@ -263,39 +138,10 @@ function formatDuration($seconds) {
                     <?php endif; ?>
                 <?php endif; ?>
                 
-                <!-- Existing validation warnings section -->
-                <?php if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])): ?>
-                    <?php 
-                    $validationErrors = $_SESSION['validation_errors'];
-                    unset($_SESSION['validation_errors']);
-                    ?>
-                    
-                    <div class="message warning">
-                        <h4>📋 Upload Completed with Warnings</h4>
-                        <p>Data imported with <?php echo count($validationErrors); ?> validation warnings. Some rows had errors but valid data was processed.</p>
-                        
-                        <details>
-                            <summary>View validation errors (<?php echo count($validationErrors); ?>)</summary>
-                            <div class="validation-errors-list">
-                                <?php foreach ($validationErrors as $error): ?>
-                                    <div class="error-item">
-                                        <?php echo htmlspecialchars($error); ?>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </details>
-                        
-                        <p><a href="overview.php" class="btn">View Imported Data</a></p>
-                    </div>
-                <?php endif; ?>
-                
                 <p>Upload your CSV file containing web traffic data. 
                     <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
                 </p>
-                
-                <!-- Existing upload form -->
                 <form action="" method="post" enctype="multipart/form-data" id="uploadForm" data-ajax-handler="upload_handler.php">
-                    <!-- ... existing form content ... -->
                     <div class="form-group">
                         <label for="csvFile">Select CSV File:</label>
                         <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
@@ -305,20 +151,90 @@ function formatDuration($seconds) {
                         </div>
                     </div>
                     
-                    <!-- Progress indicators remain the same -->
+                    <!-- Enhanced Progress Indicators -->
                     <div class="upload-progress" id="uploadProgress" style="display: none;">
-                        <!-- ... existing progress content ... -->
+                        <div class="progress-container">
+                            <div class="progress-stage active" id="stage1">
+                                <div class="stage-icon">📁</div>
+                                <div class="stage-text">Uploading File</div>
+                                <div class="stage-progress">
+                                    <div class="progress-bar" id="uploadBar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="progress-text" id="uploadPercent">0%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-stage" id="stage2">
+                                <div class="stage-icon">🔍</div>
+                                <div class="stage-text">Validating Structure</div>
+                                <div class="stage-progress">
+                                    <div class="progress-bar" id="validateBar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="progress-text" id="validatePercent">0%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-stage" id="stage3">
+                                <div class="stage-icon">⚙️</div>
+                                <div class="stage-text">Processing Data</div>
+                                <div class="stage-progress">
+                                    <div class="progress-bar" id="processBar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="progress-text" id="processPercent">0%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="progress-stage" id="stage4">
+                                <div class="stage-icon">💾</div>
+                                <div class="stage-text">Saving to Database</div>
+                                <div class="stage-progress">
+                                    <div class="progress-bar" id="saveBar">
+                                        <div class="progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="progress-text" id="savePercent">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="overall-progress">
+                            <div class="overall-bar">
+                                <div class="overall-fill" id="overallFill" style="width: 0%"></div>
+                            </div>
+                            <div class="overall-text">
+                                <span id="overallPercent">0%</span> Complete
+                                <span id="currentTask">Ready to upload...</span>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-details" id="progressDetails">
+                            <div class="detail-item">
+                                <span class="detail-label">File Size:</span>
+                                <span class="detail-value" id="fileSizeDetail">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Upload Speed:</span>
+                                <span class="detail-value" id="uploadSpeed">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Time Remaining:</span>
+                                <span class="detail-value" id="timeRemaining">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Rows Processed:</span>
+                                <span class="detail-value" id="rowsProcessed">-</span>
+                            </div>
+                        </div>
                     </div>
                     
                     <button type="submit" class="btn" id="uploadBtn">Upload Data</button>
                     <button type="button" class="btn btn-secondary" id="cancelBtn" style="display: none;">Cancel Upload</button>
                 </form>
-                
                 <div class="sample-data">
                     <p>New to TrafAnalyz? Try with our sample data:</p>
-                    <a href="?load_sample=1" class="btn btn-secondary">
-                        <i class="fas fa-vial"></i> Load Sample Data
-                    </a>
+                    <a href="?load_sample=1" class="btn btn-secondary">Load Sample Data</a>
                 </div>
             </section>
                 
@@ -344,37 +260,9 @@ function formatDuration($seconds) {
             </section>
         </main>
 
-        <?php include 'user_footer.php'; ?>
+				<?php include 'user_footer.php'; ?>
 
     </div>
 <script src="upload_progress.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Check if we came from a successful upload
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('from_upload') === 'success') {
-        // Clean the URL without triggering a reload
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        // Optionally show a brief success message
-        const uploadSection = document.querySelector('.upload-section');
-        if (uploadSection) {
-            const successMessage = document.createElement('div');
-            successMessage.className = 'message success';
-            successMessage.innerHTML = '<i class="fas fa-check-circle"></i> File uploaded successfully!';
-            
-            const form = uploadSection.querySelector('form');
-            if (form) {
-                form.parentNode.insertBefore(successMessage, form);
-                
-                // Auto-hide after 3 seconds
-                setTimeout(() => {
-                    successMessage.remove();
-                }, 3000);
-            }
-        }
-    }
-});
-</script>
 </body>
 </html>
