@@ -977,6 +977,51 @@ function calculateStats($values) {
             margin-top: 15px;
             text-align: center;
         }
+
+        .user-export-controls {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin: 20px 0;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+    }
+
+    .user-export-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .user-export-btn.csv {
+        background: #28a745;
+        color: white;
+    }
+
+    .user-export-btn.csv:hover {
+        background: #218838;
+        transform: translateY(-2px);
+    }
+
+    .user-export-btn.pdf {
+        background: #dc3545;
+        color: white;
+    }
+
+    .user-export-btn.pdf:hover {
+        background: #c82333;
+        transform: translateY(-2px);
+    }
     </style>
 </head>
 <body>
@@ -1199,6 +1244,18 @@ function calculateStats($values) {
                 </form>
             </div>
 
+            <!-- Export Controls (only show if we have comparison data) -->
+            <?php if (isset($comparison_results) && !empty($comparison_results)): ?>
+            <div class="user-export-controls" style="margin: 20px 0; text-align: right;">
+                <button class="user-export-btn csv" onclick="exportToCSV()" style="background: #28a745; color: white; padding: 10px 20px; margin-right: 10px; border: none; border-radius: 4px; cursor: pointer;">
+                    <i class="fas fa-file-csv"></i> Export to CSV
+                </button>
+                <button class="user-export-btn pdf" onclick="exportToPDF()" style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
+                    <i class="fas fa-file-pdf"></i> Export to PDF
+                </button>
+            </div>
+            <?php endif; ?>
+
 
             <!-- Comparison Results -->
             <?php if ($comparison_results): ?>
@@ -1402,5 +1459,184 @@ function calculateStats($values) {
 
         <?php include 'user_footer.php'; ?>
     </div>
+
+    
+    <script>
+
+    const comparisonData = <?php echo json_encode($comparison_results ?? []); ?>;
+    
+    // Export Functions
+    function exportToCSV() {
+        if (typeof comparisonData === 'undefined' || !comparisonData) {
+            alert('No comparison data available to export');
+            return;
+        }
+
+        let csv = 'Metric,File 1 Value,File 2 Value,Change,Percentage Change\n';
+
+        // Add comparison metrics to CSV
+        if (comparisonData.metrics) {
+            Object.entries(comparisonData.metrics).forEach(([metric, data]) => {
+                const file1Value = data.file1 || 0;
+                const file2Value = data.file2 || 0;
+                const change = data.change || 0;
+                const percentage = data.percentage || 0;
+
+                csv += `"${metric}","${file1Value}","${file2Value}","${change}","${percentage}%"\n`;
+            });
+        }
+
+        // Add summary info
+        csv += '\nSummary Information\n';
+        csv += `Export Date,"${new Date().toLocaleString()}"\n`;
+        csv += `Export Type,"Analytics Comparison"\n`;
+
+        // Create and download CSV
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Analytics_Comparison_${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // Log export to database
+        fetch('log_export.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `exportType=CSV&description=Exported analytics comparison metrics as CSV`
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('CSV export logged successfully');
+            }
+        }).catch(error => {
+            console.error('Error logging CSV export:', error);
+        });
+    }
+
+    async function exportToPDF() {
+        if (!window.jsPDF) {
+            alert('PDF export library not loaded. Please refresh the page and try again.');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+
+        // Get current date and time
+        const now = new Date();
+        const generatedDate = now.getFullYear() + '-' + 
+            String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+            String(now.getDate()).padStart(2, '0') + ' ' +
+            String(now.getHours()).padStart(2, '0') + ':' +
+            String(now.getMinutes()).padStart(2, '0') + ':' +
+            String(now.getSeconds()).padStart(2, '0');
+
+        // Get username from session
+        const username = '<?php echo $_SESSION['username'] ?? 'Unknown User'; ?>';
+
+        // PDF styling
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const margin = 20;
+        let yPosition = 30;
+
+        // Header
+        pdf.setFontSize(20);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('TrafAnalyz Analytics Comparison Report', pageWidth/2, yPosition, { align: 'center' });
+
+        yPosition += 15;
+
+        // Generated info
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Generated on: ${generatedDate}`, pageWidth - margin, yPosition, { align: 'right' });
+        yPosition += 5;
+        pdf.text(`Generated by: ${username}`, pageWidth - margin, yPosition, { align: 'right' });
+
+        yPosition += 20;
+
+        try {
+            // Capture the entire comparison content
+            const dashboardElement = document.getElementById('dashboard');
+            const canvas = await html2canvas(dashboardElement, {
+                scale: 1,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                width: dashboardElement.scrollWidth,
+                height: dashboardElement.scrollHeight
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+
+            // Calculate dimensions to fit page
+            const imgWidth = pageWidth - (margin * 2);
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            // Add image to PDF (may span multiple pages)
+            let heightLeft = imgHeight;
+            let position = yPosition;
+
+            // First page
+            pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+            heightLeft -= (pdf.internal.pageSize.getHeight() - position - margin);
+
+            // Additional pages if needed
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight + margin;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+                heightLeft -= (pdf.internal.pageSize.getHeight() - margin * 2);
+            }
+
+            // Add a final page with metadata
+            pdf.addPage();
+            yPosition = 30;
+
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Report Information', margin, yPosition);
+            yPosition += 15;
+
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Report Type: Analytics Comparison`, margin, yPosition);
+            yPosition += 8;
+            pdf.text(`Export Date: ${generatedDate}`, margin, yPosition);
+            yPosition += 8;
+            pdf.text(`Generated by: ${username}`, margin, yPosition);
+            yPosition += 8;
+            pdf.text(`Data Source: CSV File Comparison`, margin, yPosition);
+
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            alert('Error generating PDF. Please try again.');
+            return;
+        }
+
+        // Save PDF
+        pdf.save(`TrafAnalyz_Comparison_Report_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.pdf`);
+
+        // Log the PDF export to database
+        fetch('log_export.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `exportType=PDF&description=Exported analytics comparison report as PDF`
+        }).then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('PDF export logged successfully');
+            }
+        }).catch(error => {
+            console.error('Error logging PDF export:', error);
+        });
+    }
+    </script>    
 </body>
 </html>
