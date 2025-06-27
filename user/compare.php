@@ -36,34 +36,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
     $file2 = $_FILES['csv_file2'];
     
     try {
-        // Create temporary copies of the files BEFORE calling handleCsvUpload
-        $uploadDir = __DIR__ . '/../uploads/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-        
-        $tempFile1 = $uploadDir . 'temp_compare_1_' . uniqid() . '.csv';
-        $tempFile2 = $uploadDir . 'temp_compare_2_' . uniqid() . '.csv';
-        
-        // Copy the uploaded files to preserve them for comparison
-        if (!copy($file1['tmp_name'], $tempFile1)) {
-            throw new Exception("Failed to create temporary copy of first file");
-        }
-        if (!copy($file2['tmp_name'], $tempFile2)) {
-            throw new Exception("Failed to create temporary copy of second file");
-        }
-        
-        // Now use the original files for handleCsvUpload validation
-        // handleCsvUpload will move the files internally, so we use the originals
+        // Process both files through handleCsvUpload - they will be saved with unique hash names
         $upload_result1 = handleCsvUpload($conn, $file1);
         $upload_result2 = handleCsvUpload($conn, $file2);
         
         // Check if both uploads were successful
         if ($upload_result1['type'] === 'success' && $upload_result2['type'] === 'success') {
-            // If both files passed validation and were uploaded, proceed with comparison
-            // Use our temporary copies for comparison since originals were moved by handleCsvUpload
-            $comparison_results = compareCSVFiles($tempFile1, $tempFile2);
-            $success_message = "Comparison completed successfully! Files uploaded to database.";
+            // Get the file paths from the upload results
+            $file1_path = $upload_result1['file_path'];
+            $file2_path = $upload_result2['file_path'];
+            
+            // Verify files exist
+            if (file_exists($file1_path) && file_exists($file2_path)) {
+                // Perform the comparison using the saved files
+                $comparison_results = compareCSVFiles($file1_path, $file2_path);
+                $success_message = "Comparison completed successfully! Files uploaded to database and saved to uploads directory.";
+            } else {
+                $error_message = "Files were processed but could not be found for comparison.";
+            }
+            
+        } elseif ($upload_result1['type'] === 'warning' && $upload_result2['type'] === 'warning') {
+            // Both files had warnings but were processed
+            $file1_path = $upload_result1['file_path'];
+            $file2_path = $upload_result2['file_path'];
+            
+            if (file_exists($file1_path) && file_exists($file2_path)) {
+                $comparison_results = compareCSVFiles($file1_path, $file2_path);
+                $success_message = "Comparison completed with validation warnings. Files uploaded to database and saved to uploads directory.";
+            } else {
+                $error_message = "Files had validation warnings and could not be found for comparison.";
+            }
+            
         } else {
             // If either file failed validation, show the detailed error
             if ($upload_result1['type'] === 'error') {
@@ -75,23 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
             }
         }
         
-        // Clean up temporary files
-        if (file_exists($tempFile1)) {
-            unlink($tempFile1);
-        }
-        if (file_exists($tempFile2)) {
-            unlink($tempFile2);
-        }
-        
     } catch (Exception $e) {
-        // Clean up temporary files on error
-        if (isset($tempFile1) && file_exists($tempFile1)) {
-            unlink($tempFile1);
-        }
-        if (isset($tempFile2) && file_exists($tempFile2)) {
-            unlink($tempFile2);
-        }
-        
         $error_message = "Error processing files: " . $e->getMessage();
     }
 }
