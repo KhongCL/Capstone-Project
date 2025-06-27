@@ -8,6 +8,31 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
+// Check if this is a sample data redirect
+if (isset($_GET['sample_data']) && $_GET['sample_data'] == '1') {
+    // Ensure session is active
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // Verify sample data session variables are set
+    if (!isset($_SESSION['using_sample_data']) || !isset($_SESSION['sample_upload_id'])) {
+        error_log("WARNING: Sample data redirect but session variables missing, attempting to restore");
+        
+        // Attempt to restore sample data session
+        $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE IsSampleData = 1 ORDER BY UploadDate DESC LIMIT 1");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result && $row = $result->fetch_assoc()) {
+            $_SESSION['using_sample_data'] = true;
+            $_SESSION['sample_upload_id'] = $row['UploadID'];
+            $_SESSION['latest_upload_id'] = $row['UploadID'];
+            error_log("Restored sample data session with UploadID: " . $row['UploadID']);
+        }
+    }
+}
+
 // Set page variables for header
 $title = "Overview Dashboard";
 $active_page = "overview";
@@ -16,43 +41,11 @@ error_log("=== OVERVIEW PAGE DEBUG ===");
 error_log("Session latest_upload_id: " . ($_SESSION['latest_upload_id'] ?? 'NOT SET'));
 error_log("User ID: " . ($_SESSION['user_id'] ?? 'NOT SET'));
 
-// Check what uploads exist for this user
-$userId = $_SESSION['user_id'] ?? 1;
-$debugQuery = "SELECT UploadID, FileName, UploadDate, ReportType FROM CSV_UPLOAD WHERE UserID = ? ORDER BY UploadID DESC LIMIT 5";
-$debugStmt = $conn->prepare($debugQuery);
-$debugStmt->bind_param("i", $userId);
-$debugStmt->execute();
-$debugResult = $debugStmt->get_result();
-error_log("Recent uploads for user $userId:");
-while ($debugRow = $debugResult->fetch_assoc()) {
-    error_log("  Upload ID: {$debugRow['UploadID']}, File: {$debugRow['FileName']}, Date: {$debugRow['UploadDate']}, Type: {$debugRow['ReportType']}");
-}
+// Get uploadId using sample-aware function
+$uploadId = getCurrentUploadId($conn, $_SESSION['user_id']);
 
-// Check data points
-$dataQuery = "SELECT COUNT(*) as count FROM PROCESSED_DATA_POINT pdp 
-              JOIN CSV_UPLOAD cu ON pdp.UploadID = cu.UploadID 
-              WHERE cu.UserID = ?";
-$dataStmt = $conn->prepare($dataQuery);
-$dataStmt->bind_param("i", $userId);
-$dataStmt->execute();
-$dataResult = $dataStmt->get_result();
-if ($dataRow = $dataResult->fetch_assoc()) {
-    error_log("Total data points for user $userId: " . $dataRow['count']);
-}
-error_log("=== END OVERVIEW DEBUG ===");
-
-// Get uploadId from URL parameter or most recent upload
-$uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null;
-
-if (!$uploadId) {
-    // Get most recent upload for the current user
-    $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC LIMIT 1");
-    $stmt->bind_param("i", $_SESSION['user_id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $uploadId = $row ? $row['UploadID'] : null;
-}
+// Get sample data notice
+$sampleNotice = getSampleDataNotice();
 
 $metrics = getKeyMetrics($conn, $uploadId);
 $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
@@ -70,6 +63,51 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    .sample-data-notice {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+        padding: 15px 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        color: #333;
+        box-shadow: 0 4px 12px rgba(255, 154, 158, 0.3);
+    }
+
+    .notice-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .notice-content i {
+        font-size: 1.2em;
+        margin-right: 10px;
+        color: #e91e63;
+    }
+
+    .notice-content span {
+        flex: 1;
+        font-weight: 500;
+    }
+
+    .notice-content .btn {
+        padding: 8px 16px;
+        font-size: 0.9em;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.2);
+        color: #333;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }
+
+    .notice-content .btn:hover {
+        background: rgba(255, 255, 255, 0.4);
+        transform: translateY(-1px);
+    }
+  </style>
 </head>
 
 <body>
@@ -78,6 +116,18 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 
     <main>
       <h2>Overview Dashboard</h2>
+
+        <!-- Sample Data Notice -->
+      <?php if ($sampleNotice['is_sample']): ?>
+        <div class="sample-data-notice">
+          <div class="notice-content">
+            <i class="fas fa-vial"></i>
+            <span><?php echo $sampleNotice['message']; ?></span>
+            <?php echo $sampleNotice['action']; ?>
+          </div>
+        </div>
+      <?php endif; ?>
+
       <div class="user-export-controls">
         <button class="user-export-btn csv" onclick="exportToCSV()">
           <span class="icon">📊</span>
@@ -178,6 +228,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     // Only declare once
     const trafficData = <?php echo json_encode($trafficData); ?>;
     const uploadId = <?php echo $uploadId ? $uploadId : 'null'; ?>;
+    const isSampleData = <?php echo $sampleNotice['is_sample'] ? 'true' : 'false'; ?>;
 
     Chart.register(window['chartjs-plugin-annotation']); // ✅ correct plugin registration
 
@@ -211,10 +262,10 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
             plugins: {
                 title: {
                     display: true,
-                    text: 'Website Traffic Over Time'
+                    text: isSampleData ? 'Website Traffic Over Time (Sample Data)' : 'Website Traffic Over Time'
                 },
                 annotation: {
-                    annotations: {} // populated later by annotation logic
+                    annotations: {}
                 }
             },
             scales: {
@@ -429,20 +480,24 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 
     function exportToCSV() {
       const metricCards = document.querySelectorAll('.user-metric-card');
-      const totalPageViews = metricCards[0].querySelector('.user-metric-value').textContent;
-      const uniqueVisitors = metricCards[1].querySelector('.user-metric-value').textContent;
-      const avgSessionDuration = metricCards[2].querySelector('.user-metric-value').textContent;
-      const bounceRate = metricCards[3].querySelector('.user-metric-value').textContent;
         
-      // CSV generation - only key metrics
+      const totalPageViews = metricCards[0].querySelector('.user-metric-value').textContent.trim().replace(/,/g, '');
+      const uniqueVisitorsElement = metricCards[1].querySelector('.user-metric-value');
+      const uniqueVisitors = uniqueVisitorsElement.textContent.trim().includes('N/A') ? 'N/A' : uniqueVisitorsElement.textContent.trim().replace(/,/g, '');
+        
+      const avgSessionElement = metricCards[2].querySelector('.user-metric-value');
+      const avgSessionDuration = avgSessionElement.textContent.trim().includes('N/A') ? 'N/A' : avgSessionElement.textContent.trim();
+        
+      const bounceRateElement = metricCards[3].querySelector('.user-metric-value');
+      const bounceRate = bounceRateElement.textContent.trim().includes('N/A') ? 'N/A' : bounceRateElement.textContent.trim();
+        
       let csv = 'Metric,Value\n';
-      csv += `Total Page Views,${totalPageViews.replace(/,/g, '')}\n`;
-      csv += `Unique Visitors,${uniqueVisitors.replace(/,/g, '')}\n`;
-      csv += `Average Session Duration,${avgSessionDuration}\n`;
-      csv += `Bounce Rate,${bounceRate}\n`;
+      csv += `"Total Page Views","${totalPageViews}"\n`;
+      csv += `"Unique Visitors","${uniqueVisitors}"\n`;
+      csv += `"Average Session Duration","${avgSessionDuration}"\n`;
+      csv += `"Bounce Rate","${bounceRate}"\n`;
         
-      // Trigger download
-      const blob = new Blob([csv], { type: 'text/csv' });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -450,46 +505,120 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-        
-      // Log export in DB
-      fetch('log_export.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: `exportType=CSV&description=Exported overview key metrics (uploadId: ${uploadId})`
-      }).then(response => response.json())
-        .then(data => {
-          if (!data.success) {
-            console.warn('Export log failed:', data.message);
-          }
-        });
+      URL.revokeObjectURL(url);
     }
 
     function exportToPDF() {
-      html2canvas(document.getElementById('dashboard')).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save('dashboard.pdf');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+        
+      const now = new Date();
+      const generatedDate = now.getFullYear() + '-' + 
+        String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(now.getDate()).padStart(2, '0') + ' ' +
+        String(now.getHours()).padStart(2, '0') + ':' +
+        String(now.getMinutes()).padStart(2, '0') + ':' +
+        String(now.getSeconds()).padStart(2, '0');
+        
+      const username = '<?php echo $_SESSION['username'] ?? 'Unknown User'; ?>';
+        
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 20;
+      let yPosition = 30;
+        
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('TrafAnalyz Overview Dashboard Report', pageWidth/2, yPosition, { align: 'center' });
+        
+      yPosition += 15;
+        
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated on: ${generatedDate}`, pageWidth - margin, yPosition, { align: 'right' });
+      yPosition += 5;
+      pdf.text(`Generated by: ${username}`, pageWidth - margin, yPosition, { align: 'right' });
       
-        // Log the PDF export into the database
-        fetch('log_export.php', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: `exportType=PDF&description=Exported dashboard as PDF (uploadId: ${uploadId})`
-        }).then(response => response.json())
-          .then(data => {
-            if (!data.success) {
-              console.warn('Export log failed:', data.message);
-            }
-          });
+      if (isSampleData) {
+        yPosition += 5;
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 0, 0);
+        pdf.text('⚠️ Sample Data Report', pageWidth - margin, yPosition, { align: 'right' });
+        pdf.setTextColor(0, 0, 0);
+      }
+        
+      yPosition += 20;
+        
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Key Metrics', margin, yPosition);
+      yPosition += 10;
+        
+      const metricCards = document.querySelectorAll('.user-metric-card');
+      const totalPageViews = metricCards[0].querySelector('.user-metric-value').textContent.trim();
+      const uniqueVisitors = metricCards[1].querySelector('.user-metric-value').textContent.trim();
+      const avgSessionDuration = metricCards[2].querySelector('.user-metric-value').textContent.trim();
+      const bounceRate = metricCards[3].querySelector('.user-metric-value').textContent.trim();
+        
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+        
+      const metrics = [
+        ['Metric', 'Value'],
+        ['Total Page Views', totalPageViews],
+        ['Unique Visitors', uniqueVisitors],
+        ['Average Session Duration', avgSessionDuration],
+        ['Bounce Rate', bounceRate]
+      ];
+      
+      metrics.forEach((row, index) => {
+        const isHeader = index === 0;
+        if (isHeader) {
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFillColor(240, 240, 240);
+          pdf.rect(margin, yPosition - 5, pageWidth - (margin * 2), 8, 'F');
+        } else {
+          pdf.setFont('helvetica', 'normal');
+        }
+        
+        pdf.text(row[0], margin + 5, yPosition);
+        pdf.text(row[1], margin + 80, yPosition);
+        
+        pdf.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
+        
+        yPosition += 10;
       });
+      
+      yPosition += 10;
+      
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Traffic Over Time Chart', margin, yPosition);
+      yPosition += 10;
+      
+      const chartCanvas = document.getElementById('trafficChart');
+      const chartImage = chartCanvas.toDataURL('image/png');
+      
+      const chartWidth = pageWidth - (margin * 2);
+      const chartHeight = 100;
+      pdf.addImage(chartImage, 'PNG', margin, yPosition, chartWidth, chartHeight);
+      
+      yPosition += chartHeight + 15;
+      
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Report Information', margin, yPosition);
+      yPosition += 8;
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text(`Upload ID: ${uploadId || 'N/A'}`, margin, yPosition);
+      yPosition += 5;
+      pdf.text(`Report Type: Overview Dashboard`, margin, yPosition);
+      yPosition += 5;
+      pdf.text(`Data Source: ${isSampleData ? 'Sample Data' : 'CSV Upload'}`, margin, yPosition);
+      
+      pdf.save(`TrafAnalyz_Overview_Report_${isSampleData ? 'Sample_' : ''}${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.pdf`);
     }
 
   </script>

@@ -133,6 +133,18 @@ function handleCsvUpload($conn, $file) {
                 // CRITICAL: Return the actual error message from saveTransformedData
                 error_log("Save failed with message: " . $saveResult['message']);
                 
+                // CRITICAL FIX: Clear session data when upload fails
+                if (session_status() == PHP_SESSION_NONE) {
+                    session_start();
+                }
+                
+                // Clear the session data that would indicate existing data
+                unset($_SESSION['latest_upload_id']);
+                unset($_SESSION['using_sample_data']);
+                unset($_SESSION['sample_upload_id']);
+                
+                error_log("CRITICAL: Cleared session data due to upload failure");
+                
                 // Clean up file on error only
                 if (file_exists($filePath)) {
                     unlink($filePath);
@@ -262,6 +274,7 @@ function updateUploadProgress($stage, $percent, $message, $rowsProcessed = 0, $t
     error_log("Progress updated: Stage $stage, {$percent}%, $message");
 }
 
+// Update getKeyMetrics function to use sample-aware logic
 function getKeyMetrics($conn, $uploadId = null) {
     $metrics = [
         'total_page_views' => 0,
@@ -271,43 +284,28 @@ function getKeyMetrics($conn, $uploadId = null) {
     ];
     
     try {
-        // Get upload ID logic (keep existing)...
+        // If no uploadId provided, get it using the sample-aware function
         if ($uploadId === null) {
             if (session_status() == PHP_SESSION_NONE) {
                 session_start();
             }
             
-            $userId = $_SESSION['user_id'] ?? 7;
-            
-            $query = "SELECT UploadID, FileName, UploadDate FROM CSV_UPLOAD 
-                     WHERE UserID = ? AND IsValidated = 1 
-                     ORDER BY UploadDate DESC, UploadID DESC LIMIT 1";
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-        
-            if ($result && $row = $result->fetch_assoc()) {
-                $uploadId = $row['UploadID'];
-                error_log("🔄 FORCED REFRESH: Using latest upload ID: $uploadId (File: {$row['FileName']}, Date: {$row['UploadDate']})");
-                
-                unset($_SESSION['latest_upload_id']);
-                unset($_SESSION['cached_metrics']);
-                $_SESSION['latest_upload_id'] = $uploadId;
-            } else {
-                error_log("❌ No uploads found for user $userId");
+            $userId = $_SESSION['user_id'] ?? null;
+            if (!$userId) {
                 return $metrics;
             }
+            
+            $uploadId = getCurrentUploadId($conn, $userId);
+        }
+        
+        if (!$uploadId) {
+            error_log("No upload ID found for getKeyMetrics");
+            return $metrics;
         }
         
         error_log("📊 Getting metrics for Upload ID: $uploadId");
         
-        if (!$uploadId) {
-            error_log("No upload ID found, returning default metrics");
-            return $metrics;
-        }
-        
-        // 1. Get Page Views - FIXED to prioritize correctly
+        // 1. Get Page Views - prioritize correctly
         $query = "SELECT mt.MetricName
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
@@ -326,7 +324,6 @@ function getKeyMetrics($conn, $uploadId = null) {
         
         if ($result && $row = $result->fetch_assoc()) {
             $selectedMetric = $row['MetricName'];
-            error_log("Selected metric for page views: $selectedMetric");
             
             $sumQuery = "SELECT SUM(pdp.Value) as total_views 
                         FROM PROCESSED_DATA_POINT pdp
@@ -339,11 +336,10 @@ function getKeyMetrics($conn, $uploadId = null) {
             
             if ($sumResult && $sumRow = $sumResult->fetch_assoc()) {
                 $metrics['total_page_views'] = $sumRow['total_views'] ?: 0;
-                error_log("Using $selectedMetric for page views: " . $metrics['total_page_views']);
             }
         }
         
-        // 2. Get unique visitors - FIXED to prioritize correctly  
+        // 2. Get unique visitors
         $query = "SELECT mt.MetricName
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
@@ -363,7 +359,6 @@ function getKeyMetrics($conn, $uploadId = null) {
         
         if ($result && $row = $result->fetch_assoc()) {
             $selectedMetric = $row['MetricName'];
-            error_log("Selected metric for unique visitors: $selectedMetric");
             
             $sumQuery = "SELECT SUM(pdp.Value) as unique_visitors 
                         FROM PROCESSED_DATA_POINT pdp
@@ -378,14 +373,11 @@ function getKeyMetrics($conn, $uploadId = null) {
                 $uniqueVisitors = $sumRow['unique_visitors'] ?: 0;
                 if ($uniqueVisitors > 0) {
                     $metrics['unique_visitors'] = $uniqueVisitors;
-                    error_log("Using $selectedMetric for unique visitors: " . $metrics['unique_visitors']);
-                } else {
-                    error_log("No unique visitor data available");
                 }
             }
         }
         
-        // 3. Average Session Duration - FIXED to prioritize correctly
+        // 3. Average Session Duration
         $query = "SELECT mt.MetricName
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
@@ -404,7 +396,6 @@ function getKeyMetrics($conn, $uploadId = null) {
         
         if ($result && $row = $result->fetch_assoc()) {
             $selectedMetric = $row['MetricName'];
-            error_log("Selected metric for avg session duration: $selectedMetric");
             
             $avgQuery = "SELECT AVG(pdp.Value) as avg_duration
                         FROM PROCESSED_DATA_POINT pdp
@@ -419,12 +410,11 @@ function getKeyMetrics($conn, $uploadId = null) {
                 $avgSeconds = $avgRow['avg_duration'] ?: 0;
                 if ($avgSeconds > 0) {
                     $metrics['avg_session_duration'] = round($avgSeconds, 1);
-                    error_log("Using $selectedMetric for avg session duration: " . $metrics['avg_session_duration']);
                 }
             }
         }
         
-        // 4. Bounce rate - use actual data from Engagement Rate
+        // 4. Bounce rate
         $query = "SELECT AVG(pdp.Value) as avg_engagement_rate
                  FROM PROCESSED_DATA_POINT pdp
                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
@@ -438,17 +428,9 @@ function getKeyMetrics($conn, $uploadId = null) {
         if ($result && $row = $result->fetch_assoc()) {
             $engagementRate = $row['avg_engagement_rate'] ?: 0;
             if ($engagementRate > 0) {
-                // Convert engagement rate to bounce rate
                 $bounceRate = (1 - $engagementRate) * 100;
                 $metrics['bounce_rate'] = round($bounceRate, 1);
-                error_log("Calculated bounce rate from engagement rate: " . $metrics['bounce_rate'] . "%");
-            } else {
-                error_log("No engagement rate data found - keeping bounce rate as N/A");
-                // Keep as 'N/A' - don't use default value
             }
-        } else {
-            error_log("No engagement rate or bounce rate data available - keeping bounce rate as N/A");
-            // Keep as 'N/A' - no data available
         }
         
     } catch (Exception $e) {
@@ -458,21 +440,30 @@ function getKeyMetrics($conn, $uploadId = null) {
     return $metrics;
 }
 
-// Get traffic over time data for charts
+// Update getTrafficOverTime function
 function getTrafficOverTime($conn, $interval = 'day', $uploadId = null) {
     $data = [];
     
     try {
-        // If no uploadId provided, get the most recent upload ID
+        // If no uploadId provided, get it using the sample-aware function
         if (!$uploadId) {
-            $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD";
-            $result = $conn->query($query);
-            if ($result && $row = $result->fetch_assoc()) {
-                $uploadId = $row['latest_upload'];
+            if (session_status() == PHP_SESSION_NONE) {
+                session_start();
             }
+            
+            $userId = $_SESSION['user_id'] ?? null;
+            if (!$userId) {
+                return $data;
+            }
+            
+            $uploadId = getCurrentUploadId($conn, $userId);
         }
         
-        // Get sessions data by date for the specified upload
+        if (!$uploadId) {
+            return $data;
+        }
+        
+        // Get sessions data by date
         $query = "SELECT 
                     pdp.DataDate as time_period,
                     SUM(pdp.Value) as page_views,
@@ -501,40 +492,33 @@ function getTrafficOverTime($conn, $interval = 'day', $uploadId = null) {
     return $data;
 }
 
-// Get traffic sources distribution data
-function getTrafficSourcesDistribution($conn) {
+// Update getTrafficSourcesDistribution function
+function getTrafficSourcesDistribution($conn, $uploadId = null) {
     $data = [];
     
     try {
-        // ENHANCED: Use session upload ID first, then fall back to MAX
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        $latestUpload = 0;
-        if (isset($_SESSION['latest_upload_id'])) {
-            $latestUpload = $_SESSION['latest_upload_id'];
-            error_log("Using session upload ID for traffic sources: $latestUpload");
-        } else {
-            // Fall back to getting the most recent upload ID for current user
-            $userId = $_SESSION['user_id'] ?? 1;
-            $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD WHERE UserID = ? AND IsValidated = 1";
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($result && $row = $result->fetch_assoc()) {
-                $latestUpload = $row['latest_upload'];
-                error_log("Using latest upload ID for traffic sources (user $userId): $latestUpload");
+        // If no uploadId provided, get it using the sample-aware function
+        if (!$uploadId) {
+            if (session_status() == PHP_SESSION_NONE) {
+                session_start();
             }
+            
+            $userId = $_SESSION['user_id'] ?? null;
+            if (!$userId) {
+                return $data;
+            }
+            
+            $uploadId = getCurrentUploadId($conn, $userId);
         }
         
-        if (!$latestUpload) {
+        if (!$uploadId) {
             error_log("No upload ID found for traffic sources");
             return $data;
         }
         
-        // FIXED: Use 'Sessions' instead of 'Sessions' (they should be the same, but let's be explicit)
+        error_log("Getting traffic sources for upload ID: $uploadId");
+        
+        // Use the correct column name: SourceName
         $query = "SELECT 
                     st.SourceName as traffic_source,
                     SUM(pdp.Value) as visit_count
@@ -547,21 +531,19 @@ function getTrafficSourcesDistribution($conn) {
                   ORDER BY visit_count DESC";
                   
         $stmt = $conn->prepare($query);
-        $stmt->bind_param("i", $latestUpload);
+        $stmt->bind_param("i", $uploadId);
         $stmt->execute();
         $result = $stmt->get_result();
         
         if ($result) {
-            // Calculate total visits
             $totalVisits = 0;
             $tempData = [];
             
             while ($row = $result->fetch_assoc()) {
                 $tempData[] = $row;
                 $totalVisits += $row['visit_count'];
+                error_log("Found traffic source: " . $row['traffic_source'] . " with " . $row['visit_count'] . " visits");
             }
-            
-            error_log("Found $totalVisits total visits from " . count($tempData) . " traffic sources");
             
             // Calculate percentage for each source
             foreach ($tempData as $row) {
@@ -574,6 +556,8 @@ function getTrafficSourcesDistribution($conn) {
                     'percentage' => $percentage
                 ];
             }
+            
+            error_log("Final traffic sources data: " . json_encode($data));
         }
     } catch (Exception $e) {
         error_log("Error getting traffic sources: " . $e->getMessage());
@@ -583,7 +567,6 @@ function getTrafficSourcesDistribution($conn) {
 }
 
 // Get top visited pages data (since you don't have page data, this is a placeholder)
-
 function getTopVisitedPages($conn, $limit = 10) {
     $data = [];
     $dataQuality = [
@@ -593,48 +576,38 @@ function getTopVisitedPages($conn, $limit = 10) {
     ];
     
     try {
-        // ENHANCED: Use session upload ID first, then fall back to MAX
+        // Get current upload ID using sample-aware function
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
         
-        $latestUpload = 0;
-        if (isset($_SESSION['latest_upload_id'])) {
-            $latestUpload = $_SESSION['latest_upload_id'];
-            error_log("Using session upload ID for pages: $latestUpload");
-        } else {
-            // Fall back to getting the most recent upload ID for current user
-            $userId = $_SESSION['user_id'] ?? 1;
-            $query = "SELECT MAX(UploadID) as latest_upload FROM CSV_UPLOAD WHERE UserID = ? AND IsValidated = 1";
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($result && $row = $result->fetch_assoc()) {
-                $latestUpload = $row['latest_upload'];
-                error_log("Using latest upload ID for pages (user $userId): $latestUpload");
-            }
+        $userId = $_SESSION['user_id'] ?? null;
+        if (!$userId) {
+            return $data;
         }
+        
+        $latestUpload = getCurrentUploadId($conn, $userId);
         
         if (!$latestUpload) {
             error_log("No upload ID found for pages");
             return $data;
         }
         
-        // FIXED: Try multiple strategies to get page data
+        error_log("Getting pages data for upload ID: $latestUpload");
         
-        // Strategy 1: Try to get Page Views + Users (ideal case)
+        // Strategy 1: Try Sessions + estimate visitors from sessions
         $query = "SELECT 
                     st.SourceName as page_url,
-                    SUM(CASE WHEN mt.MetricName = 'Page Views' THEN pdp.Value ELSE 0 END) as page_views,
-                    SUM(CASE WHEN mt.MetricName = 'Users' THEN pdp.Value ELSE 0 END) as unique_visitors
+                    SUM(pdp.Value) as page_views,
+                    ROUND(SUM(pdp.Value) * 0.7) as unique_visitors,
+                    'estimated' as visitor_type
                   FROM PROCESSED_DATA_POINT pdp
                   JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
                   JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                  WHERE mt.MetricName IN ('Page Views', 'Users')
+                  WHERE mt.MetricName = 'Sessions'
                   AND pdp.UploadID = ?
                   GROUP BY st.SourceName
-                  HAVING page_views > 0 AND unique_visitors > 0
+                  HAVING page_views > 0
                   ORDER BY page_views DESC
                   LIMIT ?";
                   
@@ -643,128 +616,20 @@ function getTopVisitedPages($conn, $limit = 10) {
         $stmt->execute();
         $result = $stmt->get_result();
         
-        $dataFound = false;
         if ($result && $result->num_rows > 0) {
             while ($row = $result->fetch_assoc()) {
+                // Make sure we have at least 1 visitor to avoid division by zero
+                if ($row['unique_visitors'] < 1) {
+                    $row['unique_visitors'] = 1;
+                }
                 $data[] = $row;
-                $dataFound = true;
+                error_log("Found page: " . $row['page_url'] . " with " . $row['page_views'] . " views");
             }
             $dataQuality = [
-                'source_type' => 'actual',
-                'estimation_method' => null,
-                'confidence_level' => 'high'
+                'source_type' => 'estimated',
+                'estimation_method' => 'sessions_70_percent_rule',
+                'confidence_level' => 'medium'
             ];
-        }
-        
-        // Strategy 2: Sessions + Users (good quality)
-        if (!$dataFound) {
-            error_log("No Page Views found, trying Sessions + Users");
-            $query = "SELECT 
-                        st.SourceName as page_url,
-                        SUM(CASE WHEN mt.MetricName = 'Sessions' THEN pdp.Value ELSE 0 END) as page_views,
-                        SUM(CASE WHEN mt.MetricName = 'Users' THEN pdp.Value ELSE 0 END) as unique_visitors
-                      FROM PROCESSED_DATA_POINT pdp
-                      JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
-                      JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                      WHERE mt.MetricName IN ('Sessions', 'Users')
-                      AND pdp.UploadID = ?
-                      GROUP BY st.SourceName
-                      HAVING page_views > 0 AND unique_visitors > 0
-                      ORDER BY page_views DESC
-                      LIMIT ?";
-                      
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param("ii", $latestUpload, $limit);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            
-            if ($result && $result->num_rows > 0) {
-                while ($row = $result->fetch_assoc()) {
-                    $data[] = $row;
-                    $dataFound = true;
-                }
-                $dataQuality = [
-                    'source_type' => 'actual',
-                    'estimation_method' => 'sessions_as_page_views',
-                    'confidence_level' => 'high'
-                ];
-            }
-        }
-        
-        // Strategy 3: Sessions only - estimate visitors (medium quality)
-        if (!$dataFound) {
-            error_log("No Users found, estimating visitors from Sessions");
-            $query = "SELECT 
-                        st.SourceName as page_url,
-                        SUM(pdp.Value) as page_views,
-                        ROUND(SUM(pdp.Value) * 0.7) as unique_visitors,
-                        'estimated' as visitor_type
-                      FROM PROCESSED_DATA_POINT pdp
-                      JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
-                      JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                      WHERE mt.MetricName IN ('Sessions', 'visits')
-                      AND pdp.UploadID = ?
-                      GROUP BY st.SourceName
-                      HAVING page_views > 0
-                      ORDER BY page_views DESC
-                      LIMIT ?";
-                      
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param("ii", $latestUpload, $limit);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            
-            if ($result && $result->num_rows > 0) {
-                while ($row = $result->fetch_assoc()) {
-                    // Make sure we have at least 1 visitor to avoid division by zero
-                    if ($row['unique_visitors'] < 1) {
-                        $row['unique_visitors'] = 1;
-                    }
-                    $data[] = $row;
-                    $dataFound = true;
-                }
-                $dataQuality = [
-                    'source_type' => 'estimated',
-                    'estimation_method' => 'sessions_70_percent_rule',
-                    'confidence_level' => 'medium'
-                ];
-            }
-        }
-        
-        // Strategy 4: Last resort - rough estimates (low quality)
-        if (!$dataFound) {
-            error_log("Last resort: rough estimation from any session data");
-            $query = "SELECT 
-                        st.SourceName as page_url,
-                        SUM(pdp.Value) as page_views,
-                        GREATEST(1, ROUND(SUM(pdp.Value) * 0.6)) as unique_visitors,
-                        'rough_estimate' as visitor_type
-                      FROM PROCESSED_DATA_POINT pdp
-                      JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
-                      JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
-                      WHERE mt.MetricName IN ('Sessions', 'Engaged sessions', 'User Sessions', 'SESSIONS')
-                      AND pdp.UploadID = ?
-                      GROUP BY st.SourceName
-                      HAVING page_views > 0
-                      ORDER BY page_views DESC
-                      LIMIT ?";
-                      
-            $stmt = $conn->prepare($query);
-            $stmt->bind_param("ii", $latestUpload, $limit);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            
-            if ($result && $result->num_rows > 0) {
-                while ($row = $result->fetch_assoc()) {
-                    $data[] = $row;
-                    $dataFound = true;
-                }
-                $dataQuality = [
-                    'source_type' => 'estimated',
-                    'estimation_method' => 'sessions_60_percent_rule',
-                    'confidence_level' => 'low'
-                ];
-            }
         }
         
         // Store data quality info in session for UI display
@@ -774,7 +639,7 @@ function getTopVisitedPages($conn, $limit = 10) {
         $_SESSION['pages_data_quality'] = $dataQuality;
         
         error_log("Data quality: " . json_encode($dataQuality));
-        error_log("Found " . count($data) . " page records for latest upload $latestUpload");
+        error_log("Found " . count($data) . " page records for upload $latestUpload");
         
     } catch (Exception $e) {
         error_log("Error getting page data: " . $e->getMessage());
@@ -813,6 +678,12 @@ function saveTransformedData($conn, $transformedData) {
     if (empty($transformedData)) {
         error_log("ERROR: No transformed data received - likely validation errors");
         
+        // CRITICAL FIX: Only clear session data when upload fails completely (no valid data at all)
+        // Don't clear session for validation warnings where some data was processed
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        
         // Check if we have validation errors in session
         if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
             $validationErrors = $_SESSION['validation_errors'];
@@ -824,8 +695,16 @@ function saveTransformedData($conn, $transformedData) {
             // Clear validation errors from session
             unset($_SESSION['validation_errors']);
             
+            // IMPORTANT: Don't clear session data here - let the user see the errors
+            // Session data will only be cleared when a NEW successful upload happens
             return ['type' => 'error', 'message' => $errorMessage];
         }
+        
+        // Only clear session data if there are no validation errors (complete failure)
+        unset($_SESSION['latest_upload_id']);
+        unset($_SESSION['using_sample_data']);
+        unset($_SESSION['sample_upload_id']);
+        error_log("CRITICAL: Cleared session data due to complete upload failure");
         
         return ['type' => 'error', 'message' => 'No valid data found after processing. Please check your CSV file for errors.'];
     }
@@ -1175,9 +1054,79 @@ function deleteUser($conn, $userId) {
     }
 }
 
+/**
+ * Get current upload ID (sample-aware)
+ */
+function getCurrentUploadId($conn, $userId) {
+    error_log("=== GET CURRENT UPLOAD ID DEBUG ===");
+    error_log("User ID: $userId");
+    error_log("Session using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
+    error_log("Session sample_upload_id: " . ($_SESSION['sample_upload_id'] ?? 'not set'));
+    
+    // Check if user is using sample data
+    if (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data'] === true && isset($_SESSION['sample_upload_id'])) {
+        $sampleUploadId = $_SESSION['sample_upload_id'];
+        error_log("Using sample data with UploadID: $sampleUploadId");
+        
+        // Verify the sample upload exists and is valid
+        $stmt = $conn->prepare("SELECT UploadID, FileName, AccountName, PropertyName FROM csv_upload WHERE UploadID = ? AND IsSampleData = 1");
+        $stmt->bind_param("i", $sampleUploadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($row = $result->fetch_assoc()) {
+            error_log("Sample data verified: " . json_encode($row));
+            error_log("=== END GET CURRENT UPLOAD ID (SAMPLE) ===");
+            return $sampleUploadId;
+        } else {
+            error_log("WARNING: Sample upload ID $sampleUploadId not found or not sample data, falling back to user data");
+        }
+    }
+    
+    // Get most recent user upload
+    $stmt = $conn->prepare("SELECT UploadID, FileName FROM csv_upload WHERE UserID = ? AND (IsSampleData = 0 OR IsSampleData IS NULL) ORDER BY UploadDate DESC LIMIT 1");
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    
+    $uploadId = $row ? $row['UploadID'] : null;
+    error_log("User upload ID: " . ($uploadId ?? 'NULL'));
+    if ($row) {
+        error_log("User upload file: " . $row['FileName']);
+    }
+    error_log("=== END GET CURRENT UPLOAD ID (USER) ===");
+    
+    return $uploadId;
+}
 
+/**
+ * Check if current data is sample data
+ */
+function isUsingSampleData() {
+    return isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data'] === true;
+}
 
-
-
-
+/**
+ * Get sample data notice for display
+ */
+function getSampleDataNotice() {
+    error_log("=== GET SAMPLE DATA NOTICE DEBUG ===");
+    error_log("Session using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
+    
+    if (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data'] === true) {
+        $notice = [
+            'is_sample' => true,
+            'message' => '🧪 You\'re currently viewing sample data to explore TrafAnalyz features.',
+            'action' => '<a href="index.php?clear_sample=1" class="btn">Switch to Your Data</a>'
+        ];
+        error_log("Returning sample notice: " . json_encode($notice));
+        error_log("=== END GET SAMPLE DATA NOTICE (SAMPLE) ===");
+        return $notice;
+    }
+    
+    error_log("Not using sample data, returning no notice");
+    error_log("=== END GET SAMPLE DATA NOTICE (NO SAMPLE) ===");
+    return ['is_sample' => false];
+}
 ?>

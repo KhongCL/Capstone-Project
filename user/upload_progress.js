@@ -16,6 +16,12 @@ class UploadProgressTracker {
         this.isUploading = false;
         
         this.initializeEventListeners();
+        
+        // Mark form as handled by this tracker
+        const uploadForm = document.getElementById('uploadForm');
+        if (uploadForm) {
+            uploadForm.dataset.handledByTracker = 'true';
+        }
     }
 
     initializeEventListeners() {
@@ -37,6 +43,24 @@ class UploadProgressTracker {
             if (this.isUploading) {
                 console.log('Upload already in progress, ignoring submission');
                 return;
+            }
+            
+            // DEBUG: Check function availability
+            console.log('typeof confirmDataReplacement:', typeof confirmDataReplacement);
+            console.log('window.confirmDataReplacement exists:', typeof window.confirmDataReplacement);
+            
+            // NEW: Check for confirmation before proceeding with AJAX upload
+            const confirmFunction = window.confirmDataReplacement || confirmDataReplacement;
+            if (typeof confirmFunction === 'function') {
+                console.log('Calling confirmation function...');
+                const confirmed = confirmFunction();
+                console.log('Confirmation result:', confirmed);
+                if (!confirmed) {
+                    console.log('User cancelled upload confirmation');
+                    return; // User cancelled, don't proceed
+                }
+            } else {
+                console.log('No confirmation function found, proceeding with upload');
             }
             
             const file = fileInput.files[0];
@@ -63,9 +87,6 @@ class UploadProgressTracker {
         // CRITICAL: Reset the entire component state when new file is selected
         this.resetComponentState();
 
-        // Clear any existing messages when new file is selected
-        this.clearExistingMessages();
-
         const fileInfo = document.getElementById('fileInfo');
         const fileName = fileInfo.querySelector('.file-name');
         const fileSize = fileInfo.querySelector('.file-size');
@@ -75,7 +96,6 @@ class UploadProgressTracker {
         fileInfo.style.display = 'block';
     }
 
-    // NEW METHOD: Reset entire component state
     resetComponentState() {
         console.log('Resetting component state...');
         
@@ -95,7 +115,7 @@ class UploadProgressTracker {
         this.xhr = null;
         this.currentStage = 0;
         
-        // Reset UI elements
+        // Reset UI elements but DON'T clear error messages
         this.resetUIState();
     }
 
@@ -140,7 +160,7 @@ class UploadProgressTracker {
         // CRITICAL: Set upload state to prevent multiple uploads
         this.isUploading = true;
         
-        // Clear any existing error/warning messages immediately
+        // MOVED HERE: Clear any existing error/warning messages only when upload actually starts
         this.clearExistingMessages();
         
         // Reset upload state
