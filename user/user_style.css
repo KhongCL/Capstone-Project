@@ -191,37 +191,6 @@ section {
     box-shadow: var(--shadow);
 }
 
-/* Validation Help Section */
-.validation-help {
-    background-color: #f8f9fa;
-    border-left: 3px solid #6c757d;
-    padding: 10px 15px;
-    margin: 15px 0;
-    border-radius: 0 5px 5px 0;
-}
-
-/* Help and validation */
-.validation-help {
-    background-color: #f0fff4;
-    border: 2px solid #68d391;
-    border-radius: 12px;
-    padding: 20px;
-    margin: 20px 0;
-}
-
-.validation-help h4 {
-    color: #22543d;
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-}
-
-.validation-help h4::before {
-    content: "💡";
-    margin-right: 8px;
-    font-size: 1.2em;
-}
-
 .fix-guide {
     display: grid;
     gap: 15px;
@@ -665,14 +634,6 @@ select:focus {
     border-radius: 8px;
     margin: 20px 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-#mappingProgress {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    margin: 20px 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     display: none;
 }
 
@@ -795,20 +756,6 @@ select:focus {
 }
 
 .progress-stage.warning .stage-text {
-    color: #856404;
-}
-
-/* Add warning stage styling */
-.progress-stage.error .stage-icon {
-    background-color: #ffc107;
-    color: #856404;
-}
-
-.progress-stage.error .progress-fill {
-    background-color: #ffc107;
-}
-
-.progress-stage.error .stage-text {
     color: #856404;
 }
 
@@ -2531,15 +2478,28 @@ select:focus {
 /* =====================================================
    ACCESSIBILITY ENHANCEMENTS
    ===================================================== */
-/* Focus indicators */
-*:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
 
 /* Chart Legend Positioning */
 .user-chart-legend-right {
     position: relative;
+}
+
+.result-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.result-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
 
 .result-actions .btn-primary {
@@ -2646,44 +2606,3 @@ select:focus {
     color: #6c757d;
     font-style: italic;
 }
-
-.result-actions {
-    margin-top: 20px;
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.result-actions .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    text-decoration: none;
-    border-radius: 6px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
-.result-actions .btn-primary {
-    background-color: #007bff;
-    color: white;
-    border: 1px solid #007bff;
-}
-
-.result-actions .btn-primary:hover {
-    background-color: #0056b3;
-    border-color: #0056b3;
-}
-
-.result-actions .btn-secondary {
-    background-color: #6c757d;
-    color: white;
-    border: 1px solid #6c757d;
-}
-
-.result-actions .btn-secondary:hover {
-    background-color: #545b62;
-    border-color: #545b62;
-}
-
