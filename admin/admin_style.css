@@ -19,6 +19,8 @@
     --warning-light: #fff3cd;
     --warning-border: #ffeaa7;
     --light: #f8f9fa;
+		--light-gray: #f0f2f5;
+		--medium-gray: #e1e5eb;
     --dark: #343a40;
     --gray: #6c757d;
     --white: #ffffff;
@@ -500,33 +502,6 @@ section {
     margin-bottom: 25px;
 }
 
-input[type="file"],
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="date"],
-textarea,
-select {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid var(--medium-gray);
-    border-radius: 8px;
-    font-size: 1rem;
-    font-family: inherit;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
-input[type="date"]:focus,
-textarea:focus,
-select:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(76, 120, 208, 0.1);
-}
-
 /* =====================================================
    BUTTONS
    ===================================================== */
@@ -615,7 +590,7 @@ select:focus {
 }
 
 .btn-info {
-    background-color: --info;
+    background-color: var(--info);
     color: white;
 }
 
@@ -642,7 +617,7 @@ select:focus {
 }
 
 .btn-small.add-column {
-    background-color: --success;
+    background-color: var(--success);
     color: white;
 }
 
@@ -651,7 +626,7 @@ select:focus {
 }
 
 .btn-small.btn-danger {
-    background-color: --danger;
+    background-color: var(--danger);
     color: white;
 }
 
@@ -660,22 +635,22 @@ select:focus {
 }
 
 .btn-suspend {
-    background-color: --warning;
+    background-color: var(--warning);
     color: #212529;
 }
 
 .btn-restore {
-    background-color: --success;
+    background-color: var(--success);
     color: #fff;
 }
 
 .btn-delete {
-    background-color: --danger;
+    background-color: var(--danger);
     color: #fff;
 }
 
 .btn-export {
-    background-color: --info;
+    background-color: var(--info);
     color: #fff;
 }
 
@@ -812,7 +787,7 @@ select:focus {
 }
 
 .admin-btn-suspend {
-    background-color: --warning;
+    background-color: var(--warning);
     color: #212529;
     padding: 6px 12px;
     border: none;
@@ -829,7 +804,7 @@ select:focus {
 }
 
 .admin-btn-restore {
-    background-color: --success;
+    background-color: var(--success);
     color: #fff;
     padding: 6px 12px;
     border: none;
@@ -846,7 +821,7 @@ select:focus {
 }
 
 .admin-btn-delete {
-    background-color: --danger;
+    background-color: var(--danger);
     color: #fff;
     padding: 6px 12px;
     border: none;
@@ -1216,11 +1191,11 @@ select option:disabled {
 }
 
 .custom-field-input:valid {
-    border-color: --success;
+    border-color: var(--success);
 }
 
 .custom-field-input:invalid {
-    border-color: --danger;
+    border-color: var(--danger);
 }
 
 /* Custom option styling */
