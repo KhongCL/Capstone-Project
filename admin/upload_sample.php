@@ -1,6 +1,5 @@
 <?php
-// filepath: c:\xampp\htdocs\Capstone-Project\admin\upload_sample.php
-require_once '../auth/admin_auth.php'; // Admin Login Validation
+require_once '../auth/admin_auth.php';
 require_once '../config.php';
 require_once '../classes/CsvProcessor.php';
 require_once '../functions.php';
@@ -11,157 +10,206 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
     exit;
 }
 
-// Initialize response array for AJAX or standard requests
+// Enhanced error logging
+error_log("=== SAMPLE UPLOAD START ===");
+error_log("POST data: " . print_r($_POST, true));
+error_log("FILES data: " . print_r($_FILES, true));
+
 $response = [
     'success' => false,
     'message' => ''
 ];
 
-// Check if this is an AJAX request
 $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
 
-// Handle file upload
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    error_log("Processing POST request for sample upload");
+    
     // Enhanced file validation
     if (!isset($_FILES['sampleCsv']) || $_FILES['sampleCsv']['error'] !== UPLOAD_ERR_OK) {
-        // Use the function from functions.php instead of redefining it here
         $response['message'] = "Error uploading file: " . getUploadErrorMessage($_FILES['sampleCsv']['error'] ?? UPLOAD_ERR_NO_FILE);
-    } else if ($_FILES['sampleCsv']['size'] > 5 * 1024 * 1024) { // 5MB limit
+        error_log("File upload error: " . $response['message']);
+    } else if ($_FILES['sampleCsv']['size'] > 5 * 1024 * 1024) {
         $response['message'] = "File size exceeds the 5MB limit.";
+        error_log("File size too large: " . $_FILES['sampleCsv']['size']);
     } else if (pathinfo($_FILES['sampleCsv']['name'], PATHINFO_EXTENSION) !== 'csv') {
         $response['message'] = "Only CSV files are allowed.";
+        error_log("Invalid file extension");
     } else {
-        // Additional MIME type checking
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mime = finfo_file($finfo, $_FILES['sampleCsv']['tmp_name']);
-        finfo_close($finfo);
+        // Get report type
+        $reportType = isset($_POST['reportType']) ? trim($_POST['reportType']) : '';
         
-        if (!in_array($mime, ['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])) {
-            $response['message'] = "The uploaded file does not appear to be a valid CSV file. Detected type: $mime";
+        if ($reportType === 'new' && isset($_POST['newReportType']) && !empty($_POST['newReportType'])) {
+            $reportType = trim($_POST['newReportType']);
+        }
+        
+        error_log("Report type: " . $reportType);
+        
+        if (empty($reportType)) {
+            $response['message'] = "Please select or provide a report type.";
+            error_log("No report type provided");
         } else {
-            // Get report type
-            $reportType = isset($_POST['reportType']) ? trim($_POST['reportType']) : '';
-            
-            // If new report type is selected, use the provided name
-            if ($reportType === 'new' && isset($_POST['newReportType']) && !empty($_POST['newReportType'])) {
-                $reportType = trim($_POST['newReportType']);
-            }
-            
-            if (empty($reportType)) {
-                $response['message'] = "Please select or provide a report type.";
-            } else {
-                // Process the upload
-                try {
-                    // Create uploads directory if it doesn't exist
-                    $uploadDir = __DIR__ . '/../uploads/';
-                    if (!is_dir($uploadDir)) {
-                        mkdir($uploadDir, 0755, true);
-                    }
+            try {
+                // Create uploads directory if it doesn't exist
+                $uploadDir = __DIR__ . '/../uploads/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                    error_log("Created uploads directory: " . $uploadDir);
+                }
+                
+                // Save file with unique name
+                $fileName = 'sample_' . uniqid() . '_' . basename($_FILES['sampleCsv']['name']);
+                $filePath = $uploadDir . $fileName;
+                
+                error_log("Attempting to move file to: " . $filePath);
+                
+                if (move_uploaded_file($_FILES['sampleCsv']['tmp_name'], $filePath)) {
+                    error_log("File moved successfully to: " . $filePath);
                     
-                    // Save file with unique name
-                    $fileName = uniqid() . '_' . basename($_FILES['sampleCsv']['name']);
-                    $filePath = $uploadDir . $fileName;
+                    // Create a CSV processor instance
+                    $processor = new CsvProcessor();
                     
-                    if (move_uploaded_file($_FILES['sampleCsv']['tmp_name'], $filePath)) {
-                        // Create a CSV processor instance
-                        $processor = new CsvProcessor();
-                        
-                        // Extract metadata from the file
-                        $metadata = $processor->extractGa4Metadata($filePath);
-                        
-                        // Check if file is empty
-                        if (filesize($filePath) === 0) {
-                            $response['message'] = "The uploaded CSV file is empty.";
-                            if (file_exists($filePath)) {
-                                unlink($filePath);
-                            }
-                        } else {
-                            // Process the file with enhanced error handling
-                            $result = $processor->processFile($filePath);
-                            
-                            if ($result['status'] === 'success' || $result['status'] === 'needs_mapping') {
-                                // Transform data using mapping if available
-                                $transformedData = [];
-                                if ($result['status'] === 'success') {
-                                    $transformedData = $processor->transformData($filePath, $result['mapping'], $result['format']);
-                                } else {
-                                    // Use suggestions as mapping
-                                    $mapping = [];
-                                    foreach ($result['suggestions'] as $column => $suggestion) {
-                                        if ($suggestion['confidence'] > 70) {
-                                            $mapping[$column] = $suggestion['suggested_mapping'];
-                                        }
-                                    }
-                                    $transformedData = $processor->transformData($filePath, $mapping);
-                                }
-                                
-                                if (empty($transformedData)) {
-                                    $response['message'] = "No valid data rows found in the uploaded file after validation.";
-                                } else {
-                                    // Save as sample data (IsSampleData = 1)
-                                    $saved = saveSampleData($conn, $transformedData, $fileName, $_FILES['sampleCsv']['size'], $reportType, $metadata);
-                                    
-                                    if ($saved) {
-                                        $response['success'] = true;
-                                        $response['message'] = "Sample data uploaded and processed successfully.";
-                                    } else {
-                                        $response['message'] = "Failed to save sample data to database.";
-                                    }
-                                }
-                            } else {
-                                $response['message'] = "Failed to process CSV file: " . ($result['error'] ?? 'Unknown error');
-                            }
-                            
-                            // Clean up the file
-                            if (file_exists($filePath)) {
-                                unlink($filePath);
-                            }
+                    // Extract metadata from the file
+                    $metadata = $processor->extractGa4Metadata($filePath);
+                    error_log("Extracted metadata: " . json_encode($metadata));
+                    
+                    // Check if file is empty
+                    if (filesize($filePath) === 0) {
+                        $response['message'] = "The uploaded CSV file is empty.";
+                        error_log("File is empty");
+                        if (file_exists($filePath)) {
+                            unlink($filePath);
                         }
                     } else {
-                        $response['message'] = "Failed to save uploaded file.";
+                        error_log("Processing file of size: " . filesize($filePath));
+                        
+                        // Process the file
+                        $result = $processor->processFile($filePath);
+                        error_log("Process result: " . json_encode($result));
+                        
+                        if ($result['status'] === 'success' || $result['status'] === 'needs_mapping') {
+                            error_log("File processed successfully, transforming data...");
+                            
+                            // Transform data using mapping if available
+                            $transformedData = [];
+                            if ($result['status'] === 'success') {
+                                $transformedData = $processor->transformData($filePath, $result['mapping'], $result['format']);
+                            } else {
+                                // Use suggestions as mapping for unrecognized format
+                                $mapping = [];
+                                foreach ($result['suggestions'] as $column => $suggestion) {
+                                    if ($suggestion['confidence'] > 50) { // Lower threshold for sample data
+                                        $mapping[$column] = $suggestion['suggested_mapping'];
+                                    }
+                                }
+                                error_log("Using suggested mapping: " . json_encode($mapping));
+                                $transformedData = $processor->transformData($filePath, $mapping);
+                            }
+                            
+                            error_log("Transformed data count: " . count($transformedData));
+                            if (!empty($transformedData)) {
+                                error_log("Sample transformed row: " . json_encode($transformedData[0]));
+                            }
+                            
+                            if (empty($transformedData)) {
+                                $response['message'] = "No valid data rows found in the uploaded file after validation.";
+                                error_log("No transformed data available");
+                                
+                                // Clean up file only if no data was saved
+                                if (file_exists($filePath)) {
+                                    unlink($filePath);
+                                    error_log("Cleaned up file (no data): " . $filePath);
+                                }
+                            } else {
+                                // Save as sample data
+                                error_log("Attempting to save sample data...");
+                                $saved = saveSampleData($conn, $transformedData, $fileName, $_FILES['sampleCsv']['size'], $reportType, $metadata);
+                                
+                                if ($saved) {
+                                    $response['success'] = true;
+                                    $response['message'] = "Sample data uploaded and processed successfully.";
+                                    error_log("Sample data saved successfully");
+                                    // DO NOT DELETE FILE - keep it for preview functionality
+                                    error_log("Keeping CSV file for preview: " . $filePath);
+                                } else {
+                                    $response['message'] = "Failed to save sample data to database.";
+                                    error_log("Failed to save sample data");
+                                    
+                                    // Clean up file only if database save failed
+                                    if (file_exists($filePath)) {
+                                        unlink($filePath);
+                                        error_log("Cleaned up file (save failed): " . $filePath);
+                                    }
+                                }
+                            }
+                        } else {
+                            $response['message'] = "Failed to process CSV file: " . ($result['message'] ?? 'Unknown error');
+                            error_log("Failed to process CSV: " . $response['message']);
+                            
+                            // Clean up file on processing failure
+                            if (file_exists($filePath)) {
+                                unlink($filePath);
+                                error_log("Cleaned up file (processing failed): " . $filePath);
+                            }
+                        }
+                        
                     }
-                } catch (Exception $e) {
-                    $response['message'] = "Error processing file: " . $e->getMessage();
-                    
-                    // Clean up on error
-                    if (isset($filePath) && file_exists($filePath)) {
-                        unlink($filePath);
-                    }
+                } else {
+                    $response['message'] = "Failed to save uploaded file.";
+                    error_log("Failed to move uploaded file");
+                }
+            } catch (Exception $e) {
+                $response['message'] = "Error processing file: " . $e->getMessage();
+                error_log("Exception during processing: " . $e->getMessage());
+                error_log("Stack trace: " . $e->getTraceAsString());
+                
+                // Clean up on error
+                if (isset($filePath) && file_exists($filePath)) {
+                    unlink($filePath);
                 }
             }
         }
     }
 }
 
-// Return response for AJAX requests, or redirect for standard form submit
+error_log("Final response: " . json_encode($response));
+error_log("=== SAMPLE UPLOAD END ===");
+
+// Return response
 if ($isAjax) {
     header('Content-Type: application/json');
     echo json_encode($response);
 } else {
-    // Store message in session for display after redirect
     $_SESSION['sample_upload_message'] = $response;
-    
-    // IMPORTANT CHANGE: Redirect to upload_sample_data.php instead of admin_mappings.php
     header('Location: upload_sample_data.php');
     exit;
 }
 
-// Function to save sample data
+// CORRECTED Function to save sample data
 function saveSampleData($conn, $data, $fileName, $fileSize, $reportType, $metadata) {
+    error_log("=== SAVE SAMPLE DATA START ===");
+    error_log("Data count: " . count($data));
+    error_log("File name: " . $fileName);
+    error_log("Report type: " . $reportType);
+    
     if (empty($data)) {
+        error_log("No data provided to saveSampleData");
         return false;
     }
     
     try {
         // Begin transaction
         $conn->begin_transaction();
+        error_log("Transaction started");
         
         $userId = $_SESSION['user_id'];
         $startDate = $metadata['start_date'] ?? date('Y-m-d');
         $endDate = $metadata['end_date'] ?? date('Y-m-d');
-        $accountName = $metadata['account_name'] ?? '';
-        $propertyName = $metadata['property_name'] ?? '';
+        $accountName = $metadata['account_name'] ?? 'Sample Account';
+        $propertyName = $metadata['property_name'] ?? 'Sample Property';
+        
+        error_log("Using UserID: $userId, Dates: $startDate to $endDate");
         
         // Insert record in CSV_UPLOAD with IsSampleData = 1
         $stmt = $conn->prepare("INSERT INTO CSV_UPLOAD 
@@ -170,7 +218,7 @@ function saveSampleData($conn, $data, $fileName, $fileSize, $reportType, $metada
             VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, 1)");
             
         if (!$stmt) {
-            throw new Exception("Failed to prepare statement: " . $conn->error);
+            throw new Exception("Failed to prepare CSV_UPLOAD statement: " . $conn->error);
         }
         
         $stmt->bind_param("isisssss", 
@@ -189,73 +237,113 @@ function saveSampleData($conn, $data, $fileName, $fileSize, $reportType, $metada
         }
         
         $uploadId = $conn->insert_id;
-        
-        // Log the upload ID for debugging
-        error_log("Created sample data upload with ID: $uploadId");
+        error_log("Created CSV_UPLOAD record with ID: $uploadId");
         
         // Process data points
-        foreach ($data as $row) {
-            $sourceType = $row['traffic_source'] ?? 'Unknown';
+        $processedRows = 0;
+        foreach ($data as $rowIndex => $row) {
+            error_log("Processing row $rowIndex: " . json_encode($row));
             
-            // Create or get source type with SourceTypeName (not SourceName)
-            $stmt = $conn->prepare("SELECT SourceTypeID FROM SOURCE_TYPE WHERE SourceTypeName = ?");
+            $sourceType = $row['traffic_source'] ?? 'Unknown Source';
+            
+            // Use SourceName (the correct column name)
+            $stmt = $conn->prepare("SELECT SourceTypeID FROM SOURCE_TYPE WHERE SourceName = ?");
             $stmt->bind_param("s", $sourceType);
             $stmt->execute();
             $result = $stmt->get_result();
             
-            if ($row = $result->fetch_assoc()) {
-                $sourceTypeId = $row['SourceTypeID'];
+            if ($sourceRow = $result->fetch_assoc()) {
+                $sourceTypeId = $sourceRow['SourceTypeID'];
+                error_log("Found existing source type ID: $sourceTypeId for $sourceType");
             } else {
-                // Create new source type with SourceTypeName
-                $stmt = $conn->prepare("INSERT INTO SOURCE_TYPE (SourceTypeName) VALUES (?)");
+                // Create new source type using SourceName
+                $stmt = $conn->prepare("INSERT INTO SOURCE_TYPE (SourceName) VALUES (?)");
                 $stmt->bind_param("s", $sourceType);
                 $stmt->execute();
                 $sourceTypeId = $conn->insert_id;
+                error_log("Created new source type ID: $sourceTypeId for $sourceType");
             }
             
-            // Insert data points using the corrected functions
-            if (isset($row['visits']) && $row['visits'] > 0) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Sessions', $row['visits'], $startDate);
+            // Insert data points using the functions from functions.php
+            $dataPointsInserted = 0;
+            
+            if (isset($row['visits']) && is_numeric($row['visits']) && $row['visits'] > 0) {
+                if (insertDataPoint($conn, $uploadId, $sourceTypeId, 'Sessions', $row['visits'], $startDate)) {
+                    $dataPointsInserted++;
+                    error_log("Inserted Sessions: " . $row['visits']);
+                }
             }
             
-            if (isset($row['engaged_sessions']) && $row['engaged_sessions'] > 0) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Engaged sessions', $row['engaged_sessions'], $startDate);
+            if (isset($row['engaged_sessions']) && is_numeric($row['engaged_sessions']) && $row['engaged_sessions'] > 0) {
+                if (insertDataPoint($conn, $uploadId, $sourceTypeId, 'Engaged sessions', $row['engaged_sessions'], $startDate)) {
+                    $dataPointsInserted++;
+                    error_log("Inserted Engaged sessions: " . $row['engaged_sessions']);
+                }
             }
             
-            if (isset($row['users']) && $row['users'] > 0) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Users', $row['users'], $startDate);
+            if (isset($row['users']) && is_numeric($row['users']) && $row['users'] > 0) {
+                if (insertDataPoint($conn, $uploadId, $sourceTypeId, 'Users', $row['users'], $startDate)) {
+                    $dataPointsInserted++;
+                    error_log("Inserted Users: " . $row['users']);
+                }
             }
             
-            if (isset($row['bounce_rate'])) {
-                // Convert percentage to decimal if needed
+            if (isset($row['bounce_rate']) && is_numeric($row['bounce_rate'])) {
                 $bounceRate = $row['bounce_rate'];
+                // Convert percentage to decimal if needed
                 if (strpos($bounceRate, '%') !== false) {
                     $bounceRate = floatval(str_replace('%', '', $bounceRate)) / 100;
                 }
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Bounce Rate', $bounceRate, $startDate);
+                if (insertDataPoint($conn, $uploadId, $sourceTypeId, 'Bounce Rate', $bounceRate, $startDate)) {
+                    $dataPointsInserted++;
+                    error_log("Inserted Bounce Rate: " . $bounceRate);
+                }
             }
             
-            if (isset($row['avg_session_duration'])) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Avg. Session Duration', $row['avg_session_duration'], $startDate);
+            if (isset($row['avg_session_duration']) && is_numeric($row['avg_session_duration'])) {
+                if (insertDataPoint($conn, $uploadId, $sourceTypeId, 'Avg. Session Duration', $row['avg_session_duration'], $startDate)) {
+                    $dataPointsInserted++;
+                    error_log("Inserted Avg Session Duration: " . $row['avg_session_duration']);
+                }
             }
             
-            // Add more data points as needed
-            if (isset($row['events_per_session'])) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Events per session', $row['events_per_session'], $startDate);
-            }
-            
-            if (isset($row['event_count'])) {
-                insertDataPoint($conn, $uploadId, $sourceTypeId, 'Event count', $row['event_count'], $startDate);
-            }
+            error_log("Row $rowIndex: Inserted $dataPointsInserted data points");
+            $processedRows++;
         }
+        
+        error_log("Processed $processedRows rows total");
         
         // Commit transaction
         $conn->commit();
+        error_log("Transaction committed successfully");
+        
+        // Verify the upload was saved
+        $verifyStmt = $conn->prepare("SELECT COUNT(*) as count FROM CSV_UPLOAD WHERE UploadID = ? AND IsSampleData = 1");
+        $verifyStmt->bind_param("i", $uploadId);
+        $verifyStmt->execute();
+        $verifyResult = $verifyStmt->get_result();
+        $verifyRow = $verifyResult->fetch_assoc();
+        
+        error_log("Verification: Found " . $verifyRow['count'] . " CSV_UPLOAD records with UploadID $uploadId");
+        
+        // Verify data points were saved
+        $dataPointsStmt = $conn->prepare("SELECT COUNT(*) as count FROM PROCESSED_DATA_POINT WHERE UploadID = ?");
+        $dataPointsStmt->bind_param("i", $uploadId);
+        $dataPointsStmt->execute();
+        $dataPointsResult = $dataPointsStmt->get_result();
+        $dataPointsRow = $dataPointsResult->fetch_assoc();
+        
+        error_log("Verification: Found " . $dataPointsRow['count'] . " data points for UploadID $uploadId");
+        
+        error_log("=== SAVE SAMPLE DATA SUCCESS ===");
         return true;
     } catch (Exception $e) {
         // Rollback on error
         $conn->rollback();
         error_log("Error saving sample data: " . $e->getMessage());
+        error_log("Stack trace: " . $e->getTraceAsString());
+        error_log("=== SAVE SAMPLE DATA FAILED ===");
         return false;
     }
 }
+?>

@@ -3,22 +3,40 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
+// Check if this is a sample data redirect
+if (isset($_GET['sample_data']) && $_GET['sample_data'] == '1') {
+    // Ensure session is active
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // Verify sample data session variables are set
+    if (!isset($_SESSION['using_sample_data']) || !isset($_SESSION['sample_upload_id'])) {
+        error_log("WARNING: Sample data redirect but session variables missing, attempting to restore");
+        
+        // Attempt to restore sample data session
+        $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE IsSampleData = 1 ORDER BY UploadDate DESC LIMIT 1");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result && $row = $result->fetch_assoc()) {
+            $_SESSION['using_sample_data'] = true;
+            $_SESSION['sample_upload_id'] = $row['UploadID'];
+            $_SESSION['latest_upload_id'] = $row['UploadID'];
+            error_log("Restored sample data session with UploadID: " . $row['UploadID']);
+        }
+    }
+}
+
 // Set page variables for header
 $title = "Top Pages";
 $active_page = "pages";
 
-// Get uploadId from URL parameter or most recent upload
-$uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null;
+// Get uploadId using sample-aware function
+$uploadId = getCurrentUploadId($conn, $_SESSION['user_id']);
 
-if (!$uploadId) {
-    // Get most recent upload for the current user
-    $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC LIMIT 1");
-    $stmt->bind_param("i", $_SESSION['user_id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $uploadId = $row ? $row['UploadID'] : null;
-}
+// Get sample data notice
+$sampleNotice = getSampleDataNotice();
 
 // Get top pages data
 $pagesData = getTopVisitedPages($conn, 10);
@@ -42,6 +60,58 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    .sample-data-notice {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+        padding: 15px 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        color: #333;
+        box-shadow: 0 4px 12px rgba(255, 154, 158, 0.3);
+    }
+
+    .notice-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .notice-content i {
+        font-size: 1.2em;
+        margin-right: 10px;
+        color: #e91e63;
+    }
+
+    .notice-content span {
+        flex: 1;
+        font-weight: 500;
+    }
+
+    .notice-content .btn {
+        padding: 8px 16px;
+        font-size: 0.9em;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.2);
+        color: #333;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }
+
+    .notice-content .btn:hover {
+        background: rgba(255, 255, 255, 0.4);
+        transform: translateY(-1px);
+    }
+
+    @media (max-width: 768px) {
+        .notice-content {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+  </style>
 </head>
 <body>
   <div class="container user-pages-container">
@@ -49,6 +119,17 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
     
     <main>
       <h2>Top Pages Dashboard</h2>
+
+      <!-- Sample Data Notice -->
+      <?php if ($sampleNotice['is_sample']): ?>
+        <div class="sample-data-notice">
+          <div class="notice-content">
+            <i class="fas fa-vial"></i>
+            <span><?php echo $sampleNotice['message']; ?></span>
+            <?php echo $sampleNotice['action']; ?>
+          </div>
+        </div>
+      <?php endif; ?>
 
       <?php if ($dataQuality['source_type'] === 'estimated'): ?>
         <div class="data-quality-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
@@ -139,6 +220,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
     // Parse PHP data to JavaScript
     const pagesData = <?php echo json_encode($pagesData); ?>;
     const uploadId = <?php echo $uploadId ? $uploadId : 'null'; ?>;
+    const isSampleData = <?php echo $sampleNotice['is_sample'] ? 'true' : 'false'; ?>;
     
     // Extract data points for Chart.js
     const pageUrls = pagesData.map(item => {
@@ -166,7 +248,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
         plugins: {
           title: {
             display: true,
-            text: 'Most Visited Pages'
+            text: isSampleData ? 'Most Visited Pages (Sample Data)' : 'Most Visited Pages'
           },
           legend: { display: false },
           tooltip: {
@@ -194,8 +276,6 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
       }
     });
 
-    // Replace the existing exportTableToCSV() function (around line 180) with this:
-
     function exportTableToCSV() {
       const table = document.getElementById("pagesTable");
       let csv = [];
@@ -211,7 +291,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "top_pages_table.csv";
+      a.download = `top_pages_table${isSampleData ? '_sample' : ''}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -223,7 +303,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `exportType=CSV&description=Exported top pages table data (uploadId: ${uploadId})`
+        body: `exportType=CSV&description=Exported top pages table data (uploadId: ${uploadId}, sample: ${isSampleData})`
       }).then(response => response.json())
         .then(data => {
           if (!data.success) {
@@ -234,8 +314,6 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
           console.error('Error logging export:', error);
         });
     }
-
-    // Replace the existing exportChartToPDF() function with this comprehensive version:
 
     async function exportChartToPDF() {
       const { jsPDF } = window.jspdf;
@@ -271,6 +349,15 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
       pdf.text(`Generated on: ${generatedDate}`, pageWidth - margin, yPosition, { align: 'right' });
       yPosition += 5;
       pdf.text(`Generated by: ${username}`, pageWidth - margin, yPosition, { align: 'right' });
+      
+      if (isSampleData) {
+        yPosition += 5;
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 0, 0);
+        pdf.text('⚠️ Sample Data Report', pageWidth - margin, yPosition, { align: 'right' });
+        pdf.setTextColor(0, 0, 0);
+      }
 
       yPosition += 20;
 
@@ -439,7 +526,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
       yPosition += 5;
       pdf.text(`Report Type: Top Pages Analysis`, margin, yPosition);
       yPosition += 5;
-      pdf.text(`Data Source: CSV Upload`, margin, yPosition);
+      pdf.text(`Data Source: ${isSampleData ? 'Sample Data' : 'CSV Upload'}`, margin, yPosition);
       yPosition += 5;
       pdf.text(`Total Pages Analyzed: ${totalPages}`, margin, yPosition);
       yPosition += 5;
@@ -447,8 +534,17 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
       yPosition += 5;
       pdf.text(`Total Unique Visitors: ${totalUniqueVisitors.toLocaleString()}`, margin, yPosition);
 
+      if (isSampleData) {
+        yPosition += 10;
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(255, 0, 0);
+        pdf.text('Note: This report was generated using sample data for demonstration purposes.', margin, yPosition);
+        pdf.setTextColor(0, 0, 0);
+      }
+
       // Save PDF with descriptive filename
-      pdf.save(`TrafAnalyz_Top_Pages_Report_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.pdf`);
+      pdf.save(`TrafAnalyz_Top_Pages_Report_${isSampleData ? 'Sample_' : ''}${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.pdf`);
 
       // Log the PDF export into the database
       fetch('log_export.php', {
@@ -456,7 +552,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `exportType=PDF&description=Exported top pages comprehensive report as PDF (uploadId: ${uploadId})`
+        body: `exportType=PDF&description=Exported top pages comprehensive report as PDF (uploadId: ${uploadId}, sample: ${isSampleData})`
       }).then(response => response.json())
         .then(data => {
           if (!data.success) {

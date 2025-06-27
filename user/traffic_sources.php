@@ -3,24 +3,43 @@ require_once '../auth/user_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
+// Check if this is a sample data redirect
+if (isset($_GET['sample_data']) && $_GET['sample_data'] == '1') {
+    // Ensure session is active
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // Verify sample data session variables are set
+    if (!isset($_SESSION['using_sample_data']) || !isset($_SESSION['sample_upload_id'])) {
+        error_log("WARNING: Sample data redirect but session variables missing, attempting to restore");
+        
+        // Attempt to restore sample data session
+        $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE IsSampleData = 1 ORDER BY UploadDate DESC LIMIT 1");
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result && $row = $result->fetch_assoc()) {
+            $_SESSION['using_sample_data'] = true;
+            $_SESSION['sample_upload_id'] = $row['UploadID'];
+            $_SESSION['latest_upload_id'] = $row['UploadID'];
+            error_log("Restored sample data session with UploadID: " . $row['UploadID']);
+        }
+    }
+}
+
 // Set page variables for header
 $title = "Traffic Sources";
 $active_page = "traffic_sources";
-// Get uploadId from URL parameter or most recent upload
-$uploadId = isset($_GET['uploadId']) ? $_GET['uploadId'] : null;
 
-if (!$uploadId) {
-    // Get most recent upload for the current user
-    $stmt = $conn->prepare("SELECT UploadID FROM csv_upload WHERE UserID = ? ORDER BY UploadDate DESC LIMIT 1");
-    $stmt->bind_param("i", $_SESSION['user_id']);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $uploadId = $row ? $row['UploadID'] : null;
-}
+// Get uploadId using sample-aware function (enhanced from current)
+$uploadId = getCurrentUploadId($conn, $_SESSION['user_id']);
 
-// Get traffic sources data
-$sourcesData = getTrafficSourcesDistribution($conn);
+// Get sample data notice (from current)
+$sampleNotice = getSampleDataNotice();
+
+// Get traffic sources data (enhanced to pass uploadId)
+$sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 ?>
 
 <!DOCTYPE html>
@@ -34,13 +53,76 @@ $sourcesData = getTrafficSourcesDistribution($conn);
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    .sample-data-notice {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+        padding: 15px 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        color: #333;
+        box-shadow: 0 4px 12px rgba(255, 154, 158, 0.3);
+    }
+
+    .notice-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .notice-content i {
+        font-size: 1.2em;
+        margin-right: 10px;
+        color: #e91e63;
+    }
+
+    .notice-content span {
+        flex: 1;
+        font-weight: 500;
+    }
+
+    .notice-content .btn {
+        padding: 8px 16px;
+        font-size: 0.9em;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.2);
+        color: #333;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+    }
+
+    .notice-content .btn:hover {
+        background: rgba(255, 255, 255, 0.4);
+        transform: translateY(-1px);
+    }
+
+    @media (max-width: 768px) {
+        .notice-content {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+  </style>
 </head>
 <body>
   <div class="container user-traffic-sources-container">
-		<?php include 'user_header.php'; ?>
+    <?php include 'user_header.php'; ?>
     
     <main>
       <h2>Traffic Sources Dashboard</h2>
+
+      <!-- Sample Data Notice (from current) -->
+      <?php if ($sampleNotice['is_sample']): ?>
+        <div class="sample-data-notice">
+          <div class="notice-content">
+            <i class="fas fa-vial"></i>
+            <span><?php echo $sampleNotice['message']; ?></span>
+            <?php echo $sampleNotice['action']; ?>
+          </div>
+        </div>
+      <?php endif; ?>
 
       <section class="user-chart-section">
         <h3>Traffic Sources Distribution</h3>
@@ -94,14 +176,16 @@ $sourcesData = getTrafficSourcesDistribution($conn);
   </div>
 
   <script>
-    // Parse PHP data to JavaScript
+    // Parse PHP data to JavaScript (enhanced from current)
     const sourcesData = <?php echo json_encode($sourcesData); ?>;
     const uploadId = <?php echo $uploadId ? $uploadId : 'null'; ?>;
+    const isSampleData = <?php echo $sampleNotice['is_sample'] ? 'true' : 'false'; ?>;
     
     // Extract data points for Chart.js
     const labels = sourcesData.map(item => item.traffic_source);
     const visitCounts = sourcesData.map(item => parseInt(item.visit_count));
     const percentages = sourcesData.map(item => parseFloat(item.percentage));
+    
     // Define colors for the chart
     const backgroundColors = [
       'rgba(255, 99, 132, 0.7)',
@@ -124,7 +208,8 @@ $sourcesData = getTrafficSourcesDistribution($conn);
     function createChart(type) {
       // Destroy existing chart if it exists  
       if (currentChart) currentChart.destroy();
-      // Chart configuration
+      
+      // Chart configuration (enhanced from current with sample data support)
       const config = {
         type: type,
         data: {
@@ -143,8 +228,8 @@ $sourcesData = getTrafficSourcesDistribution($conn);
             title: {
               display: true,
               text: type === 'pie'
-                ? 'Traffic Sources Distribution (%)'
-                : 'Traffic Sources by Visit Count'
+                ? (isSampleData ? 'Traffic Sources Distribution (%) - Sample Data' : 'Traffic Sources Distribution (%)')
+                : (isSampleData ? 'Traffic Sources by Visit Count - Sample Data' : 'Traffic Sources by Visit Count')
             },
             tooltip: {
               callbacks: {
@@ -166,6 +251,7 @@ $sourcesData = getTrafficSourcesDistribution($conn);
           } : {}
         }
       };
+      
       // If bar chart, add extra options
       if (type === 'bar') config.data.datasets[0].label = 'Visits';
       currentChart = new Chart(ctx, config);
@@ -174,11 +260,8 @@ $sourcesData = getTrafficSourcesDistribution($conn);
     // Chart type toggle
     document.querySelectorAll('.user-chart-type-toggle .btn').forEach(button => {
       button.addEventListener('click', function() {
-        // Get chart type
         const chartType = this.dataset.chartType;
-        // Create new chart with the selected type
         createChart(chartType);
-        // Update active button state
         document.querySelectorAll('.user-chart-type-toggle .btn').forEach(btn => btn.classList.remove('active'));
         this.classList.add('active');
       });
@@ -187,30 +270,33 @@ $sourcesData = getTrafficSourcesDistribution($conn);
     // Initialize with pie chart
     createChart('pie');
 
-    // Export table to CSV
+    // Export table to CSV (enhanced from current with sample data support)
     function exportTableToCSV() {
       const table = document.getElementById("sourcesTable");
       let csv = [];
+
       for (let row of table.rows) {
-        let cols = Array.from(row.cells).map(cell => `"${cell.innerText}"`);
+        let cols = Array.from(row.cells).map(cell => `"${cell.innerText.trim()}"`);
         csv.push(cols.join(","));
       }
-      const blob = new Blob([csv.join("\n")], { type: "text/csv" });
+
+      const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "traffic_sources_table.csv";
+      a.download = `traffic_sources_table${isSampleData ? '_sample' : ''}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-      // Log export in DB
+      // Log export in DB (enhanced from current)
       fetch('log_export.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `exportType=CSV&description=Exported traffic sources table data (uploadId: ${uploadId})`
+        body: `exportType=CSV&description=Exported traffic sources table data (uploadId: ${uploadId}, sample: ${isSampleData})`
       }).then(response => response.json())
         .then(data => {
           if (!data.success) {
@@ -222,7 +308,7 @@ $sourcesData = getTrafficSourcesDistribution($conn);
         });
     }
 
-    // Export chart to PDF
+    // Export chart to PDF (comprehensive version from incoming, enhanced with sample data support)
     async function exportChartToPDF() {
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -257,6 +343,16 @@ $sourcesData = getTrafficSourcesDistribution($conn);
       pdf.text(`Generated on: ${generatedDate}`, pageWidth - margin, yPosition, { align: 'right' });
       yPosition += 5;
       pdf.text(`Generated by: ${username}`, pageWidth - margin, yPosition, { align: 'right' });
+      
+      // Sample data indicator (enhanced from current)
+      if (isSampleData) {
+        yPosition += 5;
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 0, 0);
+        pdf.text('⚠️ Sample Data Report', pageWidth - margin, yPosition, { align: 'right' });
+        pdf.setTextColor(0, 0, 0);
+      }
         
       yPosition += 20;
         
@@ -464,24 +560,33 @@ $sourcesData = getTrafficSourcesDistribution($conn);
       yPosition += 5;
       pdf.text(`Report Type: Traffic Sources Analysis`, margin, yPosition);
       yPosition += 5;
-      pdf.text(`Data Source: CSV Upload`, margin, yPosition);
+      pdf.text(`Data Source: ${isSampleData ? 'Sample Data' : 'CSV Upload'}`, margin, yPosition);
       yPosition += 5;
       pdf.text(`Total Sources Analyzed: ${totalSources}`, margin, yPosition);
       yPosition += 5;
       pdf.text(`Total Visits: ${totalVisits.toLocaleString()}`, margin, yPosition);
       yPosition += 5;
       pdf.text(`Charts Included: Pie Chart (percentage distribution), Bar Chart (visit counts)`, margin, yPosition);
+      
+      if (isSampleData) {
+        yPosition += 10;
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(255, 0, 0);
+        pdf.text('Note: This report was generated using sample data for demonstration purposes.', margin, yPosition);
+        pdf.setTextColor(0, 0, 0);
+      }
     
-      // Save PDF with descriptive filename
-      pdf.save(`TrafAnalyz_Traffic_Sources_Report_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.pdf`);
+      // Save PDF with descriptive filename (enhanced with sample data support)
+      pdf.save(`TrafAnalyz_Traffic_Sources_Report_${isSampleData ? 'Sample_' : ''}${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.pdf`);
     
-      // Log the PDF export into the database
+      // Log the PDF export into the database (enhanced from current)
       fetch('log_export.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `exportType=PDF&description=Exported traffic sources comprehensive report with both pie and bar charts as PDF (uploadId: ${uploadId})`
+        body: `exportType=PDF&description=Exported traffic sources comprehensive report with both pie and bar charts as PDF (uploadId: ${uploadId}, sample: ${isSampleData})`
       }).then(response => response.json())
         .then(data => {
           if (!data.success) {
