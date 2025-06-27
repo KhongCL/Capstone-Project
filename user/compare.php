@@ -1195,7 +1195,7 @@ function calculateStats($values) {
                         <input type="text" name="comparisonName" placeholder="Enter a name to save this comparison">
                     </div>
                             
-                    <button type="submit" name="compare" class="compare-button">Compare Files</button>
+                    <button type="submit" name="compare" class="compare-button">Save Comparison</button>
                 </form>
             </div>
 
