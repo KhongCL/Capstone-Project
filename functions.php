@@ -856,48 +856,9 @@ function saveTransformedData($conn, $transformedData) {
         
         error_log("Creating CSV_UPLOAD record with dates: $startDate to $endDate, account: $accountName, property: $propertyName");
         
-        // Conservative cleanup - only delete if user has more than 5 uploads
-        $uploadCountQuery = "SELECT COUNT(*) as upload_count FROM CSV_UPLOAD WHERE UserID = ?";
-        $stmt = $conn->prepare($uploadCountQuery);
-        $stmt->bind_param("i", $userId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $uploadCount = $result->fetch_assoc()['upload_count'];
+        // NO CLEANUP - just insert new upload record directly
+        error_log("User $userId uploading new file - no cleanup performed");
         
-        error_log("User $userId currently has $uploadCount uploads");
-        
-        if ($uploadCount >= 5) {
-            // Only delete the OLDEST upload for this user to maintain a reasonable limit
-            $oldestUploadQuery = "SELECT UploadID FROM CSV_UPLOAD WHERE UserID = ? ORDER BY UploadDate ASC LIMIT 1";
-            $stmt = $conn->prepare($oldestUploadQuery);
-            $stmt->bind_param("i", $userId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            
-            if ($oldestUpload = $result->fetch_assoc()) {
-                $oldestUploadId = $oldestUpload['UploadID'];
-                error_log("Deleting oldest upload ID: $oldestUploadId to make room for new upload");
-                
-                // Delete data points for the oldest upload only
-                $stmt = $conn->prepare("DELETE FROM PROCESSED_DATA_POINT WHERE UploadID = ?");
-                $stmt->bind_param("i", $oldestUploadId);
-                $stmt->execute();
-                
-                // Delete comparison file links for this upload
-                $stmt = $conn->prepare("DELETE FROM comparison_file_link WHERE UploadID = ?");
-                $stmt->bind_param("i", $oldestUploadId);
-                $stmt->execute();
-                
-                // Delete the upload record
-                $stmt = $conn->prepare("DELETE FROM CSV_UPLOAD WHERE UploadID = ?");
-                $stmt->bind_param("i", $oldestUploadId);
-                $stmt->execute();
-                
-                error_log("Successfully deleted oldest upload ID: $oldestUploadId");
-            }
-        } else {
-            error_log("Upload count ($uploadCount) is under limit, no cleanup needed");
-        }
         
         // Insert NEW CSV upload record
         $stmt = $conn->prepare("INSERT INTO CSV_UPLOAD (UserID, FileName, FileSize, IsValidated, ReportType, DataDateStart, DataDateEnd, AccountName, PropertyName) VALUES (?, ?, 0, 1, ?, ?, ?, ?, ?)");
