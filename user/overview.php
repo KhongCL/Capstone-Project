@@ -77,98 +77,109 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     <?php include 'user_header.php'; ?>
 
     <main>
-      <h2>Overview Dashboard</h2>
-      <div class="user-export-controls">
-        <button class="user-export-btn csv" onclick="exportToCSV()">
-          <span class="icon">📊</span>
-          <span class="text">Export to CSV</span>
-        </button>
-        <button class="user-export-btn pdf" onclick="exportToPDF()">
-          <span class="icon">📄</span>
-          <span class="text">Export to PDF</span>
-        </button>
-      </div>
+			<section class="user-section">
+      	<h2>Overview Dashboard</h2>
+				<div class="overview-section">
+					<div class="card">
+							<div class="user-metric">
+									<div class="user-metric-card">
+      	  				    <h4>Total Page Views</h4>
+      	  				    <p class="user-metric-value"><?php echo number_format($metrics		['total_page_views']); ?></p>
+      	  				</div>
+      	  				<div class="user-metric-card">
+      	  				    <h4>Unique Visitors</h4>
+      	  				    <p class="user-metric-value">
+      	  				        <?php 
+      	  				        if ($metrics['unique_visitors'] === 'N/A') {
+      	  				            echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
+      	  				        } else {
+      	  				            echo number_format($metrics['unique_visitors']);
+      	  				        }
+      	  				        ?>
+      	  				    </p>
+      	  				    <?php if ($metrics['unique_visitors'] === 'N/A'): ?>
+      	  				        <small style="color: #666; font-size: 0.8em;">Data not available in uploaded 		CSV</small>
+      	  				    <?php endif; ?>
+      	  				</div>
+      	  				<div class="user-metric-card">
+      	  				    <h4>Avg. Session Duration</h4>
+      	  				    <p class="user-metric-value">
+      	  				        <?php 
+      	  				        if ($metrics['avg_session_duration'] === 'N/A') {
+      	  				            echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
+      	  				        } else {
+      	  				            echo $metrics['avg_session_duration'];
+      	  				        }
+      	  				        ?>
+      	  				    </p>
+      	  				    <?php if ($metrics['avg_session_duration'] === 'N/A'): ?>
+      	  				        <small style="color: #666; font-size: 0.8em;">Data not available in uploaded 		CSV</small>
+      	  				    <?php endif; ?>
+      	  				</div>
+      	  				<div class="user-metric-card">
+      	  				    <h4>Bounce Rate</h4>
+      	  				    <p class="user-metric-value">
+      	  				        <?php 
+      	  				        if ($metrics['bounce_rate'] === 'N/A') {
+      	  				            echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
+      	  				        } else {
+      	  				            echo $metrics['bounce_rate'] . '%';
+      	  				        }
+      	  				        ?>
+      	  				    </p>
+      	  				    <?php if ($metrics['bounce_rate'] === 'N/A'): ?>
+      	  				        <small style="color: #666; font-size: 0.8em;">Data not available in uploaded 		CSV</small>
+      	  				    <?php endif; ?>
+      	  				</div>
+								</div>
+											
+								<div class="user-export-controls">
+      					  <button class="user-export-btn csv" onclick="exportToCSV()">
+      					    <span class="icon">📊</span>
+      					    <span class="text">Export to CSV</span>
+      					  </button>
+      					  <button class="user-export-btn pdf" onclick="exportToPDF()">
+      					    <span class="icon">📄</span>
+      					    <span class="text">Export to PDF</span>
+      					  </button>
+      					</div>
+							</div>
 
-      <section class="user-metrics-grid" id="metricsSection">
-        <div class="user-metric-card">
-            <h3>Total Page Views</h3>
-            <p class="user-metric-value"><?php echo number_format($metrics['total_page_views']); ?></p>
-        </div>
-        <div class="user-metric-card">
-            <h3>Unique Visitors</h3>
-            <p class="user-metric-value">
-                <?php 
-                if ($metrics['unique_visitors'] === 'N/A') {
-                    echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
-                } else {
-                    echo number_format($metrics['unique_visitors']);
-                }
-                ?>
-            </p>
-            <?php if ($metrics['unique_visitors'] === 'N/A'): ?>
-                <small style="color: #666; font-size: 0.8em;">Data not available in uploaded CSV</small>
-            <?php endif; ?>
-        </div>
-        <div class="user-metric-card">
-            <h3>Avg. Session Duration</h3>
-            <p class="user-metric-value">
-                <?php 
-                if ($metrics['avg_session_duration'] === 'N/A') {
-                    echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
-                } else {
-                    echo $metrics['avg_session_duration'];
-                }
-                ?>
-            </p>
-            <?php if ($metrics['avg_session_duration'] === 'N/A'): ?>
-                <small style="color: #666; font-size: 0.8em;">Data not available in uploaded CSV</small>
-            <?php endif; ?>
-        </div>
-          <div class="user-metric-card">
-              <h3>Bounce Rate</h3>
-              <p class="user-metric-value">
-                  <?php 
-                  if ($metrics['bounce_rate'] === 'N/A') {
-                      echo '<span style="color: #999; font-size: 0.9em;">N/A</span>';
-                  } else {
-                      echo $metrics['bounce_rate'] . '%';
-                  }
-                  ?>
-              </p>
-              <?php if ($metrics['bounce_rate'] === 'N/A'): ?>
-                  <small style="color: #666; font-size: 0.8em;">Data not available in uploaded CSV</small>
-              <?php endif; ?>
-          </div>
-    </section>
+				</div>
 
-      <section class="user-chart-section" id="chartSection">
-        <h3>Website Traffic Over Time</h3>
-        <div class="user-chart-container">
-          <canvas id="trafficChart"></canvas>
-        </div>
-        <div class="user-chart-controls">
-          <button class="btn btn-sm" data-interval="day">Daily</button>
-          <button class="btn btn-sm" data-interval="month">Monthly</button>
-        </div>
-      </section>
+				<div class="card">
+						<div class="user-chart-section" id="chartSection">
+      	  			<h3>Website Traffic Over Time</h3>
+      	  			<div class="user-chart-container">
+      	  			  <canvas id="trafficChart"></canvas>
+      	  			</div>
+      	  			<div class="user-chart-controls">
+      	  			  <button class="btn btn-sm" data-interval="day">Daily</button>
+      	  			  <button class="btn btn-sm" data-interval="month">Monthly</button>
+      	  			</div>
+      			</div>
+				</div>
+								
 
-      <section class="user-annotation-section">
-        <h3>📝 Annotations</h3>
-        <form id="annotationForm" class="user-annotation-form">
-          <input type="hidden" id="annotationId" />
-          <label>
-            Date:
-            <input type="date" id="annotationDate" required />
-          </label>
-          <label>
-            Note:
-            <input type="text" id="annotationNote" required placeholder="Enter annotation note..." />
-          </label>
-          <button type="submit">Save Annotation</button>
-          <button type="button" onclick="resetForm()">Clear</button>
-        </form>
-        <div id="annotationsList" class="user-annotations-list"></div>
-      </section>
+								
+      	<div class="card">
+      	  <h3>Annotations</h3>
+      	  <form id="annotationForm" class="user-annotation-form">
+      	    <input type="hidden" id="annotationId" />
+      	    <label>
+      	      Date:
+      	      <input type="date" id="annotationDate" required />
+      	    </label>
+      	    <label>
+      	      Note:
+      	      <input type="text" id="annotationNote" required placeholder="Enter annotation note..." />
+      	    </label>
+      	    <button type="submit">Save Annotation</button>
+      	    <button type="button" onclick="resetForm()">Clear</button>
+      	  </form>
+      	  <div id="annotationsList" class="user-annotations-list"></div>
+      	</div>
+			</section>
     </main>
 
     <?php include 'user_footer.php'; ?>

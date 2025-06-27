@@ -241,17 +241,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset
             <section class="dashboard-links">
                 <h2>Dashboard Navigation</h2>
                 <div class="dashboard-cards">
-                    <div class="card">
+                    <div class="dashboard-card">
                         <h3>Overview</h3>
                         <p>View key metrics and website traffic over time.</p>
                         <a href="overview.php" class="btn">Go to Overview</a>
                     </div>
-                    <div class="card">
+                    <div class="dashboard-card">
                         <h3>Traffic Sources</h3>
                         <p>Analyze where your website traffic is coming from.</p>
                         <a href="traffic_sources.php" class="btn">Go to Traffic Sources</a>
                     </div>
-                    <div class="card">
+                    <div class="dashboard-card">
                         <h3>Pages</h3>
                         <p>Discover your most visited webpages.</p>
                         <a href="pages.php" class="btn">Go to Pages</a>
