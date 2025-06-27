@@ -548,7 +548,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
 
         <main>
             <section class="admin-section">
-                <h2><i class="fas fa-table"></i> Manage CSV Format Mappings</h2>
+                <h2>Manage CSV Format Mappings</h2>
                 
                 <div class="info-box">
                     <p><strong>Instructions:</strong> Configure how different CSV formats are detected and mapped to system fields. Each format needs detection columns to identify it and column mappings to transform the data.</p>
