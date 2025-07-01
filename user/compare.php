@@ -109,7 +109,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['compare'])) {
         $stmt2->bind_param("iii", $comparisonID, $upload2, $fileOrder2);
         $stmt2->execute();
 
-        echo "<p>✅ Comparison saved successfully as '<strong>$comparisonName</strong>'!</p>";
+        // Reset the dropdown selections after successful save
+        $upload1 = null;
+        $upload2 = null;
     }
 }
 
