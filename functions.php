@@ -5,11 +5,25 @@ require_once 'classes/CsvProcessor.php';
 // Replace the handleCsvUpload function:
 
 function handleCsvUpload($conn, $file) {
-    // Basic file validation
+    error_log("=== HANDLE CSV UPLOAD START ===");
+    
+    // CRITICAL FIX: Clear sample data session when user uploads their own file
+    if (isset($_SESSION['using_sample_data'])) {
+        error_log("CRITICAL: User uploading new file - clearing sample data session");
+        unset($_SESSION['using_sample_data']);
+        unset($_SESSION['sample_upload_id']);
+        
+        // Clear cached data
+        unset($_SESSION['cached_metrics']);
+        unset($_SESSION['cached_traffic_sources']);
+        unset($_SESSION['pages_data_quality']);
+    }
+    
+    // Validate file upload
     if ($file['error'] !== UPLOAD_ERR_OK) {
         return [
             'type' => 'error',
-            'message' => "Error uploading file: " . getUploadErrorMessage($file['error'])
+            'message' => 'File upload failed: ' . getUploadErrorMessage($file['error'])
         ];
     }
     

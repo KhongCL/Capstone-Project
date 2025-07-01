@@ -1,0 +1,70 @@
+Start session
+If user is already logged in:
+    If user is Admin:
+        Redirect to admin dashboard
+    Else:
+        Redirect to user dashboard
+
+If form is submitted (POST request):
+    Get and trim firstname, lastname, username, email, password, confirmPassword, terms
+
+    // Validation
+    If firstname is empty:
+        Add error "First name is required"
+    If lastname is empty:
+        Add error "Last name is required"
+    If username is empty or too short:
+        Add error "Username is required/must be at least 3 characters"
+    If email is empty or invalid:
+        Add error "Email is required/invalid"
+    If password is empty or too short:
+        Add error "Password is required/must be at least 8 characters"
+    If password and confirmPassword do not match:
+        Add error "Passwords do not match"
+    If terms not checked:
+        Add error "You must agree to the terms"
+
+    // Check for existing users if no errors
+    If no errors:
+        Query database for user with same username or email
+        If user exists:
+            Check if username exists:
+                Add error "Username already exists"
+            Check if email exists:
+                Add error "Email address already exists"
+        Else:
+            Hash password
+            Insert new user into database with username, email, hashed password, default role and status
+            If insert successful:
+                Set registration success flag in session
+            Else:
+                Add error "Registration failed"
+
+On form submit:
+    Remove previous error bubbles and error classes
+    For each field:
+        If invalid, show error bubble and mark input as error
+    If all fields valid:
+        Allow form submission
+    Else:
+        Prevent form submission
+
+On page load:
+    If server-side errors exist:
+        For each error:
+            Show error bubble on corresponding input
+
+On input change:
+    Remove error bubble and error class for that input
+
+When toggle button clicked:
+    If password is hidden:
+        Show password
+        Change icon
+    Else:
+        Hide password
+        Change icon
+
+If registration was successful:
+    Show overlay and success popup
+    After 3 seconds, redirect to login page
