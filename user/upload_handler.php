@@ -29,6 +29,18 @@ header('Content-Type: application/json');
 
 session_start();
 
+// CRITICAL FIX: Clear sample data session when user uploads new file
+if (isset($_SESSION['using_sample_data'])) {
+    error_log("UPLOAD_HANDLER: Clearing sample data session for new upload");
+    unset($_SESSION['using_sample_data']);
+    unset($_SESSION['sample_upload_id']);
+    
+    // Also clear any cached data
+    unset($_SESSION['cached_metrics']);
+    unset($_SESSION['cached_traffic_sources']);
+    unset($_SESSION['pages_data_quality']);
+}
+
 // CRITICAL FIX: Log current session state for debugging
 error_log("UPLOAD_HANDLER: Current session state:");
 error_log("- using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
@@ -50,9 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
     if (is_array($uploadMessage)) {
         error_log("UPLOAD_HANDLER: Upload message type: " . $uploadMessage['type']);
         if ($uploadMessage['type'] === 'success') {
+            $_SESSION['upload_just_completed'] = true;
             $response['success'] = true;
             $response['message'] = $uploadMessage['message'];
             $response['stage'] = 4; // Completed
+            // Don't include redirect for normal success - let JS handle it
             error_log("UPLOAD_HANDLER: Success response prepared");
         } else if ($uploadMessage['type'] === 'warning') {
             // NEW: Handle validation warnings

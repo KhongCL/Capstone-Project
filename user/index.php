@@ -28,6 +28,36 @@ error_log("Session using_sample_data: " . (isset($_SESSION['using_sample_data'])
 error_log("All session vars: " . print_r($_SESSION, true));
 error_log("=== END SESSION DEBUG ===");
 
+// Handle successful upload redirect
+if (isset($_GET['upload_success']) && $_GET['upload_success'] == '1') {
+    error_log("Upload success redirect detected - ensuring sample data is cleared");
+    
+    // Force clear any remaining sample data session variables
+    if (isset($_SESSION['using_sample_data'])) {
+        error_log("CRITICAL: Clearing remaining sample data session after successful upload");
+        unset($_SESSION['using_sample_data']);
+        unset($_SESSION['sample_upload_id']);
+        
+        // Clear cached data
+        unset($_SESSION['cached_metrics']);
+        unset($_SESSION['cached_traffic_sources']);
+        unset($_SESSION['pages_data_quality']);
+    }
+    
+    // Set success message
+    $uploadMessage = [
+        'type' => 'success',
+        'message' => 'CSV data successfully uploaded and imported! You can now view your analytics.'
+    ];
+    
+    // Redirect to overview page after a brief moment to show the success message
+    echo "<script>
+        setTimeout(function() {
+            window.location.href = 'overview.php';
+        }, 3000);
+    </script>";
+}
+
 // Handle sample data loading
 if (isset($_GET['load_sample']) && $_GET['load_sample'] == '1') {
     error_log("Loading sample data requested");
@@ -78,6 +108,21 @@ if (isset($_GET['load_sample']) && $_GET['load_sample'] == '1') {
             'message' => 'No sample data available. Please contact the administrator.'
         ];
     }
+}
+
+// Check if upload was just completed and clear sample data UI
+if (isset($_SESSION['upload_just_completed'])) {
+    error_log("Upload just completed - clearing sample data session");
+    unset($_SESSION['upload_just_completed']);
+    
+    // Force clear sample data to ensure UI updates
+    unset($_SESSION['using_sample_data']);
+    unset($_SESSION['sample_upload_id']);
+    
+    // Clear cached data
+    unset($_SESSION['cached_metrics']);
+    unset($_SESSION['cached_traffic_sources']);
+    unset($_SESSION['pages_data_quality']);
 }
 
 // Handle clearing sample data
