@@ -33,6 +33,20 @@ if (isset($_GET['sample_data']) && $_GET['sample_data'] == '1') {
     }
 }
 
+// Check if this is a redirect after successful upload
+if (isset($_GET['uploaded']) && $_GET['uploaded'] == '1') {
+    // Force clear any remaining sample data session variables
+    if (isset($_SESSION['using_sample_data'])) {
+        error_log("OVERVIEW: Clearing remaining sample data session after upload");
+        unset($_SESSION['using_sample_data']);
+        unset($_SESSION['sample_upload_id']);
+    }
+    
+    // Redirect to clean URL to remove the parameter
+    header('Location: overview.php');
+    exit();
+}
+
 // Set page variables for header
 $title = "Overview Dashboard";
 $active_page = "overview";

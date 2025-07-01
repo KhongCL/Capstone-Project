@@ -154,12 +154,24 @@ class UploadProgressTracker {
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
 
+    hideSampleDataUI() {
+        // Immediately hide sample data UI elements when upload starts
+        const sampleDataStatus = document.querySelector('.sample-data-status');
+        if (sampleDataStatus) {
+            sampleDataStatus.style.display = 'none';
+            console.log('Sample data UI hidden during upload');
+        }
+    }
+
     startUpload(file) {
         console.log('Starting upload for file:', file.name);
         
         // CRITICAL: Set upload state to prevent multiple uploads
         this.isUploading = true;
         
+        // Hide sample data UI immediately
+        this.hideSampleDataUI();
+
         // MOVED HERE: Clear any existing error/warning messages only when upload actually starts
         this.clearExistingMessages();
         
@@ -980,7 +992,7 @@ class UploadProgressTracker {
                     this.showValidationWarnings(response.message, response.validation_errors);
                 }, 1500);
             } else {
-                // Complete success - force page refresh to clear any cached messages
+                // FIXED: Complete success - redirect to index page to refresh sample data UI
                 this.completeStage(0); // File upload ✅
                 this.completeStage(1); // Structure validation ✅  
                 this.completeStage(2); // Data processing ✅
@@ -988,8 +1000,9 @@ class UploadProgressTracker {
                 this.updateOverallProgress(100, 'Upload completed successfully!');
                 
                 setTimeout(() => {
-                    // CRITICAL: Force page reload to clear any cached session data
-                    window.location.href = 'index.php?from_upload=success';
+                    // CRITICAL FIX: Redirect to index.php to clear sample data UI, then auto-redirect to overview
+                    console.log('Upload successful - redirecting to refresh page state');
+                    window.location.href = 'index.php?upload_success=1';
                 }, 2000);
             }
         } else {
