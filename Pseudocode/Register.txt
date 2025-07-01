@@ -1,70 +1,96 @@
-Start session
-If user is already logged in:
-    If user is Admin:
-        Redirect to admin dashboard
-    Else:
-        Redirect to user dashboard
+START
 
-If form is submitted (POST request):
-    Get and trim firstname, lastname, username, email, password, confirmPassword, terms
+    START SESSION
+    IMPORT config.php
 
-    // Validation
-    If firstname is empty:
-        Add error "First name is required"
-    If lastname is empty:
-        Add error "Last name is required"
-    If username is empty or too short:
-        Add error "Username is required/must be at least 3 characters"
-    If email is empty or invalid:
-        Add error "Email is required/invalid"
-    If password is empty or too short:
-        Add error "Password is required/must be at least 8 characters"
-    If password and confirmPassword do not match:
-        Add error "Passwords do not match"
-    If terms not checked:
-        Add error "You must agree to the terms"
+    IF user is already logged in THEN
+        IF user role is 'Admin' THEN
+            REDIRECT to admin dashboard
+        ELSE
+            REDIRECT to user dashboard
+        END IF
+        EXIT
+    END IF
 
-    // Check for existing users if no errors
-    If no errors:
-        Query database for user with same username or email
-        If user exists:
-            Check if username exists:
-                Add error "Username already exists"
-            Check if email exists:
-                Add error "Email address already exists"
-        Else:
-            Hash password
-            Insert new user into database with username, email, hashed password, default role and status
-            If insert successful:
-                Set registration success flag in session
-            Else:
-                Add error "Registration failed"
+    INITIALIZE errors as empty list
+    INITIALIZE success as False
 
-On form submit:
-    Remove previous error bubbles and error classes
-    For each field:
-        If invalid, show error bubble and mark input as error
-    If all fields valid:
-        Allow form submission
-    Else:
-        Prevent form submission
+    IF request method is POST THEN
+        GET and trim firstname from POST or set to empty string
+        GET and trim lastname from POST or set to empty string
+        GET and trim username from POST or set to empty string
+        GET and trim email from POST or set to empty string
+        GET password from POST or set to empty string
+        GET confirmPassword from POST or set to empty string
+        SET terms to True if terms is set in POST, else False
 
-On page load:
-    If server-side errors exist:
-        For each error:
-            Show error bubble on corresponding input
+        IF firstname is empty THEN
+            ADD "First name is required" to errors
+        END IF
 
-On input change:
-    Remove error bubble and error class for that input
+        IF lastname is empty THEN
+            ADD "Last name is required" to errors
+        END IF
 
-When toggle button clicked:
-    If password is hidden:
-        Show password
-        Change icon
-    Else:
-        Hide password
-        Change icon
+        IF username is empty THEN
+            ADD "Username is required" to errors
+        ELSE IF username length < 3 THEN
+            ADD "Username must be at least 3 characters" to errors
+        END IF
 
-If registration was successful:
-    Show overlay and success popup
-    After 3 seconds, redirect to login page
+        IF email is empty THEN
+            ADD "Email is required" to errors
+        ELSE IF email is not valid THEN
+            ADD "Please enter a valid email address" to errors
+        END IF
+
+        IF password is empty THEN
+            ADD "Password is required" to errors
+        ELSE IF password length < 8 THEN
+            ADD "Password must be at least 8 characters" to errors
+        END IF
+
+        IF password does not match confirmPassword THEN
+            ADD "Passwords do not match" to errors
+        END IF
+
+        IF terms is not checked THEN
+            ADD "You must agree to the terms and conditions" to errors
+        END IF
+
+        IF errors is empty THEN
+            PREPARE SQL to SELECT user by username or email
+            EXECUTE query
+            IF user exists THEN
+                PREPARE SQL to SELECT user by username
+                EXECUTE query
+                IF username exists THEN
+                    ADD "Username already exists" to errors
+                END IF
+
+                PREPARE SQL to SELECT user by email
+                EXECUTE query
+                IF email exists THEN
+                    ADD "Email address already exists" to errors
+                END IF
+            ELSE
+                HASH password
+                PREPARE SQL to INSERT new user with username, email, hashed password, role 'End-User', status 'Active'
+                EXECUTE query
+                IF insert successful THEN
+                    SET success to True
+                    SET session register_success to True
+                ELSE
+                    ADD "Registration failed. Please try again." to errors
+                END IF
+            END IF
+        END IF
+    END IF
+
+    OUTPUT HTML registration form with:
+        - First name, last name, username, email, password, confirm password, terms checkbox
+        - Client-side JS for password toggle and validation
+        - Show server-side errors as bubbles on relevant fields
+        - On successful registration, show popup and redirect to login page after 3 seconds
+
+END
