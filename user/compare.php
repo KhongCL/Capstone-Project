@@ -1022,6 +1022,8 @@ function calculateStats($values) {
         background: #c82333;
         transform: translateY(-2px);
     }
+
+    
     </style>
 </head>
 <body>
@@ -1519,7 +1521,7 @@ function calculateStats($values) {
     }
 
     async function exportToPDF() {
-        if (!window.jsPDF) {
+        if (!window.jspdf) {
             alert('PDF export library not loaded. Please refresh the page and try again.');
             return;
         }
