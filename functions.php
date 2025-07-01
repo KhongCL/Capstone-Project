@@ -155,29 +155,36 @@ function handleCsvUpload($conn, $file) {
                     'message' => $saveResult['message']
                 ];
             }
-        } else if ($result['status'] === 'needs_mapping') {
-            // Store file path and mapping info in session for the mapping page
-            if (session_status() == PHP_SESSION_NONE) {
-                session_start();
-            }
-            $_SESSION['uploaded_csv'] = $filePath;
-            $_SESSION['mapping_result'] = $result;
-            $_SESSION['csv_metadata'] = $metadata;
-            
-            // Check if this is an AJAX request
-            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-                    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-            
-            if ($isAjax) {
-                return [
-                    'type' => 'needs_mapping',
-                    'message' => 'Format not automatically detected. Manual column mapping required.',
-                    'redirect' => 'map_columns.php'
-                ];
-            } else {
-                header('Location: map_columns.php');
-                exit;
-            }
+                } else if ($result['status'] === 'needs_mapping') {
+                    // Store file path and mapping info in session for the mapping page
+                    if (session_status() == PHP_SESSION_NONE) {
+                        session_start();
+                    }
+                    $_SESSION['uploaded_csv'] = $filePath;
+                    $_SESSION['mapping_result'] = $result;
+                    $_SESSION['csv_metadata'] = $metadata;
+                    
+                    // CRITICAL FIX: Clear sample data session when user uploads their own file
+                    if (isset($_SESSION['using_sample_data'])) {
+                        unset($_SESSION['using_sample_data']);
+                        unset($_SESSION['sample_upload_id']);
+                        error_log("CRITICAL: Cleared sample data session for manual mapping");
+                    }
+                    
+                    // Check if this is an AJAX request
+                    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+                    
+                    if ($isAjax) {
+                        return [
+                            'type' => 'needs_mapping',
+                            'message' => 'Format not automatically detected. Manual column mapping required.',
+                            'redirect' => 'map_columns.php'
+                        ];
+                    } else {
+                        header('Location: map_columns.php');
+                        exit;
+                    }
         } else {
             // Clean up file since there was an error
             if (file_exists($filePath)) {

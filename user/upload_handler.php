@@ -29,13 +29,18 @@ header('Content-Type: application/json');
 
 session_start();
 
+// CRITICAL FIX: Log current session state for debugging
+error_log("UPLOAD_HANDLER: Current session state:");
+error_log("- using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
+error_log("- sample_upload_id: " . ($_SESSION['sample_upload_id'] ?? 'not set'));
+error_log("- latest_upload_id: " . ($_SESSION['latest_upload_id'] ?? 'not set'));
+
 $response = [
     'success' => false,
     'message' => '',
     'stage' => 0,
     'errors' => []
 ];
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
     error_log("Processing file upload: " . $_FILES['csvFile']['name']);
     
