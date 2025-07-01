@@ -32,7 +32,7 @@ error_log("=== END SESSION DEBUG ===");
 if (isset($_GET['upload_success']) && $_GET['upload_success'] == '1') {
     error_log("Upload success redirect detected - ensuring sample data is cleared");
     
-    // Force clear any remaining sample data session variables
+    // Force clear any remaining sample data session variables IMMEDIATELY
     if (isset($_SESSION['using_sample_data'])) {
         error_log("CRITICAL: Clearing remaining sample data session after successful upload");
         unset($_SESSION['using_sample_data']);
@@ -44,18 +44,30 @@ if (isset($_GET['upload_success']) && $_GET['upload_success'] == '1') {
         unset($_SESSION['pages_data_quality']);
     }
     
+    // CRITICAL: Force session write to ensure changes are saved
+    session_write_close();
+    session_start();
+    
     // Set success message
     $uploadMessage = [
         'type' => 'success',
         'message' => 'CSV data successfully uploaded and imported! You can now view your analytics.'
     ];
     
-    // Redirect to overview page after a brief moment to show the success message
+    // IMMEDIATE redirect to overview page (no delay)
     echo "<script>
-        setTimeout(function() {
-            window.location.href = 'overview.php';
-        }, 3000);
+        // Hide any sample data UI immediately
+        document.addEventListener('DOMContentLoaded', function() {
+            const sampleDataStatus = document.querySelector('.sample-data-status');
+            if (sampleDataStatus) {
+                sampleDataStatus.style.display = 'none';
+            }
+        });
+        
+        // Redirect immediately
+        window.location.href = 'overview.php?uploaded=1';
     </script>";
+    exit(); // Important: stop PHP execution here
 }
 
 // Handle sample data loading
@@ -683,6 +695,24 @@ error_log("=== END INDEX.PHP DEBUG ===");
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
+
+            <script>
+                // CRITICAL: Hide sample data UI immediately if upload was just completed
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Check if we're on a post-upload page load
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const uploadSuccess = urlParams.get('upload_success');
+                    
+                    if (uploadSuccess === '1') {
+                        // Immediately hide sample data UI
+                        const sampleDataStatus = document.querySelector('.sample-data-status');
+                        if (sampleDataStatus) {
+                            sampleDataStatus.style.display = 'none';
+                            console.log('Sample data UI hidden immediately after upload success');
+                        }
+                    }
+                });
+            </script>
             
             <section class="upload-section">
                 <h2>Upload Traffic Data</h2>
@@ -893,6 +923,10 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
     <script src="upload_progress.js"></script>
     <script>
+        // CRITICAL: Set global variables for upload_progress.js to use
+        window.sessionHasExistingData = <?php echo (isset($_SESSION['latest_upload_id']) || isset($_SESSION['using_sample_data'])) ? 'true' : 'false'; ?>;
+        window.sessionIsUsingSampleData = <?php echo (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data']) ? 'true' : 'false'; ?>;
+        
         // File info display
         document.getElementById('csvFile').addEventListener('change', function() {
             const fileInfo = document.getElementById('fileInfo');
@@ -935,9 +969,9 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
         // Global confirmation function for upload progress tracker
         function confirmDataReplacement() {
-            // ENHANCED: Force a fresh check of session state
-            const hasExistingData = <?php echo (isset($_SESSION['latest_upload_id']) || isset($_SESSION['using_sample_data'])) ? 'true' : 'false'; ?>;
-            const isUsingSampleData = <?php echo (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data']) ? 'true' : 'false'; ?>;
+            // ENHANCED: Use the global variables set by PHP
+            const hasExistingData = window.sessionHasExistingData;
+            const isUsingSampleData = window.sessionIsUsingSampleData;
             
             // NEW: Check if there are error messages displayed that would be helpful to keep
             const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
@@ -955,6 +989,13 @@ error_log("=== END INDEX.PHP DEBUG ===");
                 console.log('Detected return from mapping page - session state may be stale');
                 // Don't use cached session state, force server check
                 return true; // Let the upload proceed and let server handle current state
+            }
+            
+            // NEW: Check if this is a page refresh after successful upload
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('upload_success') === '1') {
+                console.log('Page loaded after successful upload - sample data should be cleared');
+                return true; // Proceed without confirmation on post-upload page loads
             }
             
             console.log('Session latest_upload_id:', '<?php echo $_SESSION['latest_upload_id'] ?? 'not set'; ?>');
@@ -1035,7 +1076,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
                     console.log('Adding fallback form submission handler');
                     
                     uploadForm.addEventListener('submit', function(e) {
-                        const hasExistingData = <?php echo (isset($_SESSION['latest_upload_id']) || isset($_SESSION['using_sample_data'])) ? 'true' : 'false'; ?>;
+                        const hasExistingData = window.sessionHasExistingData;
                         
                         if (hasExistingData && !confirmDataReplacement()) {
                             e.preventDefault(); // Stop the form submission

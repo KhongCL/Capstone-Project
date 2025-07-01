@@ -992,7 +992,7 @@ class UploadProgressTracker {
                     this.showValidationWarnings(response.message, response.validation_errors);
                 }, 1500);
             } else {
-                // FIXED: Complete success - redirect to index page to refresh sample data UI
+                // FIXED: Complete success - redirect with confirmation
                 this.completeStage(0); // File upload ✅
                 this.completeStage(1); // Structure validation ✅  
                 this.completeStage(2); // Data processing ✅
@@ -1000,9 +1000,32 @@ class UploadProgressTracker {
                 this.updateOverallProgress(100, 'Upload completed successfully!');
                 
                 setTimeout(() => {
-                    // CRITICAL FIX: Redirect to index.php to clear sample data UI, then auto-redirect to overview
-                    console.log('Upload successful - redirecting to refresh page state');
-                    window.location.href = 'index.php?upload_success=1';
+                    // CRITICAL FIX: Get session state from global variables set by PHP
+                    const hasExistingData = window.sessionHasExistingData || false;
+                    const isUsingSampleData = window.sessionIsUsingSampleData || false;
+                    
+                    let confirmMessage = "🎉 Upload Successful!\n\n";
+                    
+                    if (isUsingSampleData) {
+                        confirmMessage += "Your CSV data has been successfully uploaded and processed.\n\n" +
+                                        "This will:\n" +
+                                        "• Replace the sample data with your own data\n" +
+                                        "• Update all dashboard pages with your analytics\n" +
+                                        "• Clear the sample data UI\n\n" +
+                                        "Click OK to view your data in the overview dashboard.";
+                    } else {
+                        confirmMessage += "Your CSV data has been successfully uploaded and processed.\n\n" +
+                                        "Click OK to view your analytics in the overview dashboard.";
+                    }
+                    
+                    const confirmed = confirm(confirmMessage);
+                    if (confirmed) {
+                        console.log('Upload successful - redirecting to refresh page state');
+                        window.location.href = 'index.php?upload_success=1';
+                    } else {
+                        // User cancelled - just refresh the current page to show updated state
+                        window.location.reload();
+                    }
                 }, 2000);
             }
         } else {

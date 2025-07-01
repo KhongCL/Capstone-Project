@@ -40,7 +40,18 @@ if (isset($_GET['uploaded']) && $_GET['uploaded'] == '1') {
         error_log("OVERVIEW: Clearing remaining sample data session after upload");
         unset($_SESSION['using_sample_data']);
         unset($_SESSION['sample_upload_id']);
+        
+        // Clear cached data
+        unset($_SESSION['cached_metrics']);
+        unset($_SESSION['cached_traffic_sources']);
+        unset($_SESSION['pages_data_quality']);
     }
+    
+    // Show success message
+    $uploadMessage = [
+        'type' => 'success',
+        'message' => '🎉 Upload completed successfully! You\'re now viewing your own data.'
+    ];
     
     // Redirect to clean URL to remove the parameter
     header('Location: overview.php');
