@@ -1531,8 +1531,7 @@ select:focus {
 .user-confidence-fill {
     height: 100%;
     border-radius: 10px;
-    background-color: var(--success);
-    transition: width 0.3s ease;
+    transition: all 0.3s ease;
     position: relative;
 }
 
@@ -1557,8 +1556,28 @@ select:focus {
     transform: translate(-50%, -50%);
     font-size: 0.8rem;
     font-weight: 600;
-    color: #333;
-    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
+    z-index: 10;
+    /* Dynamic text color based on background */
+    color: #333 !important; /* Default dark text for gray background */
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8) !important; /* Light shadow for contrast */
+    transition: all 0.3s ease;
+}
+
+/* Override text color when progress bar has sufficient fill */
+.user-confidence-bar .user-confidence-fill[style*="width: 5"], /* 50%+ */
+.user-confidence-bar .user-confidence-fill[style*="width: 6"], /* 60%+ */
+.user-confidence-bar .user-confidence-fill[style*="width: 7"], /* 70%+ */
+.user-confidence-bar .user-confidence-fill[style*="width: 8"], /* 80%+ */
+.user-confidence-bar .user-confidence-fill[style*="width: 9"] + span, /* 90%+ */
+.user-confidence-bar .user-confidence-fill[style*="width: 100"] + span {
+    color: #fff !important; /* White text when progress bar covers the text */
+    text-shadow: 0 1px 2px rgba(0,0,0,0.7) !important; /* Dark shadow for white text */
+}
+
+/* Special handling for yellow/warning confidence bars */
+.user-confidence-bar .user-confidence-fill[style*="#ffc107"] + span {
+    color: #000 !important; /* Black text for yellow background */
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8) !important; /* Light shadow for dark text */
 }
 
 .user-form-actions {

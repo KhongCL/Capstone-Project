@@ -117,6 +117,17 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     <main>
 			<section class="user-section">
       	<h2>Overview Dashboard</h2>
+
+        <?php if ($sampleNotice['is_sample']): ?>
+            <div class="sample-data-notice">
+                <div class="notice-content">
+                    <i class="fas fa-vial"></i>
+                    <span><?php echo $sampleNotice['message']; ?></span>
+                    <?php echo $sampleNotice['action']; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
 				<div class="overview-section">
 					<div class="card">
 							<div class="user-metric">

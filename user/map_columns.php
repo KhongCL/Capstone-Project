@@ -526,11 +526,11 @@ document.addEventListener('DOMContentLoaded', function() {
             confidenceIcon = '⚡';
         }
         
-        // Update confidence bar with animation
+        // Update confidence bar with proper text visibility
         confidenceCell.innerHTML = `
             <div class="user-confidence-bar">
                 <div class="user-confidence-fill" style="width: ${confidence}%; background-color: ${confidenceColor}; transition: all 0.3s ease;"></div>
-                <span style="color: ${confidenceColor}; font-weight: 600;">${confidenceIcon} ${Math.round(confidence)}%</span>
+                <span>${confidenceIcon} ${Math.round(confidence)}%</span>
             </div>
         `;
     }

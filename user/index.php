@@ -215,12 +215,12 @@ error_log("=== END INDEX.PHP DEBUG ===");
     <style>
         /* ==================== SAMPLE DATA STATUS STYLES ==================== */
         .sample-data-status {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            background: linear-gradient(135deg, #2980b9 0%, #0066cc 100%);
             padding: 15px 20px;
             margin: 20px 0;
             border-radius: 8px;
             color: #fff;
-            box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
+            box-shadow: 0 4px 12px rgba(41, 128, 185, 0.4);
         }
         
         .sample-data-status .status-content {
@@ -278,17 +278,27 @@ error_log("=== END INDEX.PHP DEBUG ===");
         .sample-data-details .detail-item {
             display: flex;
             align-items: center;
+            background: rgba(255, 255, 255, 0.15); 
+            padding: 8px 12px;
+            border-radius: 6px;
+            overflow: hidden; 
         }
 
         .sample-data-details .detail-label {
             font-weight: 600;
             margin-right: 8px;
-            color: rgba(0, 0, 0, 0.9);
+            color: rgba(255, 255, 255, 0.9);
+            white-space: nowrap;
+            flex-shrink: 0;
         }
-        
+
         .sample-data-details .detail-item span:last-child {
             color: #fff;
             font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
         }
 
         /* ==================== SAMPLE DATA PREVIEW STYLES ==================== */
@@ -456,6 +466,44 @@ error_log("=== END INDEX.PHP DEBUG ===");
             border-radius: 5px;
             font-weight: 500;
             transition: all 0.3s ease;
+            border: 1px solid transparent; /* Add border for consistency */
+        }
+
+        /* Specific button color overrides for preview actions */
+        .preview-actions .btn-success {
+            background: #28a745 !important;
+            color: #fff !important;
+            border-color: #28a745 !important;
+        }
+
+        .preview-actions .btn-success:hover {
+            background: #218838 !important;
+            border-color: #1e7e34 !important;
+            color: #fff !important;
+        }
+
+        .preview-actions .btn-primary {
+            background: #007bff !important;
+            color: #fff !important;
+            border-color: #007bff !important;
+        }
+
+        .preview-actions .btn-primary:hover {
+            background: #0056b3 !important;
+            border-color: #004085 !important;
+            color: #fff !important;
+        }
+
+        .preview-actions .btn-secondary {
+            background: #6c757d !important;
+            color: #fff !important;
+            border-color: #6c757d !important;
+        }
+
+        .preview-actions .btn-secondary:hover {
+            background: #545b62 !important;
+            border-color: #4e555b !important;
+            color: #fff !important;
         }
 
         /* ==================== RESPONSIVE STYLES ==================== */
