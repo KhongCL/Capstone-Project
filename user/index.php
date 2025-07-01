@@ -86,6 +86,11 @@ if (isset($_GET['clear_sample']) && $_GET['clear_sample'] == '1') {
     
     unset($_SESSION['using_sample_data']);
     unset($_SESSION['sample_upload_id']);
+
+    // Clear mapping-related session data
+    unset($_SESSION['uploaded_csv']);
+    unset($_SESSION['mapping_result']);
+    unset($_SESSION['csv_metadata']);
     
     // Get user's most recent upload
     $userId = $_SESSION['user_id'];
@@ -837,6 +842,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
         // Global confirmation function for upload progress tracker
         function confirmDataReplacement() {
+            // ENHANCED: Force a fresh check of session state
             const hasExistingData = <?php echo (isset($_SESSION['latest_upload_id']) || isset($_SESSION['using_sample_data'])) ? 'true' : 'false'; ?>;
             const isUsingSampleData = <?php echo (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data']) ? 'true' : 'false'; ?>;
             
@@ -848,6 +854,16 @@ error_log("=== END INDEX.PHP DEBUG ===");
             console.log('hasExistingData:', hasExistingData);
             console.log('isUsingSampleData:', isUsingSampleData);
             console.log('hasErrorMessages:', hasErrorMessages);
+            console.log('Current URL:', window.location.href);
+            console.log('Referrer:', document.referrer);
+            
+            // CRITICAL FIX: If we just came back from map_columns.php, force a page refresh to get current session state
+            if (document.referrer && document.referrer.includes('map_columns.php')) {
+                console.log('Detected return from mapping page - session state may be stale');
+                // Don't use cached session state, force server check
+                return true; // Let the upload proceed and let server handle current state
+            }
+            
             console.log('Session latest_upload_id:', '<?php echo $_SESSION['latest_upload_id'] ?? 'not set'; ?>');
             console.log('Session using_sample_data:', '<?php echo isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'; ?>');
             console.log('========================');

@@ -954,6 +954,10 @@ class UploadProgressTracker {
         if (response.success) {
             // Check if this needs mapping (redirect to mapping page)
             if (response.redirect && response.redirect.includes('map_columns.php')) {
+                // CRITICAL FIX: Clear confirmation state when redirecting to mapping
+                // This prevents stale sample data state from affecting future confirmations
+                console.log('Manual mapping detected - clearing any stale session state');
+                
                 // For manual mapping - show ONLY partial progress and redirect
                 this.completeStage(0); // File upload ✅ 100%
                 this.completeStage(1); // Structure validation ✅ 100%

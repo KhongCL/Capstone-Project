@@ -6,6 +6,13 @@ include '../functions.php';
 
 session_start();
 
+// CRITICAL FIX: Clear sample data session when user reaches manual mapping
+if (isset($_SESSION['using_sample_data'])) {
+    unset($_SESSION['using_sample_data']);
+    unset($_SESSION['sample_upload_id']);
+    error_log("Cleared sample data session in map_columns.php");
+}
+
 // Enhanced debugging for form submission
 error_log("=== MAP_COLUMNS.PHP DEBUG ===");
 error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
@@ -388,7 +395,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     
                     <div class="user-form-actions">
                         <button type="submit" name="confirm_mapping" class="user-btn-primary">Confirm Mapping & Import Data</button>
-                        <a href="index.php" class="user-btn-secondary">Cancel</a>
+                        <a href="index.php?clear_mapping=1" class="user-btn-secondary">Cancel</a>
                     </div>
                 </form>
                 
