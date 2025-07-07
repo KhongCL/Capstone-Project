@@ -147,8 +147,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const overlay = document.getElementById('overlay');
             const popup = document.getElementById('successPopup');
             
-            overlay.classList.add('show');
-            popup.classList.add('show');
+            if (overlay && popup) {
+                overlay.classList.add('show');
+                popup.classList.add('show');
+                
+                // Redirect in the same tab after showing popup briefly
+                setTimeout(function() {
+                    window.location.href = 'admin/index.php';
+                }, 1500); // Show popup for 1.5 seconds then redirect
+            }
             
             <?php unset($_SESSION['login_success']); ?>
         });

@@ -129,8 +129,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             const overlay = document.getElementById('overlay');
             const popup = document.getElementById('successPopup');
             
-            overlay.classList.add('show');
-            popup.classList.add('show');
+            if (overlay && popup) {
+                overlay.classList.add('show');
+                popup.classList.add('show');
+                
+                // Redirect in the same tab after showing popup briefly
+                setTimeout(function() {
+                    <?php if ($_SESSION['role'] === 'Admin'): ?>
+                        window.location.href = 'admin/index.php';
+                    <?php else: ?>
+                        window.location.href = 'user/index.php';
+                    <?php endif; ?>
+                }, 1500); // Show popup for 1.5 seconds then redirect
+            }
             
             <?php unset($_SESSION['login_success']); ?>
         });
