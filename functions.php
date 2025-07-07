@@ -82,6 +82,13 @@ function handleCsvUpload($conn, $file) {
         ];
     }
 
+    // FIXED: Store file information in session for later use
+    if (session_status() == PHP_SESSION_NONE) {
+        session_start();
+    }
+    $_SESSION['uploaded_file_name'] = $fileName;
+    $_SESSION['uploaded_file_size'] = $file['size']; // Store the actual file size
+
     try {
         // Process the CSV file
         $processor = new CsvProcessor();
@@ -137,7 +144,9 @@ function handleCsvUpload($conn, $file) {
                 // CRITICAL: Clear ALL session data for clean state
                 unset($_SESSION['uploaded_csv']);
                 unset($_SESSION['csv_metadata']);
-                
+                unset($_SESSION['uploaded_file_name']);
+                unset($_SESSION['uploaded_file_size']);
+
                 return [
                     'type' => 'success',
                     'message' => 'CSV data successfully imported and processed.',
@@ -761,11 +770,41 @@ function saveTransformedData($conn, $transformedData) {
         
         
         // Insert NEW CSV upload record
-        $stmt = $conn->prepare("INSERT INTO CSV_UPLOAD (UserID, FileName, FileSize, IsValidated, ReportType, DataDateStart, DataDateEnd, AccountName, PropertyName) VALUES (?, ?, 0, 1, ?, ?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO CSV_UPLOAD (UserID, FileName, FileSize, IsValidated, ReportType, DataDateStart, DataDateEnd, AccountName, PropertyName) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)");
+
+        if (!$stmt) {
+            throw new Exception('Prepare failed: ' . $conn->error);
+        }
+
         $fileName = $_SESSION['uploaded_file_name'] ?? 'manual_upload.csv';
-        $stmt->bind_param("issssss", $userId, $fileName, $reportType, $startDate, $endDate, $accountName, $propertyName);
-        $stmt->execute();
-        
+
+        // FIXED: Get the actual file size from the uploaded file
+        $fileSize = 0;
+        if (isset($_SESSION['uploaded_file_size'])) {
+            $fileSize = $_SESSION['uploaded_file_size'];
+        } else {
+            // Fallback: try to get file size from the uploaded file if it still exists
+            if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
+                $fileSize = filesize($_SESSION['uploaded_csv']);
+            }
+        }
+
+        // Debug logging
+        error_log("Binding parameters: UserID=$userId, FileName=$fileName, FileSize=$fileSize, ReportType=$reportType");
+
+        // FIXED: Correct the bind_param type string
+        $bindResult = $stmt->bind_param("isisssss", $userId, $fileName, $fileSize, $reportType, $startDate, $endDate, $accountName, $propertyName);
+
+        if (!$bindResult) {
+            throw new Exception('Bind failed: ' . $stmt->error);
+        }
+
+        $executeResult = $stmt->execute();
+
+        if (!$executeResult) {
+            throw new Exception('Execute failed: ' . $stmt->error);
+        }
+
         $uploadId = $conn->insert_id;
         error_log("CSV Upload record created with ID: $uploadId");
         

@@ -14,6 +14,8 @@ class UploadProgressTracker {
         this.serverResponseReceived = false;
         this.serverResponse = null;
         this.isUploading = false;
+        this.totalRows = 0; // NEW: Store actual row count
+        this.selectedFile = null; // NEW: Store selected file
         
         this.initializeEventListeners();
         
@@ -79,6 +81,34 @@ class UploadProgressTracker {
         });
     }
 
+    countRowsInFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = e.target.result;
+            const lines = text.split('\n');
+            
+            // Count non-empty lines, including header for display purposes
+            let rowCount = 0;
+            
+            for (let line of lines) {
+                const trimmedLine = line.trim();
+                if (trimmedLine) {
+                    rowCount++;
+                }
+            }
+            
+            this.totalRows = Math.max(rowCount, 1); // Now includes header
+            console.log(`CSV file has ${this.totalRows} total rows (including header)`);
+        };
+        
+        reader.onerror = () => {
+            console.log('Could not read file for row counting, using default estimate');
+            this.totalRows = Math.floor(file.size / 100); // Fallback estimate
+        };
+        
+        reader.readAsText(file);
+    }
+
     handleFileSelection(file) {
         if (!file) return;
 
@@ -86,6 +116,10 @@ class UploadProgressTracker {
 
         // CRITICAL: Reset the entire component state when new file is selected
         this.resetComponentState();
+
+        // NEW: Store the selected file and count rows
+        this.selectedFile = file;
+        this.countRowsInFile(file);
 
         const fileInfo = document.getElementById('fileInfo');
         const fileName = fileInfo.querySelector('.file-name');
@@ -124,24 +158,39 @@ class UploadProgressTracker {
         const uploadProgress = document.getElementById('uploadProgress');
         const uploadBtn = document.getElementById('uploadBtn');
         const cancelBtn = document.getElementById('cancelBtn');
-        
+
         // Hide progress container
         if (uploadProgress) {
             uploadProgress.style.display = 'none';
         }
-        
+
         // CRITICAL: Re-enable upload button and show it
         if (uploadBtn) {
             uploadBtn.disabled = false;
             uploadBtn.style.display = 'inline-block';
             console.log('Upload button re-enabled and shown');
         }
-        
+
         // Hide cancel button
         if (cancelBtn) {
             cancelBtn.style.display = 'none';
         }
-        
+
+        // Reset progress details
+        const uploadSpeed = document.getElementById('uploadSpeed');
+        const timeRemaining = document.getElementById('timeRemaining');
+        const rowsProcessed = document.getElementById('rowsProcessed');
+        const fileSizeDetail = document.getElementById('fileSizeDetail');
+
+        if (uploadSpeed) uploadSpeed.textContent = '-';
+        if (timeRemaining) timeRemaining.textContent = '-';
+        if (rowsProcessed) rowsProcessed.textContent = '-';
+        if (fileSizeDetail) fileSizeDetail.textContent = '-';
+
+        // Reset row count
+        this.totalRows = 0;
+        this.selectedFile = null;
+
         // Reset all stages
         this.resetAllStages();
     }
@@ -197,7 +246,7 @@ class UploadProgressTracker {
         this.resetAllStages();
         this.activateStage(0); // Activate the first stage
         
-        // Update file details
+        // Update file details - RESET ROW DISPLAY
         this.updateFileDetails(file);
         
         // Start the upload
@@ -211,8 +260,10 @@ class UploadProgressTracker {
         if (fileSizeDetail) {
             fileSizeDetail.textContent = this.formatFileSize(file.size);
         }
+        
+        // FIXED: Reset to show uploading status instead of final row count
         if (rowsProcessed) {
-            rowsProcessed.textContent = '0';
+            rowsProcessed.textContent = 'Starting upload...';
         }
         
         // Set upload start time for speed calculation
@@ -371,6 +422,7 @@ class UploadProgressTracker {
         const uploadSpeed = document.getElementById('uploadSpeed');
         const timeRemaining = document.getElementById('timeRemaining');
         const fileSizeDetail = document.getElementById('fileSizeDetail');
+        const rowsProcessed = document.getElementById('rowsProcessed');
 
         if (fileSizeDetail) {
             fileSizeDetail.textContent = this.formatFileSize(total);
@@ -384,8 +436,71 @@ class UploadProgressTracker {
             if (uploadSpeed) {
                 uploadSpeed.textContent = this.formatFileSize(speed) + '/s';
             }
-            if (timeRemaining && remaining > 0) {
+            
+            // FIXED: Always show time remaining during upload
+            if (timeRemaining && remaining > 0 && loaded < total) {
                 timeRemaining.textContent = this.formatTime(remaining);
+            } else if (timeRemaining && loaded >= total) {
+                timeRemaining.textContent = 'Processing...';
+            }
+        }
+
+        // FIXED: Show upload progress in bytes, not rows during upload stage
+        if (rowsProcessed && this.totalRows > 0) {
+            if (loaded < total) {
+                // During upload, show upload progress
+                const uploadPercent = Math.round((loaded / total) * 100);
+                rowsProcessed.textContent = `Uploading... ${uploadPercent}%`;
+            } else {
+                // Upload complete, show row count
+                rowsProcessed.textContent = `0 / ${this.totalRows.toLocaleString()} rows`;
+            }
+        }
+    }
+
+    // NEW METHOD: Update progress details during processing simulation
+    updateProcessingDetails(stage, percent, message) {
+        const rowsProcessed = document.getElementById('rowsProcessed');
+        const currentTask = document.getElementById('currentTask');
+        const timeRemaining = document.getElementById('timeRemaining');
+        
+        if (currentTask) {
+            currentTask.textContent = message;
+        }
+        
+        // Update rows processed during different stages using actual row count
+        if (rowsProcessed && this.totalRows > 0) {
+            let processedRows = 0;
+            
+            switch (stage) {
+                case 1: // Structure validation
+                    // During validation, we're checking the structure but not processing data rows yet
+                    processedRows = Math.floor((percent / 100) * this.totalRows * 0.1); // 10% of rows "scanned"
+                    rowsProcessed.textContent = `Scanning ${processedRows.toLocaleString()} / ${this.totalRows.toLocaleString()} rows`;
+                    break;
+                case 2: // Data processing
+                    // During processing, we're actually transforming the data
+                    processedRows = Math.floor((percent / 100) * this.totalRows);
+                    rowsProcessed.textContent = `Processing ${processedRows.toLocaleString()} / ${this.totalRows.toLocaleString()} rows`;
+                    break;
+                case 3: // Database saving
+                    // During saving, we're inserting processed rows into database
+                    const baseProcessed = this.totalRows; // All rows have been processed
+                    const savingProgress = Math.floor((percent / 100) * this.totalRows);
+                    rowsProcessed.textContent = `Saving ${savingProgress.toLocaleString()} / ${this.totalRows.toLocaleString()} rows`;
+                    break;
+                default:
+                    processedRows = Math.floor((percent / 100) * this.totalRows);
+                    rowsProcessed.textContent = `${processedRows.toLocaleString()} / ${this.totalRows.toLocaleString()} rows`;
+            }
+        }
+        
+        // Update time remaining based on stage
+        if (timeRemaining) {
+            if (stage === 3 && percent >= 90) {
+                timeRemaining.textContent = 'Almost done...';
+            } else if (stage >= 2) {
+                timeRemaining.textContent = 'Processing...';
             }
         }
     }
@@ -575,6 +690,7 @@ class UploadProgressTracker {
             // Complete only the first two stages for manual mapping
             this.completeStage(1); // Structure validation ✅ 100%
             this.updateOverallProgress(50, 'Manual column mapping required...');
+            this.updateProcessingDetails(1, 100, 'Column mapping required...');
             
             // Don't start any more timeouts - redirect immediately
             setTimeout(() => {
@@ -603,6 +719,7 @@ class UploadProgressTracker {
                 console.log("DEBUG: Manual mapping detected at 300ms - stopping simulation");
                 this.completeStage(1);
                 this.updateOverallProgress(50, 'Manual column mapping required...');
+                this.updateProcessingDetails(1, 100, 'Column mapping required...');
                 setTimeout(() => {
                     this.processServerResponse();
                 }, 500);
@@ -612,6 +729,7 @@ class UploadProgressTracker {
             console.log("DEBUG: No structure errors detected, activating stage 1");
             this.activateStage(1);
             this.updateOverallProgress(30, 'Validating file structure...');
+            this.updateProcessingDetails(1, 20, 'Reading CSV headers...');
         }, 300));
 
         this.simulationTimeouts.push(setTimeout(() => {
@@ -633,6 +751,7 @@ class UploadProgressTracker {
                 console.log("DEBUG: Manual mapping detected at 600ms - stopping simulation");
                 this.completeStage(1);
                 this.updateOverallProgress(50, 'Manual column mapping required...');
+                this.updateProcessingDetails(1, 100, 'Column mapping required...');
                 setTimeout(() => {
                     this.processServerResponse();
                 }, 200);
@@ -642,6 +761,7 @@ class UploadProgressTracker {
             console.log("DEBUG: Progressing structure validation to 40%");
             this.updateStageProgress(1, 40);
             this.updateOverallProgress(35, 'Checking data format...');
+            this.updateProcessingDetails(1, 40, 'Validating column structure...');
         }, 600));
 
         this.simulationTimeouts.push(setTimeout(() => {
@@ -663,6 +783,7 @@ class UploadProgressTracker {
                 console.log("DEBUG: Manual mapping detected at 900ms - stopping simulation");
                 this.completeStage(1);
                 this.updateOverallProgress(50, 'Manual column mapping required...');
+                this.updateProcessingDetails(1, 100, 'Column mapping required...');
                 setTimeout(() => {
                     this.processServerResponse();
                 }, 100);
@@ -672,6 +793,7 @@ class UploadProgressTracker {
             console.log("DEBUG: Progressing structure validation to 80%");
             this.updateStageProgress(1, 80);
             this.updateOverallProgress(40, 'Validating columns...');
+            this.updateProcessingDetails(1, 80, 'Checking data types...');
         }, 900));
 
         this.simulationTimeouts.push(setTimeout(() => {
@@ -691,6 +813,7 @@ class UploadProgressTracker {
                 console.log("DEBUG: No structure errors, completing structure validation");
                 this.completeStage(1);
                 this.updateOverallProgress(45, 'Structure validation completed');
+                this.updateProcessingDetails(1, 100, 'Structure validation complete ✓');
                 
                 // CHECK FOR MANUAL MAPPING ONE FINAL TIME
                 if (this.serverResponseReceived && this.serverResponse && 
@@ -698,6 +821,7 @@ class UploadProgressTracker {
                     this.serverResponse.redirect.includes('map_columns.php')) {
                     console.log("DEBUG: Manual mapping required, stopping simulation immediately");
                     this.updateOverallProgress(50, 'Manual column mapping required...');
+                    this.updateProcessingDetails(1, 100, 'Column mapping required...');
                     // CRITICAL: Don't proceed to data processing - redirect now
                     setTimeout(() => {
                         this.processServerResponse();
@@ -715,6 +839,7 @@ class UploadProgressTracker {
                     console.log("DEBUG: Continuing with data processing");
                     this.activateStage(2);
                     this.updateOverallProgress(50, 'Processing data rows...');
+                    this.updateProcessingDetails(2, 5, 'Starting data transformation...');
                 }
             }
         }, 1200));
@@ -733,6 +858,7 @@ class UploadProgressTracker {
             
             this.updateStageProgress(2, 25);
             this.updateOverallProgress(55, 'Transforming data...');
+            this.updateProcessingDetails(2, 25, 'Processing data rows...');
         }, 1500));
 
         this.simulationTimeouts.push(setTimeout(() => {
@@ -748,6 +874,7 @@ class UploadProgressTracker {
             
             this.updateStageProgress(2, 50);
             this.updateOverallProgress(65, 'Validating data integrity...');
+            this.updateProcessingDetails(2, 50, 'Validating data values...');
         }, 1800));
 
         this.simulationTimeouts.push(setTimeout(() => {
@@ -763,6 +890,7 @@ class UploadProgressTracker {
             
             this.updateStageProgress(2, 80);
             this.updateOverallProgress(75, 'Preparing for database...');
+            this.updateProcessingDetails(2, 80, 'Preparing database records...');
         }, 2100));
 
         this.simulationTimeouts.push(setTimeout(() => {
@@ -778,10 +906,12 @@ class UploadProgressTracker {
             
             this.completeStage(2);
             this.updateOverallProgress(80, 'Data processing completed');
+            this.updateProcessingDetails(2, 100, 'Data processing complete ✓');
             
             // Stage 4: Saving (80% - 95%)
             this.activateStage(3);
             this.updateOverallProgress(85, 'Saving to database...');
+            this.updateProcessingDetails(3, 10, 'Creating database transaction...');
         }, 2400));
 
         // Continue with remaining timeouts but with manual mapping checks...
@@ -797,6 +927,7 @@ class UploadProgressTracker {
             
             this.updateStageProgress(3, 40);
             this.updateOverallProgress(88, 'Creating data records...');
+            this.updateProcessingDetails(3, 40, 'Inserting data records...');
         }, 2700));
 
         this.simulationTimeouts.push(setTimeout(() => {
@@ -811,6 +942,7 @@ class UploadProgressTracker {
             
             this.updateStageProgress(3, 70);
             this.updateOverallProgress(92, 'Indexing data...');
+            this.updateProcessingDetails(3, 70, 'Creating database indexes...');
         }, 3000));
 
         this.simulationTimeouts.push(setTimeout(() => {
@@ -825,11 +957,13 @@ class UploadProgressTracker {
             
             this.updateStageProgress(3, 90);
             this.updateOverallProgress(95, 'Finalizing...');
+            this.updateProcessingDetails(3, 90, 'Finalizing import...');
         }, 3300));
 
         // Final completion check
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled) return;
+            this.updateProcessingDetails(3, 100, 'Import completed successfully! ✓');
             this.processServerResponse();
         }, 3600));
     }
@@ -885,6 +1019,18 @@ class UploadProgressTracker {
             console.log("DEBUG: Parsed response:", response);
             console.log("DEBUG: Response success:", response.success);
             console.log("DEBUG: Response errors:", response.errors);
+
+            // NEW: Update row count from server if available
+            if (response.total_rows && response.total_rows > 0) {
+                this.totalRows = response.total_rows;
+                console.log(`Server reported ${this.totalRows} total rows`);
+                
+                // Update the display with server-confirmed row count
+                const rowsProcessed = document.getElementById('rowsProcessed');
+                if (rowsProcessed) {
+                    rowsProcessed.textContent = `0 / ${this.totalRows.toLocaleString()} rows`;
+                }
+            }
         } catch (e) {
             console.error("JSON parse error:", e);
             console.log("Original response text:", responseText);

@@ -53,6 +53,7 @@ $response = [
     'stage' => 0,
     'errors' => []
 ];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
     error_log("Processing file upload: " . $_FILES['csvFile']['name']);
     
@@ -63,18 +64,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
         error_log("UPLOAD_HANDLER: Upload message type: " . $uploadMessage['type']);
         if ($uploadMessage['type'] === 'success') {
             $_SESSION['upload_just_completed'] = true;
+            
+            // NEW: Get actual row count from the uploaded file
+            $totalRows = 0;
+            if (isset($_SESSION['latest_upload_id'])) {
+                $uploadId = $_SESSION['latest_upload_id'];
+                $stmt = $conn->prepare("SELECT COUNT(*) as row_count FROM PROCESSED_DATA_POINT WHERE UploadID = ?");
+                $stmt->bind_param("i", $uploadId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                if ($row = $result->fetch_assoc()) {
+                    $totalRows = $row['row_count'] + 1;
+                }
+            }
+            
             $response['success'] = true;
             $response['message'] = $uploadMessage['message'];
             $response['stage'] = 4; // Completed
+            $response['total_rows'] = $totalRows; // NEW: Include actual row count
             // Don't include redirect for normal success - let JS handle it
-            error_log("UPLOAD_HANDLER: Success response prepared");
+            error_log("UPLOAD_HANDLER: Success response prepared with {$totalRows} rows");
         } else if ($uploadMessage['type'] === 'warning') {
-            // NEW: Handle validation warnings
+            // NEW: Handle validation warnings and include row count
+            $totalRows = 0;
+            if (isset($_SESSION['latest_upload_id'])) {
+                $uploadId = $_SESSION['latest_upload_id'];
+                $stmt = $conn->prepare("SELECT COUNT(*) as row_count FROM PROCESSED_DATA_POINT WHERE UploadID = ?");
+                $stmt->bind_param("i", $uploadId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                if ($row = $result->fetch_assoc()) {
+                    $totalRows = $row['row_count'];
+                }
+            }
+            
             $response['success'] = true;
             $response['message'] = $uploadMessage['message'];
             $response['stage'] = 4; // Completed with warnings
+            $response['total_rows'] = $totalRows; // NEW: Include row count even for warnings
             $response['validation_errors'] = $uploadMessage['validation_errors'] ?? [];
-            error_log("UPLOAD_HANDLER: Warning response prepared with " . count($response['validation_errors']) . " validation errors");
+            error_log("UPLOAD_HANDLER: Warning response prepared with " . count($response['validation_errors']) . " validation errors and {$totalRows} rows");
         } else if ($uploadMessage['type'] === 'needs_mapping') {
             // Handle column mapping scenario
             $response['success'] = true;
