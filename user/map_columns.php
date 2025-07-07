@@ -243,6 +243,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                         </div>
                     <?php endif; ?>
                 <?php endif; ?>
+
+                <?php if (!isset($error_message)): ?>
+                    <div class="user-alert user-alert-success">
+                        <h4>🎉 Upload Successful!</h4>
+                        <p><strong>Your CSV file has been successfully uploaded and validated.</strong></p>
+                        <p>Since the format wasn't automatically recognized, please review and confirm the column mappings below to complete the import process.</p>
+                    </div>
+                <?php endif; ?>
                 
                 <?php if ($mappingResult['status'] === 'needs_mapping'): ?>
                     <div class="user-alert user-alert-info">

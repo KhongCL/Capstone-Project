@@ -976,8 +976,25 @@ class UploadProgressTracker {
                 
                 this.updateOverallProgress(50, 'Redirecting to column mapping...');
                 
+                // NEW: Show success message for manual mapping
                 setTimeout(() => {
-                    window.location.href = response.redirect;
+                    const confirmMessage = "🎉 Upload Successful!\n\n" +
+                                        "Your CSV file has been successfully uploaded and validated.\n\n" +
+                                        "Since the format wasn't automatically recognized, you'll now be taken to the column mapping page where you can:\n" +
+                                        "• Review your CSV columns\n" +
+                                        "• Map them to the correct system fields\n" +
+                                        "• Complete the data import process\n\n" +
+                                        "Click OK to continue to the mapping page.";
+                    
+                    const confirmed = confirm(confirmMessage);
+                    if (confirmed) {
+                        console.log('User confirmed manual mapping - redirecting');
+                        window.location.href = response.redirect;
+                    } else {
+                        // User cancelled - refresh the page to show updated state
+                        console.log('User cancelled manual mapping - refreshing page');
+                        window.location.reload();
+                    }
                 }, 1000);
             } else if (response.validation_errors && response.validation_errors.length > 0) {
                 // Handle validation warnings - complete stages and show warnings

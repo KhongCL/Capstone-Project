@@ -583,6 +583,128 @@ error_log("=== END INDEX.PHP DEBUG ===");
                 max-height: 300px;
             }
         }
+
+        /* ==================== SCROLLABLE ERROR MESSAGE STYLES ==================== */
+        .error-container {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid var(--danger);
+            max-height: 400px; /* Limit height */
+            overflow-y: auto; /* Make scrollable */
+        }
+
+        .error-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px; /* Limit the list height */
+            overflow-y: auto; /* Make the list scrollable */
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 6px;
+            background-color: rgba(255,255,255,0.5);
+        }
+
+        .error-item {
+            background-color: #fff5f5;
+            border: 1px solid #fed7e2;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 3px solid #e53e3e;
+        }
+
+        .error-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .validation-help {
+            background: var(--light-gray);
+            border: 2px solid #68d391;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 500px; /* Limit height */
+            overflow-y: auto; /* Make scrollable */
+        }
+
+        .validation-tips {
+            max-height: 350px; /* Limit the tips section */
+            overflow-y: auto; /* Make scrollable */
+            padding-right: 10px; /* Add space for scrollbar */
+        }
+
+        /* Custom scrollbar styles for better appearance */
+        .error-container::-webkit-scrollbar,
+        .error-list::-webkit-scrollbar,
+        .validation-help::-webkit-scrollbar,
+        .validation-tips::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .error-container::-webkit-scrollbar-track,
+        .error-list::-webkit-scrollbar-track,
+        .validation-help::-webkit-scrollbar-track,
+        .validation-tips::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .error-container::-webkit-scrollbar-thumb,
+        .error-list::-webkit-scrollbar-thumb,
+        .validation-help::-webkit-scrollbar-thumb,
+        .validation-tips::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        .error-container::-webkit-scrollbar-thumb:hover,
+        .error-list::-webkit-scrollbar-thumb:hover,
+        .validation-help::-webkit-scrollbar-thumb:hover,
+        .validation-tips::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .error-container {
+                max-height: 300px; /* Smaller on mobile */
+                padding: 15px;
+            }
+            
+            .error-list {
+                max-height: 200px; /* Smaller list on mobile */
+            }
+            
+            .validation-help {
+                max-height: 350px; /* Smaller on mobile */
+                padding: 15px;
+            }
+            
+            .validation-tips {
+                max-height: 250px; /* Smaller tips on mobile */
+            }
+        }
+
+        @media (max-width: 480px) {
+            .error-container {
+                max-height: 250px; /* Even smaller on very small screens */
+            }
+            
+            .error-list {
+                max-height: 150px;
+            }
+            
+            .validation-help {
+                max-height: 300px;
+            }
+            
+            .validation-tips {
+                max-height: 200px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1064,6 +1186,33 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
         // CRITICAL: Ensure the function is available globally
         window.confirmDataReplacement = confirmDataReplacement;
+
+        // NEW: Browser refresh/navigation confirmation for error messages
+        window.addEventListener('beforeunload', function(e) {
+            console.log('=== BEFOREUNLOAD EVENT TRIGGERED ===');
+            
+            const hasExistingData = window.sessionHasExistingData;
+            const isUsingSampleData = window.sessionIsUsingSampleData;
+            const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
+            
+            console.log('hasExistingData:', hasExistingData);
+            console.log('isUsingSampleData:', isUsingSampleData);
+            console.log('hasErrorMessages:', hasErrorMessages);
+            
+            // Only show confirmation if there are error messages or existing data
+            if (hasErrorMessages || hasExistingData) {
+                console.log('Conditions met for showing beforeunload confirmation');
+                
+                // Browser will show its own message regardless
+                e.preventDefault();
+                e.returnValue = ''; // Empty string is sufficient
+                
+                console.log('beforeunload event prevented');
+                return ''; // For older browsers
+            } else {
+                console.log('No conditions met, allowing navigation');
+            }
+        });
 
         // Fallback handler for non-AJAX form submission (if JS fails)
         document.addEventListener('DOMContentLoaded', function() {

@@ -181,14 +181,6 @@ section {
 	padding: 24px;
 }
 
-.card h3 {
-
-}
-
-.card p {
-
-}
-
 .user-metric {
 		display: grid;
   	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
