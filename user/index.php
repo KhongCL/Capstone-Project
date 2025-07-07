@@ -111,7 +111,7 @@ if (isset($_GET['load_sample']) && $_GET['load_sample'] == '1') {
         
         $uploadMessage = [
             'type' => 'success',
-            'message' => 'Sample data loaded successfully! Explore the data preview below, then visit the dashboard pages to see the analytics.'
+            'message' => 'Sample data loaded successfully! Explore the data preview above, then visit the dashboard pages to see the analytics.'
         ];
     } else {
         error_log("No sample data found in database");

@@ -56,26 +56,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Process login if no errors
     if (empty($errors)) {
-        $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ? AND Role = 'Admin'");$stmt->bind_param("s", $username);
+        // FIXED: Use correct column name PasswordHash
+        $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ?");
+        $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
-				
+        
         if ($user = $result->fetch_assoc()) {
             if ($user['AccountStatus'] === 'Suspended') {
-                $errors['general'] = 'Your admin account has been suspended.';
-            } elseif (password_verify($password, $user['PasswordHash'])) { // FIXED: Use PasswordHash
+                $errors['general'] = 'Your account has been suspended. Please contact support.';
+            } elseif (password_verify($password, $user['PasswordHash'])) {
                 $_SESSION['user_id'] = $user['UserID'];
                 $_SESSION['username'] = $user['Username'];
                 $_SESSION['role'] = $user['Role'];
-                $_SESSION['login_success'] = true;
+                // REMOVED: $_SESSION['login_success'] = true;
                 
-                header("Location: admin/index.php");
+                // DIRECT REDIRECT - no JavaScript needed
+                if ($user['Role'] === 'Admin') {
+                    header("Location: admin/index.php");
+                } else {
+                    header("Location: user/index.php");
+                }
                 exit();
             } else {
-                $errors['general'] = 'Invalid admin credentials';
+                $errors['general'] = 'Invalid username or password';
             }
         } else {
-            $errors['general'] = 'Invalid admin credentials';
+            $errors['general'] = 'Invalid username or password';
         }
     }
 }
@@ -151,10 +158,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 overlay.classList.add('show');
                 popup.classList.add('show');
                 
-                // Redirect in the same tab after showing popup briefly
+                // FIXED: Use window.location.replace() instead of href for same-tab redirect
                 setTimeout(function() {
-                    window.location.href = 'admin/index.php';
-                }, 1500); // Show popup for 1.5 seconds then redirect
+                    window.location.replace('admin/index.php');
+                }, 1500);
             }
             
             <?php unset($_SESSION['login_success']); ?>

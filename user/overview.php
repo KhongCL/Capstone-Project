@@ -1,5 +1,5 @@
 <?php
-require_once '../auth/user_auth.php';
+require_once '../auth/flexible_auth.php';
 require_once '../config.php';
 include '../functions.php';
 
@@ -32,6 +32,10 @@ if (isset($_GET['sample_data']) && $_GET['sample_data'] == '1') {
         }
     }
 }
+
+// UPDATED: Check user role and adjust navigation accordingly
+$isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
+$backUrl = $isAdmin ? '../admin/upload_sample_data.php' : 'index.php';
 
 // Check if this is a redirect after successful upload
 if (isset($_GET['uploaded']) && $_GET['uploaded'] == '1') {
@@ -109,7 +113,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     .notice-content i {
         font-size: 1.2em;
         margin-right: 10px;
-        color: #e91e63;
+        color: #d63384;
     }
 
     .notice-content span {
@@ -120,35 +124,70 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     .notice-content .btn {
         padding: 8px 16px;
         font-size: 0.9em;
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        background: rgba(255, 255, 255, 0.2);
-        color: #333;
+        border: 1px solid #d63384;
+        background: #d63384;
+        color: #fff;
         text-decoration: none;
         border-radius: 4px;
         transition: all 0.3s ease;
     }
 
     .notice-content .btn:hover {
-        background: rgba(255, 255, 255, 0.4);
+        background: #b02a5b;
         transform: translateY(-1px);
+    }
+
+    .admin-notice {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        padding: 15px 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(23, 162, 184, 0.3);
+    }
+
+    .admin-notice .btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        color: #fff;
+    }
+
+    .admin-notice .btn:hover {
+        background: rgba(255, 255, 255, 0.3);
     }
   </style>
 </head>
 
 <body>
   <div class="container user-overview-container" id="dashboard">
-    <?php include 'user_header.php'; ?>
+    <?php 
+    // UPDATED: Use appropriate header based on user role
+    if ($isAdmin) {
+        // For admin users, create a minimal header WITHOUT back button
+        echo '<header style="background: #343a40; color: #fff; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px;">
+                <div style="display: flex; align-items: center; justify-content: center;">
+                    <h1 style="margin: 0; font-size: 1.5em;"><i class="fas fa-chart-line"></i> Sample Data Preview - Admin View</h1>
+                </div>
+              </header>';
+    } else {
+        include 'user_header.php';
+    }
+    ?>
 
     <main>
 			<section class="user-section">
       	<h2>Overview Dashboard</h2>
 
         <?php if ($sampleNotice['is_sample']): ?>
-            <div class="sample-data-notice">
+            <div class="<?php echo $isAdmin ? 'admin-notice' : 'sample-data-notice'; ?>">
                 <div class="notice-content">
                     <i class="fas fa-vial"></i>
                     <span><?php echo $sampleNotice['message']; ?></span>
-                    <?php echo $sampleNotice['action']; ?>
+                    <?php if (!$isAdmin): ?>
+                        <?php echo $sampleNotice['action']; ?>
+                    <?php else: ?>
+                        <a href="<?php echo $backUrl; ?>" class="btn">Back to Admin Panel</a>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endif; ?>
@@ -256,7 +295,12 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 			</section>
     </main>
 
-    <?php include 'user_footer.php'; ?>
+    <?php 
+    // UPDATED: Only include footer for regular users
+    if (!$isAdmin) {
+        include 'user_footer.php';
+    }
+    ?>
   </div>
 
   <script>

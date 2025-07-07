@@ -40,13 +40,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user = $result->fetch_assoc()) {
             if ($user['AccountStatus'] === 'Suspended') {
                 $errors['general'] = 'Your account has been suspended. Please contact support.';
-            } elseif (password_verify($password, $user['PasswordHash'])) { // FIXED: Use PasswordHash
+            } elseif (password_verify($password, $user['PasswordHash'])) {
                 $_SESSION['user_id'] = $user['UserID'];
                 $_SESSION['username'] = $user['Username'];
                 $_SESSION['role'] = $user['Role'];
-                $_SESSION['login_success'] = true;
+                // REMOVED: $_SESSION['login_success'] = true;
                 
-                // Redirect based on role
+                // DIRECT REDIRECT - no JavaScript needed
                 if ($user['Role'] === 'Admin') {
                     header("Location: admin/index.php");
                 } else {
@@ -133,14 +133,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 overlay.classList.add('show');
                 popup.classList.add('show');
                 
-                // Redirect in the same tab after showing popup briefly
+                // FIXED: Use window.location.replace() instead of href for same-tab redirect
                 setTimeout(function() {
-                    <?php if ($_SESSION['role'] === 'Admin'): ?>
-                        window.location.href = 'admin/index.php';
+                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'Admin'): ?>
+                        window.location.replace('admin/index.php');
                     <?php else: ?>
-                        window.location.href = 'user/index.php';
+                        window.location.replace('user/index.php');
                     <?php endif; ?>
-                }, 1500); // Show popup for 1.5 seconds then redirect
+                }, 1500);
             }
             
             <?php unset($_SESSION['login_success']); ?>

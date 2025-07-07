@@ -108,8 +108,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             }
                             
                             error_log("Transformed data count: " . count($transformedData));
-                            if (!empty($transformedData)) {
-                                error_log("Sample transformed row: " . json_encode($transformedData[0]));
+                            
+                            // CRITICAL FIX: Check for validation errors in session after transform
+                            if (session_status() == PHP_SESSION_NONE) {
+                                session_start();
+                            }
+                            
+                            // Check if there are validation errors even if some data was transformed
+                            if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
+                                error_log("Found validation errors after transform: " . count($_SESSION['validation_errors']));
+                                
+                                // If NO data was transformed, treat it as a complete failure
+                                if (empty($transformedData)) {
+                                    // Format detailed validation errors for response
+                                    $response['errors'] = [];
+                                    foreach ($_SESSION['validation_errors'] as $error) {
+                                        if (strpos($error, ' Suggestions: ') !== false) {
+                                            $parts = explode(' Suggestions: ', $error, 2);
+                                            $response['errors'][] = [
+                                                'message' => $parts[0],
+                                                'suggestions' => $parts[1]
+                                            ];
+                                        } else {
+                                            $response['errors'][] = ['message' => $error];
+                                        }
+                                    }
+                                    
+                                    $response['message'] = "Data validation errors found: " . implode('; ', $_SESSION['validation_errors']) . ". Please correct these issues and upload again.";
+                                    
+                                    // Clear validation errors
+                                    unset($_SESSION['validation_errors']);
+                                    
+                                    // Clean up file
+                                    if (file_exists($filePath)) {
+                                        unlink($filePath);
+                                        error_log("Cleaned up file due to validation errors: " . $filePath);
+                                    }
+                                    
+                                    // Return error response immediately
+                                    if ($isAjax) {
+                                        header('Content-Type: application/json');
+                                        echo json_encode($response);
+                                    } else {
+                                        $_SESSION['sample_upload_message'] = $response;
+                                        header('Location: upload_sample_data.php');
+                                    }
+                                    exit;
+                                }
                             }
                             
                             if (empty($transformedData)) {
@@ -122,6 +167,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     error_log("Cleaned up file (no data): " . $filePath);
                                 }
                             } else {
+                                // Sample transformed row logging
+                                if (!empty($transformedData)) {
+                                    error_log("Sample transformed row: " . json_encode($transformedData[0]));
+                                }
+                                
                                 // Save as sample data
                                 error_log("Attempting to save sample data...");
                                 $saved = saveSampleData($conn, $transformedData, $fileName, $_FILES['sampleCsv']['size'], $reportType, $metadata);
@@ -163,6 +213,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $response['message'] = "Error processing file: " . $e->getMessage();
                 error_log("Exception during processing: " . $e->getMessage());
                 error_log("Stack trace: " . $e->getTraceAsString());
+                
+                // CRITICAL FIX: Check session for validation errors first
+                if (session_status() == PHP_SESSION_NONE) {
+                    session_start();
+                }
+                
+                // If there are validation errors in session, use those instead of the generic message
+                if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
+                    error_log("Found " . count($_SESSION['validation_errors']) . " validation errors in session");
+                    
+                    // Format the validation errors for detailed display
+                    $response['errors'] = [];
+                    foreach ($_SESSION['validation_errors'] as $error) {
+                        if (strpos($error, ' Suggestions: ') !== false) {
+                            $parts = explode(' Suggestions: ', $error, 2);
+                            $response['errors'][] = [
+                                'message' => $parts[0],
+                                'suggestions' => $parts[1]
+                            ];
+                        } else {
+                            $response['errors'][] = ['message' => $error];
+                        }
+                    }
+                    
+                    // Override the generic message with detailed count
+                    $response['message'] = "Data validation errors found: " . implode('; ', $_SESSION['validation_errors']) . ". Please correct these issues and upload again.";
+                    
+                    // Clear the session validation errors
+                    unset($_SESSION['validation_errors']);
+                    
+                } else {
+                    // Enhanced error response for validation errors from exception message
+                    if (strpos($e->getMessage(), 'Data validation errors') !== false ||
+                        strpos($e->getMessage(), 'No valid data') !== false ||
+                        strpos($e->getMessage(), 'CSV parsing error') !== false) {
+                        
+                        // Parse validation errors for detailed display
+                        $errorMessage = $e->getMessage();
+                        $errorMessage = str_replace("Error processing file: ", "", $errorMessage);
+                        $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
+                        $errorMessage = str_replace(". Please correct these issues and upload again.", "", $errorMessage);
+                        
+                        if (strpos($e->getMessage(), 'No valid data') !== false) {
+                            $response['errors'] = [
+                                ['message' => 'No valid data found in CSV file - All rows failed validation'],
+                                ['message' => 'Common causes: Invalid file format, corrupt data, or unsupported CSV structure']
+                            ];
+                        } else {
+                            // Split validation errors by semicolon
+                            $errorList = explode(';', $errorMessage);
+                            $response['errors'] = [];
+                            
+                            foreach ($errorList as $error) {
+                                $error = trim($error);
+                                if (!empty($error)) {
+                                    if (strpos($error, ' Suggestions: ') !== false) {
+                                        $parts = explode(' Suggestions: ', $error, 2);
+                                        $response['errors'][] = [
+                                            'message' => $parts[0],
+                                            'suggestions' => $parts[1]
+                                        ];
+                                    } else {
+                                        $response['errors'][] = ['message' => $error];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 // Clean up on error
                 if (isset($filePath) && file_exists($filePath)) {
