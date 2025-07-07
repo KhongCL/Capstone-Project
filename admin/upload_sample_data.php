@@ -117,6 +117,50 @@ if ($result) {
                 });
             }
             
+            // Enhanced form submission with progress tracking
+            const uploadForm = document.querySelector('form[action="upload_sample.php"]');
+            if (uploadForm) {
+                uploadForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    if (!validateSampleFile()) {
+                        return false;
+                    }
+                    
+                    // Show loading state
+                    showUploadProgress();
+                    
+                    // Create FormData and submit via AJAX
+                    const formData = new FormData(this);
+                    
+                    fetch('upload_sample.php', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        hideUploadProgress();
+                        
+                        if (data.success) {
+                            showSuccessMessage(data.message);
+                            // Reset form
+                            uploadForm.reset();
+                            newReportTypeField.style.display = 'none';
+                        } else {
+                            showErrorMessage(data.message);
+                        }
+                    })
+                    .catch(error => {
+                        hideUploadProgress();
+                        console.error('Upload error:', error);
+                        showErrorMessage('An error occurred during upload. Please try again.');
+                    });
+                });
+            }
+            
             // Clear Sample Data Button
             const clearSampleDataBtn = document.getElementById('clearSampleDataBtn');
             if (clearSampleDataBtn) {
@@ -131,22 +175,83 @@ if ($result) {
                         .then(response => response.json())
                         .then(data => {
                             if (data.success) {
-                                alert(data.message);
-                                window.location.reload();
+                                showSuccessMessage(data.message);
                             } else {
-                                alert(data.message);
+                                showErrorMessage(data.message);
                             }
                         })
                         .catch(error => {
                             console.error('Error:', error);
-                            alert('An error occurred while clearing sample data.');
+                            showErrorMessage('An error occurred while clearing sample data.');
                         });
                     }
                 });
             }
         });
-        
-        // Form validation
+
+        function showUploadProgress() {
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+            }
+        }
+
+        function hideUploadProgress() {
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Upload Sample';
+            }
+        }
+
+        function showSuccessMessage(message) {
+            // Remove existing messages
+            removeExistingMessages();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message success';
+            messageDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+            
+            // Insert after the h2 title
+            const title = document.querySelector('h2');
+            if (title && title.parentNode) {
+                title.parentNode.insertBefore(messageDiv, title.nextSibling);
+            }
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
+        }
+
+        function showErrorMessage(message) {
+            // Remove existing messages
+            removeExistingMessages();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message error';
+            messageDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+            
+            // Insert after the h2 title
+            const title = document.querySelector('h2');
+            if (title && title.parentNode) {
+                title.parentNode.insertBefore(messageDiv, title.nextSibling);
+            }
+        }
+
+        function removeExistingMessages() {
+            const existingMessages = document.querySelectorAll('.message');
+            existingMessages.forEach(msg => {
+                if (msg.parentNode) {
+                    msg.parentNode.removeChild(msg);
+                }
+            });
+        }
+
+        // Form validation (keep existing function)
         function validateSampleFile() {
             const fileInput = document.getElementById('sampleCsv');
             const reportType = document.getElementById('reportType');
@@ -186,6 +291,6 @@ if ($result) {
             
             return true;
         }
-    </script>
+        </script>
 </body>
 </html>
