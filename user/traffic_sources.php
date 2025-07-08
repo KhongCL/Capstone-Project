@@ -127,6 +127,151 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     .admin-notice .btn:hover {
         background: rgba(255, 255, 255, 0.3);
     }
+
+    /* Filter Panel Styles */
+    .filter-panel {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .filter-panel h4 {
+        margin: 0 0 15px 0;
+        color: #495057;
+        font-size: 1.1em;
+    }
+
+    .filter-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: center;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .filter-group label {
+        font-weight: 500;
+        color: #495057;
+        font-size: 0.9em;
+    }
+
+    .filter-select, .filter-input {
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 0.9em;
+        min-width: 150px;
+    }
+
+    .filter-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 6px 12px;
+        border: 1px solid #007bff;
+        background: #007bff;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85em;
+        transition: all 0.3s ease;
+    }
+
+    .filter-btn:hover {
+        background: #0056b3;
+        transform: translateY(-1px);
+    }
+
+    .filter-btn.secondary {
+        background: #6c757d;
+        border-color: #6c757d;
+    }
+
+    .filter-btn.secondary:hover {
+        background: #545b62;
+    }
+
+    .source-selection {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        background: white;
+    }
+
+    .source-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+    }
+
+    .source-checkbox:hover {
+        background: #f8f9fa;
+    }
+
+    .source-checkbox input[type="checkbox"] {
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .source-checkbox label {
+        margin: 0;
+        cursor: pointer;
+        font-size: 0.9em;
+        flex: 1;
+    }
+
+    .filter-summary {
+        margin-top: 10px;
+        padding: 10px;
+        background: #e3f2fd;
+        border-radius: 4px;
+        font-size: 0.9em;
+        color: #1565c0;
+    }
+
+    .table-row-selected {
+        background-color: #e3f2fd !important;
+    }
+
+    .table-row-filtered {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .filter-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .source-selection {
+            grid-template-columns: 1fr;
+        }
+        
+        .filter-buttons {
+            justify-content: center;
+        }
+    }
   </style>
 </head>
 <body>
@@ -146,6 +291,58 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     
     <main>
       <h2>Traffic Sources Dashboard</h2>
+
+      <!-- Filter Panel -->
+      <div class="filter-panel">
+        <h4>🔍 Filter Traffic Sources</h4>
+        
+        <div class="filter-controls">
+          <!-- Top Sources Filter -->
+          <div class="filter-group">
+            <label for="topSourcesFilter">Show Top Sources:</label>
+            <select id="topSourcesFilter" class="filter-select">
+              <option value="all">All Sources</option>
+              <option value="5">Top 5</option>
+              <option value="10">Top 10</option>
+              <option value="15">Top 15</option>
+              <option value="20">Top 20</option>
+            </select>
+          </div>
+
+          <!-- Minimum Percentage Filter -->
+          <div class="filter-group">
+            <label for="minPercentageFilter">Min Percentage (%):</label>
+            <input type="number" id="minPercentageFilter" class="filter-input" min="0" max="100" step="0.1" placeholder="0.0">
+          </div>
+
+          <!-- Quick Filter Buttons -->
+          <div class="filter-buttons">
+            <button class="filter-btn" onclick="applyQuickFilter('major')">Major Sources (>5%)</button>
+            <button class="filter-btn" onclick="applyQuickFilter('moderate')">Moderate (1-5%)</button>
+            <button class="filter-btn" onclick="applyQuickFilter('minor')">Minor (<1%)</button>
+            <button class="filter-btn secondary" onclick="clearAllFilters()">Clear Filters</button>
+          </div>
+        </div>
+
+        <!-- Source Selection Area -->
+        <div style="margin-top: 15px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <label style="font-weight: 500; color: #495057;">Select Specific Sources:</label>
+            <div>
+              <button class="filter-btn" onclick="selectAllSources()">Select All</button>
+              <button class="filter-btn secondary" onclick="deselectAllSources()">Deselect All</button>
+            </div>
+          </div>
+          <div class="source-selection" id="sourceSelection">
+            <!-- Checkboxes will be populated by JavaScript -->
+          </div>
+        </div>
+
+        <!-- Filter Summary -->
+        <div class="filter-summary" id="filterSummary" style="display: none;">
+          <span id="filterSummaryText"></span>
+        </div>
+      </div>
 
       <!-- Sample Data Notice (from current) -->
       <?php if ($sampleNotice['is_sample']): ?>
@@ -174,7 +371,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         <div class="user-export-controls">
           <button onclick="exportChartToPDF()" class="user-export-btn pdf">
             <span class="icon">📄</span>
-            <span class="text">Export Chart to PDF</span>
+            <span class="text">Export to PDF</span>
           </button>
         </div>
       </section>
@@ -185,15 +382,23 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
           <table class="user-data-table" id="sourcesTable">
             <thead>
               <tr>
-                <th>Source</th>
+                <th>
+                  <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllRows(this)">
+                  Source
+                </th>
                 <th>Visits</th>
                 <th>Percentage</th>
               </tr>
             </thead>
             <tbody>
-              <?php foreach ($sourcesData as $source): ?>
-                <tr>
-                  <td><?php echo htmlspecialchars($source['traffic_source']); ?></td>
+              <?php foreach ($sourcesData as $index => $source): ?>
+                <tr data-source-index="<?php echo $index; ?>" data-source-name="<?php echo htmlspecialchars($source['traffic_source']); ?>" 
+                    data-visit-count="<?php echo $source['visit_count']; ?>" data-percentage="<?php echo $source['percentage']; ?>"
+                    onclick="toggleRowSelection(this)" style="cursor: pointer;">
+                  <td>
+                    <input type="checkbox" class="row-checkbox" onclick="event.stopPropagation(); toggleRowSelection(this.closest('tr'))">
+                    <?php echo htmlspecialchars($source['traffic_source']); ?>
+                  </td>
                   <td><?php echo number_format($source['visit_count']); ?></td>
                   <td><?php echo $source['percentage']; ?>%</td>
                 </tr>
@@ -242,6 +447,15 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       'rgba(255, 211, 99, 0.7)'
     ];
 
+    // Filtering variables
+    let filteredData = [...sourcesData];
+    let selectedSources = new Set();
+    let currentFilters = {
+      topSources: 'all',
+      minPercentage: 0,
+      selectedSources: []
+    };
+
     // Create chart context
     let currentChart = null;
     const ctx = document.getElementById('sourcesChart').getContext('2d');
@@ -251,14 +465,17 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       // Destroy existing chart if it exists  
       if (currentChart) currentChart.destroy();
       
+      // Use filtered data for chart
+      const chartData = getFilteredChartData();
+      
       // Chart configuration (enhanced from current with sample data support)
       const config = {
         type: type,
         data: {
-          labels: labels,
+          labels: chartData.labels,
           datasets: [{
-            data: type === 'pie' ? percentages : visitCounts,
-            backgroundColor: backgroundColors,
+            data: type === 'pie' ? chartData.percentages : chartData.visitCounts,
+            backgroundColor: backgroundColors.slice(0, chartData.labels.length),
             borderWidth: 1
           }]
         },
@@ -279,8 +496,8 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
                   const label = context.label || '';
                   const value = context.raw;
                   return type === 'pie'
-                    ? `${label}: ${value}% (${visitCounts[context.dataIndex]} visits)`
-                    : `${label}: ${value} visits (${percentages[context.dataIndex]}%)`;
+                    ? `${label}: ${value}% (${chartData.visitCounts[context.dataIndex]} visits)`
+                    : `${label}: ${value} visits (${chartData.percentages[context.dataIndex]}%)`;
                 }
               }
             }
@@ -299,6 +516,46 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       currentChart = new Chart(ctx, config);
     }
 
+    // Get filtered data for chart
+    function getFilteredChartData() {
+      const data = getFilteredData();
+      return {
+        labels: data.map(item => item.traffic_source),
+        visitCounts: data.map(item => parseInt(item.visit_count)),
+        percentages: data.map(item => parseFloat(item.percentage))
+      };
+    }
+
+    // Get filtered data based on current filters
+    function getFilteredData() {
+      let data = [...sourcesData];
+
+      // Apply top sources filter
+      if (currentFilters.topSources !== 'all') {
+        const limit = parseInt(currentFilters.topSources);
+        data = data.sort((a, b) => parseInt(b.visit_count) - parseInt(a.visit_count)).slice(0, limit);
+      }
+
+      // Apply minimum percentage filter
+      if (currentFilters.minPercentage > 0) {
+        data = data.filter(source => parseFloat(source.percentage) >= currentFilters.minPercentage);
+      }
+
+      // Apply selected sources filter
+      if (currentFilters.selectedSources.length > 0) {
+        data = data.filter(source => currentFilters.selectedSources.includes(source.traffic_source));
+      }
+
+      // Recalculate percentages for filtered data
+      const totalFilteredVisits = data.reduce((sum, source) => sum + parseInt(source.visit_count), 0);
+      data = data.map(source => ({
+        ...source,
+        percentage: totalFilteredVisits > 0 ? ((parseInt(source.visit_count) / totalFilteredVisits) * 100).toFixed(1) : '0.0'
+      }));
+
+      return data;
+    }
+
     // Chart type toggle
     document.querySelectorAll('.user-chart-type-toggle .btn').forEach(button => {
       button.addEventListener('click', function() {
@@ -312,33 +569,363 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     // Initialize with pie chart
     createChart('pie');
 
-    // Export table to CSV (enhanced from current with sample data support)
-    function exportTableToCSV() {
-      const table = document.getElementById("sourcesTable");
-      let csv = [];
+    // Initialize filter components
+    initializeFilters();
 
-      for (let row of table.rows) {
-        let cols = Array.from(row.cells).map(cell => `"${cell.innerText.trim()}"`);
-        csv.push(cols.join(","));
+    // Filter Functions
+    function initializeFilters() {
+      // Populate source selection checkboxes
+      populateSourceSelection();
+      
+      // Add event listeners
+      document.getElementById('topSourcesFilter').addEventListener('change', handleTopSourcesChange);
+      document.getElementById('minPercentageFilter').addEventListener('input', handleMinPercentageChange);
+      
+      // Initialize with all sources selected
+      selectAllSources();
+    }
+
+    function populateSourceSelection() {
+      const container = document.getElementById('sourceSelection');
+      container.innerHTML = '';
+      
+      sourcesData.forEach((source, index) => {
+        const checkboxDiv = document.createElement('div');
+        checkboxDiv.className = 'source-checkbox';
+        
+        checkboxDiv.innerHTML = `
+          <input type="checkbox" id="source_${index}" value="${source.traffic_source}" 
+                 onchange="handleSourceSelectionChange()">
+          <label for="source_${index}">${source.traffic_source} (${source.percentage}%)</label>
+        `;
+        
+        container.appendChild(checkboxDiv);
+      });
+    }
+
+    function handleTopSourcesChange() {
+      currentFilters.topSources = document.getElementById('topSourcesFilter').value;
+      applyFilters();
+    }
+
+    function handleMinPercentageChange() {
+      const value = parseFloat(document.getElementById('minPercentageFilter').value) || 0;
+      currentFilters.minPercentage = value;
+      applyFilters();
+    }
+
+    function handleSourceSelectionChange() {
+      const checkboxes = document.querySelectorAll('#sourceSelection input[type="checkbox"]');
+      const selected = [];
+      
+      checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+          selected.push(checkbox.value);
+        }
+      });
+      
+      currentFilters.selectedSources = selected;
+      updateTableRowSelection();
+      applyFilters();
+    }
+
+    function applyQuickFilter(type) {
+      // Clear other filters first
+      document.getElementById('topSourcesFilter').value = 'all';
+      document.getElementById('minPercentageFilter').value = '';
+      
+      // Reset filters to default
+      currentFilters.topSources = 'all';
+      currentFilters.minPercentage = 0;
+      currentFilters.selectedSources = [];
+      
+      switch(type) {
+        case 'major':
+          // For major sources, show only sources > 5%
+          const majorSources = sourcesData.filter(source => {
+            const pct = parseFloat(source.percentage);
+            return pct > 5;
+          }).map(source => source.traffic_source);
+          currentFilters.selectedSources = majorSources;
+          updateSourceCheckboxes();
+          break;
+        case 'moderate':
+          // For moderate sources, show only sources between 1-5%
+          const moderateSources = sourcesData.filter(source => {
+            const pct = parseFloat(source.percentage);
+            return pct >= 1 && pct <= 5;
+          }).map(source => source.traffic_source);
+          currentFilters.selectedSources = moderateSources;
+          updateSourceCheckboxes();
+          break;
+        case 'minor':
+          // For minor sources, show only sources < 1%
+          const minorSources = sourcesData.filter(source => {
+            const pct = parseFloat(source.percentage);
+            return pct < 1;
+          }).map(source => source.traffic_source);
+          currentFilters.selectedSources = minorSources;
+          updateSourceCheckboxes();
+          break;
       }
+      
+      applyFilters();
+    }
+
+    function clearAllFilters() {
+      // Reset all filters
+      document.getElementById('topSourcesFilter').value = 'all';
+      document.getElementById('minPercentageFilter').value = '';
+      
+      currentFilters = {
+        topSources: 'all',
+        minPercentage: 0,
+        selectedSources: []
+      };
+      
+      // Select all sources
+      selectAllSources();
+      applyFilters();
+    }
+
+    function selectAllSources() {
+      const checkboxes = document.querySelectorAll('#sourceSelection input[type="checkbox"]');
+      checkboxes.forEach(checkbox => checkbox.checked = true);
+      
+      currentFilters.selectedSources = sourcesData.map(source => source.traffic_source);
+      updateTableRowSelection();
+      applyFilters();
+    }
+
+    function deselectAllSources() {
+      const checkboxes = document.querySelectorAll('#sourceSelection input[type="checkbox"]');
+      checkboxes.forEach(checkbox => checkbox.checked = false);
+      
+      currentFilters.selectedSources = [];
+      updateTableRowSelection();
+      applyFilters();
+    }
+
+    function updateSourceCheckboxes() {
+      const checkboxes = document.querySelectorAll('#sourceSelection input[type="checkbox"]');
+      checkboxes.forEach(checkbox => {
+        checkbox.checked = currentFilters.selectedSources.includes(checkbox.value);
+      });
+      updateTableRowSelection();
+    }
+
+    function applyFilters() {
+      filteredData = getFilteredData();
+      updateTable();
+      updateChart();
+      updateFilterSummary();
+    }
+
+    function updateTable() {
+      const tableRows = document.querySelectorAll('#sourcesTable tbody tr');
+      
+      tableRows.forEach(row => {
+        const sourceName = row.dataset.sourceName;
+        const percentage = parseFloat(row.dataset.percentage);
+        
+        let showRow = true;
+        
+        // Check top sources filter
+        if (currentFilters.topSources !== 'all') {
+          const sortedSources = [...sourcesData].sort((a, b) => parseInt(b.visit_count) - parseInt(a.visit_count));
+          const topSources = sortedSources.slice(0, parseInt(currentFilters.topSources));
+          showRow = showRow && topSources.some(source => source.traffic_source === sourceName);
+        }
+        
+        // Check minimum percentage filter
+        if (currentFilters.minPercentage > 0) {
+          showRow = showRow && percentage >= currentFilters.minPercentage;
+        }
+        
+        // Check selected sources filter
+        if (currentFilters.selectedSources.length > 0) {
+          showRow = showRow && currentFilters.selectedSources.includes(sourceName);
+        }
+        
+        if (showRow) {
+          row.style.display = '';
+          row.classList.remove('table-row-filtered');
+        } else {
+          row.style.display = 'none';
+          row.classList.add('table-row-filtered');
+        }
+      });
+      
+      // Update table percentages for visible rows
+      updateTablePercentages();
+    }
+
+    function updateTablePercentages() {
+      const visibleRows = document.querySelectorAll('#sourcesTable tbody tr:not(.table-row-filtered)');
+      const totalVisits = filteredData.reduce((sum, source) => sum + parseInt(source.visit_count), 0);
+      
+      visibleRows.forEach(row => {
+        const sourceName = row.dataset.sourceName;
+        const filteredSource = filteredData.find(source => source.traffic_source === sourceName);
+        
+        if (filteredSource) {
+          const percentageCell = row.cells[2];
+          percentageCell.textContent = `${filteredSource.percentage}%`;
+        }
+      });
+    }
+
+    function updateChart() {
+      const currentChartType = document.querySelector('.user-chart-type-toggle .btn.active').dataset.chartType;
+      createChart(currentChartType);
+    }
+
+    function updateFilterSummary() {
+      const summaryDiv = document.getElementById('filterSummary');
+      const summaryText = document.getElementById('filterSummaryText');
+      
+      if (filteredData.length === sourcesData.length) {
+        summaryDiv.style.display = 'none';
+        return;
+      }
+      
+      const totalOriginal = sourcesData.length;
+      const totalFiltered = filteredData.length;
+      const totalVisitsOriginal = sourcesData.reduce((sum, source) => sum + parseInt(source.visit_count), 0);
+      const totalVisitsFiltered = filteredData.reduce((sum, source) => sum + parseInt(source.visit_count), 0);
+      
+      summaryText.innerHTML = `
+        Showing ${totalFiltered} of ${totalOriginal} sources 
+        (${((totalVisitsFiltered / totalVisitsOriginal) * 100).toFixed(1)}% of total visits)
+      `;
+      
+      summaryDiv.style.display = 'block';
+    }
+
+    // Table row selection functions
+    function toggleRowSelection(row) {
+      const checkbox = row.querySelector('.row-checkbox');
+      checkbox.checked = !checkbox.checked;
+      
+      if (checkbox.checked) {
+        row.classList.add('table-row-selected');
+      } else {
+        row.classList.remove('table-row-selected');
+      }
+      
+      updateSourceCheckboxFromTable();
+    }
+
+    function toggleAllRows(masterCheckbox) {
+      const checkboxes = document.querySelectorAll('.row-checkbox');
+      const rows = document.querySelectorAll('#sourcesTable tbody tr');
+      
+      checkboxes.forEach((checkbox, index) => {
+        checkbox.checked = masterCheckbox.checked;
+        if (masterCheckbox.checked) {
+          rows[index].classList.add('table-row-selected');
+        } else {
+          rows[index].classList.remove('table-row-selected');
+        }
+      });
+      
+      updateSourceCheckboxFromTable();
+    }
+
+    function updateTableRowSelection() {
+      const rows = document.querySelectorAll('#sourcesTable tbody tr');
+      
+      rows.forEach(row => {
+        const sourceName = row.dataset.sourceName;
+        const checkbox = row.querySelector('.row-checkbox');
+        const isSelected = currentFilters.selectedSources.includes(sourceName);
+        
+        checkbox.checked = isSelected;
+        if (isSelected) {
+          row.classList.add('table-row-selected');
+        } else {
+          row.classList.remove('table-row-selected');
+        }
+      });
+      
+      // Update master checkbox
+      updateMasterCheckbox();
+    }
+
+    function updateSourceCheckboxFromTable() {
+      const tableCheckboxes = document.querySelectorAll('.row-checkbox');
+      const selected = [];
+      
+      tableCheckboxes.forEach((checkbox, index) => {
+        if (checkbox.checked) {
+          const row = checkbox.closest('tr');
+          selected.push(row.dataset.sourceName);
+        }
+      });
+      
+      currentFilters.selectedSources = selected;
+      updateSourceCheckboxes();
+      updateMasterCheckbox();
+      applyFilters();
+    }
+
+    function updateMasterCheckbox() {
+      const masterCheckbox = document.getElementById('selectAllCheckbox');
+      const tableCheckboxes = document.querySelectorAll('.row-checkbox');
+      const checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
+      
+      if (checkedCount === 0) {
+        masterCheckbox.checked = false;
+        masterCheckbox.indeterminate = false;
+      } else if (checkedCount === tableCheckboxes.length) {
+        masterCheckbox.checked = true;
+        masterCheckbox.indeterminate = false;
+      } else {
+        masterCheckbox.checked = false;
+        masterCheckbox.indeterminate = true;
+      }
+    }
+
+    // Export table to CSV (enhanced with filtering support)
+    function exportTableToCSV() {
+      let csv = [];
+      
+      // Add header
+      const headers = ['Source', 'Visits', 'Percentage'];
+      csv.push(headers.map(h => `"${h}"`).join(","));
+      
+      // Add only filtered/visible data
+      filteredData.forEach(source => {
+        const row = [
+          source.traffic_source,
+          parseInt(source.visit_count).toLocaleString(),
+          `${source.percentage}%`
+        ];
+        csv.push(row.map(cell => `"${cell}"`).join(","));
+      });
 
       const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `traffic_sources_table${isSampleData ? '_sample' : ''}.csv`;
+      
+      // Include filter info in filename
+      const filterSuffix = filteredData.length === sourcesData.length ? '' : '_filtered';
+      a.download = `traffic_sources_table${filterSuffix}${isSampleData ? '_sample' : ''}.csv`;
+      
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      // Log export in DB (enhanced from current)
+      // Log export in DB
+      const filterInfo = filteredData.length === sourcesData.length ? '' : ` (${filteredData.length}/${sourcesData.length} sources)`;
       fetch('log_export.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `exportType=CSV&description=Exported traffic sources table data (uploadId: ${uploadId}, sample: ${isSampleData})`
+        body: `exportType=CSV&description=Exported traffic sources table data${filterInfo} (uploadId: ${uploadId}, sample: ${isSampleData})`
       }).then(response => response.json())
         .then(data => {
           if (!data.success) {
@@ -350,7 +937,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         });
     }
 
-    // Export chart to PDF (comprehensive version from incoming, enhanced with sample data support)
+    // Export chart to PDF (enhanced with filtering support)
     async function exportChartToPDF() {
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -375,7 +962,10 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       // Header
       pdf.setFontSize(20);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('TrafAnalyz Traffic Sources Report', pageWidth/2, yPosition, { align: 'center' });
+      const titleText = filteredData.length === sourcesData.length ? 
+        'TrafAnalyz Traffic Sources Report' : 
+        'TrafAnalyz Traffic Sources Report (Filtered)';
+      pdf.text(titleText, pageWidth/2, yPosition, { align: 'center' });
         
       yPosition += 15;
         
@@ -386,7 +976,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       yPosition += 5;
       pdf.text(`Generated by: ${username}`, pageWidth - margin, yPosition, { align: 'right' });
       
-      // Sample data indicator (enhanced from current)
+      // Sample data indicator
       if (isSampleData) {
         yPosition += 5;
         pdf.setFontSize(12);
@@ -397,6 +987,36 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       }
         
       yPosition += 20;
+
+      // Filter Information (if filtered)
+      if (filteredData.length !== sourcesData.length) {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Filter Information', margin, yPosition);
+        yPosition += 10;
+
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(`Showing ${filteredData.length} of ${sourcesData.length} total sources`, margin, yPosition);
+        yPosition += 5;
+
+        if (currentFilters.topSources !== 'all') {
+          pdf.text(`Top Sources Filter: Top ${currentFilters.topSources}`, margin, yPosition);
+          yPosition += 5;
+        }
+
+        if (currentFilters.minPercentage > 0) {
+          pdf.text(`Minimum Percentage: ${currentFilters.minPercentage}%`, margin, yPosition);
+          yPosition += 5;
+        }
+
+        if (currentFilters.selectedSources.length > 0 && currentFilters.selectedSources.length < sourcesData.length) {
+          pdf.text(`Custom Selection: ${currentFilters.selectedSources.length} sources selected`, margin, yPosition);
+          yPosition += 5;
+        }
+
+        yPosition += 10;
+      }
         
       // Traffic Sources Summary Section
       pdf.setFontSize(16);
@@ -404,10 +1024,10 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       pdf.text('Traffic Sources Summary', margin, yPosition);
       yPosition += 10;
         
-      // Calculate totals and insights
-      const totalSources = sourcesData.length;
-      const totalVisits = sourcesData.reduce((sum, source) => sum + parseInt(source.visit_count), 0);
-      const topSource = sourcesData.reduce((top, current) => 
+      // Calculate totals and insights (use filtered data)
+      const totalSources = filteredData.length;
+      const totalVisits = filteredData.reduce((sum, source) => sum + parseInt(source.visit_count), 0);
+      const topSource = filteredData.reduce((top, current) => 
         parseInt(current.visit_count) > parseInt(top.visit_count) ? current : top
       );
     
@@ -423,7 +1043,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       pdf.text(`Top Source Visits: ${parseInt(topSource.visit_count).toLocaleString()}`, margin, yPosition);
       yPosition += 15;
     
-      // Traffic Sources detailed table
+      // Traffic Sources detailed table (use filtered data)
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Traffic Sources Breakdown', margin, yPosition);
@@ -432,8 +1052,8 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       const tableHeaders = ['Source', 'Visits', 'Percentage'];
       const tableData = [tableHeaders];
     
-      // Add data rows
-      sourcesData.forEach(source => {
+      // Add filtered data rows
+      filteredData.forEach(source => {
         tableData.push([
           source.traffic_source,
           parseInt(source.visit_count).toLocaleString(),
@@ -472,10 +1092,13 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     
       yPosition += 15;
     
-      // Pie Chart section
+      // Charts section
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Traffic Sources Distribution (Pie Chart)', margin, yPosition);
+      const chartTitle = filteredData.length === sourcesData.length ? 
+        'Traffic Sources Distribution (Pie Chart)' : 
+        'Filtered Traffic Sources Distribution (Pie Chart)';
+      pdf.text(chartTitle, margin, yPosition);
       yPosition += 10;
     
       // Check if we need a new page for the chart
@@ -484,7 +1107,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         yPosition = 30;
         pdf.setFontSize(16);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Traffic Sources Distribution (Pie Chart)', margin, yPosition);
+        pdf.text(chartTitle, margin, yPosition);
         yPosition += 10;
       }
     
@@ -493,7 +1116,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       
       // Switch to pie chart and capture
       createChart('pie');
-      await new Promise(resolve => setTimeout(resolve, 500)); // Wait for chart to render
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for chart to render
     
       const chartContainer = document.getElementById('chartContainer');
       const pieChartImage = await html2canvas(chartContainer);
@@ -515,7 +1138,10 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       // Bar Chart section
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Traffic Sources by Visit Count (Bar Chart)', margin, yPosition);
+      const barChartTitle = filteredData.length === sourcesData.length ? 
+        'Traffic Sources by Visit Count (Bar Chart)' : 
+        'Filtered Traffic Sources by Visit Count (Bar Chart)';
+      pdf.text(barChartTitle, margin, yPosition);
       yPosition += 10;
     
       // Switch to bar chart and capture
@@ -535,13 +1161,12 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       document.querySelectorAll('.user-chart-type-toggle .btn').forEach(btn => btn.classList.remove('active'));
       document.querySelector(`[data-chart-type="${currentChartType}"]`).classList.add('active');
     
-      // Check if we need a new page for insights
+      // Key Insights section (use filtered data)
       if (yPosition > 200) {
         pdf.addPage();
         yPosition = 30;
       }
     
-      // Key Insights section
       pdf.setFontSize(14);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Key Insights', margin, yPosition);
@@ -550,34 +1175,34 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
     
-      // Find top 3 sources
-      const sortedSources = [...sourcesData].sort((a, b) => parseInt(b.visit_count) - parseInt(a.visit_count));
+      // Find top 3 sources from filtered data
+      const sortedSources = [...filteredData].sort((a, b) => parseInt(b.visit_count) - parseInt(a.visit_count));
       const topSources = sortedSources.slice(0, 3);
     
       if (topSources[0]) {
         pdf.text(`• Primary traffic source: ${topSources[0].traffic_source}`, margin, yPosition);
         yPosition += 5;
-        pdf.text(`  (${parseInt(topSources[0].visit_count).toLocaleString()} visits, ${parseFloat(topSources[0].percentage).toFixed(1)}% of total traffic)`, margin + 5, yPosition);
+        pdf.text(`  (${parseInt(topSources[0].visit_count).toLocaleString()} visits, ${parseFloat(topSources[0].percentage).toFixed(1)}% of filtered traffic)`, margin + 5, yPosition);
         yPosition += 8;
       }
     
       if (topSources[1]) {
         pdf.text(`• Secondary traffic source: ${topSources[1].traffic_source}`, margin, yPosition);
         yPosition += 5;
-        pdf.text(`  (${parseInt(topSources[1].visit_count).toLocaleString()} visits, ${parseFloat(topSources[1].percentage).toFixed(1)}% of total traffic)`, margin + 5, yPosition);
+        pdf.text(`  (${parseInt(topSources[1].visit_count).toLocaleString()} visits, ${parseFloat(topSources[1].percentage).toFixed(1)}% of filtered traffic)`, margin + 5, yPosition);
         yPosition += 8;
       }
     
       if (topSources[2]) {
         pdf.text(`• Third largest source: ${topSources[2].traffic_source}`, margin, yPosition);
         yPosition += 5;
-        pdf.text(`  (${parseInt(topSources[2].visit_count).toLocaleString()} visits, ${parseFloat(topSources[2].percentage).toFixed(1)}% of total traffic)`, margin + 5, yPosition);
+        pdf.text(`  (${parseInt(topSources[2].visit_count).toLocaleString()} visits, ${parseFloat(topSources[2].percentage).toFixed(1)}% of filtered traffic)`, margin + 5, yPosition);
         yPosition += 8;
       }
     
-      // Calculate diversity metrics
+      // Calculate diversity metrics for filtered data
       const topThreePercentage = topSources.slice(0, 3).reduce((sum, source) => sum + parseFloat(source.percentage), 0);
-      pdf.text(`• Top 3 sources account for ${topThreePercentage.toFixed(1)}% of total traffic`, margin, yPosition);
+      pdf.text(`• Top 3 sources account for ${topThreePercentage.toFixed(1)}% of filtered traffic`, margin, yPosition);
       yPosition += 8;
     
       // Traffic diversity assessment
@@ -610,6 +1235,11 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       yPosition += 5;
       pdf.text(`Charts Included: Pie Chart (percentage distribution), Bar Chart (visit counts)`, margin, yPosition);
       
+      if (filteredData.length !== sourcesData.length) {
+        yPosition += 5;
+        pdf.text(`Filters Applied: ${sourcesData.length - filteredData.length} sources excluded`, margin, yPosition);
+      }
+      
       if (isSampleData) {
         yPosition += 10;
         pdf.setFontSize(10);
@@ -619,16 +1249,18 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         pdf.setTextColor(0, 0, 0);
       }
     
-      // Save PDF with descriptive filename (enhanced with sample data support)
-      pdf.save(`TrafAnalyz_Traffic_Sources_Report_${isSampleData ? 'Sample_' : ''}${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.pdf`);
+      // Save PDF with descriptive filename
+      const filterSuffix = filteredData.length === sourcesData.length ? '' : '_Filtered';
+      pdf.save(`TrafAnalyz_Traffic_Sources${filterSuffix}_Report_${isSampleData ? 'Sample_' : ''}${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.pdf`);
     
-      // Log the PDF export into the database (enhanced from current)
+      // Log the PDF export into the database
+      const filterInfo = filteredData.length === sourcesData.length ? '' : ` (${filteredData.length}/${sourcesData.length} sources)`;
       fetch('log_export.php', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: `exportType=PDF&description=Exported traffic sources comprehensive report with both pie and bar charts as PDF (uploadId: ${uploadId}, sample: ${isSampleData})`
+        body: `exportType=PDF&description=Exported traffic sources comprehensive report${filterInfo} with both pie and bar charts as PDF (uploadId: ${uploadId}, sample: ${isSampleData})`
       }).then(response => response.json())
         .then(data => {
           if (!data.success) {
