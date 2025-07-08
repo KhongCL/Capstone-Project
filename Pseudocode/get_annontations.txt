@@ -1,0 +1,28 @@
+START
+
+    REQUIRE user authentication from '../auth/user_auth.php'
+    REQUIRE database configuration from '../config.php'
+
+    SET userId to the current user's ID from session
+    SET uploadId to the value from GET parameter 'uploadId'
+
+    PREPARE SQL statement:
+        "SELECT AnnotationID, DataDate, AnnotationText FROM annotation WHERE UserID = ? AND UploadID = ?"
+    BIND userId and uploadId as parameters to the SQL statement
+    EXECUTE the SQL statement
+
+    GET the result set from the executed statement
+
+    INITIALIZE an empty list called annotations
+
+    FOR each row in the result set
+        CREATE an annotation dictionary with:
+            "id" set to AnnotationID from the row
+            "date" set to DataDate from the row
+            "note" set to AnnotationText from the row
+        APPEND the annotation dictionary to the annotations list
+    END FOR
+
+    OUTPUT the annotations list as a JSON response
+
+END

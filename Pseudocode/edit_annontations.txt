@@ -1,0 +1,42 @@
+START
+
+    IMPORT user authentication module
+    IMPORT database configuration
+
+    INITIALIZE response as a dictionary with 'success' set to False and 'message' as an empty string
+
+    IF any of the required POST parameters ('annotationId', 'uploadId', 'dataDate', 'note') are missing THEN
+        SET response['message'] to "Missing required parameters"
+        OUTPUT response as JSON
+        EXIT
+    END IF
+
+    SET annotationId to integer value of POST['annotationId']
+    SET uploadId to integer value of POST['uploadId']
+    SET userId to the current session's user_id
+    SET dataDate to POST['dataDate']
+    SET note to POST['note']
+
+    TRY
+        PREPARE SQL statement to update annotation:
+            "UPDATE annotation SET DataDate = ?, AnnotationText = ? WHERE AnnotationID = ? AND UserID = ? AND UploadID = ?"
+        BIND parameters (dataDate, note, annotationId, userId, uploadId) to the SQL statement
+
+        IF statement executes successfully THEN
+            IF affected rows > 0 THEN
+                SET response['success'] to True
+                SET response['message'] to "Annotation updated successfully"
+            ELSE
+                SET response['message'] to "No changes made or annotation not found"
+            END IF
+        ELSE
+            SET response['message'] to "Error updating annotation"
+        END IF
+    CATCH any Exception as e
+        SET response['message'] to "Database error: " + e.message
+    END TRY
+
+    SET HTTP header to 'Content-Type: application/json'
+    OUTPUT response as JSON
+
+END
