@@ -5,6 +5,21 @@ require_once '../functions.php';
 
 date_default_timezone_set('Asia/Kuala_Lumpur');
 
+// Log export to database if coming from export action
+if (isset($_GET['export']) && $_GET['export'] == '1') {
+    $userId = $_SESSION['user_id'] ?? null;
+    
+    if ($userId) {
+        $exportType = 'PDF';
+        $currentDate = date('Y-m-d');
+        $description = "Admin exported user management report as PDF - $currentDate";
+        
+        $stmt = $conn->prepare("INSERT INTO export_history (UserID, ExportType, ExportedDataDescription) VALUES (?, ?, ?)");
+        $stmt->bind_param("iss", $userId, $exportType, $description);
+        $stmt->execute();
+    }
+}
+
 // Get users
 $users = [];
 $sql = "SELECT UserID, Username, Email, Role, AccountStatus, CreatedAt FROM user ORDER BY UserID";
@@ -133,8 +148,8 @@ foreach ($users as $user) {
 <body>
     <div class="non-print">
         <h2>User Management Report - Print View</h2>
-        <p>This page is formatted for printing. Use your browser's print function (Ctrl+P or Cmd+P) to print or save as PDF.</p>
-        <button class="btn" onclick="window.print();">Print / Save as PDF</button>
+        <p>This page is formatted for printing. When you click Print/Save, the export will be logged automatically.</p>
+        <button class="btn" id="printButton">Print / Save as PDF</button>
         <a class="btn" href="admin_users.php" style="background-color: #6c757d;">Back to User Management</a>
     </div>
 
@@ -183,5 +198,27 @@ foreach ($users as $user) {
     </table>
     
     <?php include 'admin_footer.php'; ?>
-</body>
+    
+    <script>
+    // Handle export with logging
+    document.getElementById('printButton').addEventListener('click', function() {
+        // Log the export action first
+        fetch('export_users_pdf.php?export=1', {
+            method: 'GET'
+        }).then(response => {
+            // Generate filename for PDF
+            const today = new Date();
+            const dateStr = today.getFullYear() + '-' + 
+                          String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                          String(today.getDate()).padStart(2, '0');
+            const filename = 'TrafAnalyz_User_Report_' + dateStr + '.pdf';
+            
+            // Set the document title (will be used as default filename)
+            document.title = filename;
+            
+            // Trigger print dialog
+            window.print();
+        });
+    });
+    </script>
 </html>
