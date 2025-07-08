@@ -6,41 +6,100 @@ include '../functions.php';
 
 session_start();
 
-// Check if we came from comparison - if so, redirect to comparison mapping
-if (isset($_SESSION['compare_files'])) {
-    header('Location: map_columns_compare.php?file=1');
-    exit;
-}
-
-// CRITICAL FIX: Clear sample data session when user reaches manual mapping
+// Clear sample data session when user reaches manual mapping
 if (isset($_SESSION['using_sample_data'])) {
     unset($_SESSION['using_sample_data']);
     unset($_SESSION['sample_upload_id']);
-    error_log("Cleared sample data session in map_columns.php");
+    error_log("Cleared sample data session in map_columns_compare.php");
 }
 
 // Enhanced debugging for form submission
-error_log("=== MAP_COLUMNS.PHP DEBUG ===");
+error_log("=== MAP_COLUMNS_COMPARE.PHP DEBUG ===");
 error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
 error_log("POST data: " . print_r($_POST, true));
-error_log("Session uploaded_csv: " . ($_SESSION['uploaded_csv'] ?? 'NOT SET'));
-error_log("Session mapping_result: " . (isset($_SESSION['mapping_result']) ? 'SET' : 'NOT SET'));
+error_log("GET data: " . print_r($_GET, true));
+error_log("HTTP_REFERER: " . ($_SERVER['HTTP_REFERER'] ?? 'NOT SET'));
+error_log("Session compare_files: " . (isset($_SESSION['compare_files']) ? 'SET' : 'NOT SET'));
+if (isset($_SESSION['compare_files'])) {
+    error_log("Compare files structure: " . json_encode($_SESSION['compare_files']));
+}
 error_log("Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
+error_log("All session variables: " . print_r($_SESSION, true));
 
-// If no uploaded file in session, redirect
-if (!isset($_SESSION['uploaded_csv'])) {
-    header('Location: index.php');
+// CRITICAL FIX: Wait a moment and try to restore session if it's missing
+if (!isset($_SESSION['compare_files'])) {
+    error_log("CRITICAL: compare_files not found in session, attempting to restore...");
+    
+    // Try to restore from uploaded files if we have them
+    if (isset($_SESSION['uploaded_csv']) && isset($_SESSION['mapping_result'])) {
+        error_log("Found uploaded_csv and mapping_result in session, attempting manual restoration");
+        
+        // Get the file number from URL
+        $currentFileIndex = $_GET['file'] ?? 1;
+        
+        // Try to reconstruct the comparison session structure
+        $filePath = $_SESSION['uploaded_csv'];
+        $fileName = basename($filePath);
+        
+        if (file_exists($filePath)) {
+            $_SESSION['compare_files'] = [
+                $currentFileIndex => [
+                    'name' => $fileName,
+                    'path' => $filePath,
+                    'upload_id' => $_SESSION['latest_upload_id'] ?? null,
+                    'needs_mapping' => true,
+                    'mapped' => false,
+                    'result' => $_SESSION['mapping_result']
+                ]
+            ];
+            
+            error_log("Successfully restored compare_files session for file $currentFileIndex");
+        } else {
+            error_log("ERROR: Cannot restore - uploaded file does not exist: $filePath");
+        }
+    }
+}
+
+// Check if we have comparison files in session
+if (!isset($_SESSION['compare_files'])) {
+    error_log("ERROR: No compare_files in session after restoration attempt - redirecting to compare.php");
+    header('Location: compare.php');
     exit;
 }
 
-$processor = new CsvProcessor();
+$compareFiles = $_SESSION['compare_files'];
+$currentFileIndex = $_GET['file'] ?? 1; // Which file we're mapping (1 or 2)
+error_log("Current file index: $currentFileIndex");
 
-// Process the initial mapping if first visit
-if (!isset($_SESSION['mapping_result'])) {
-    $_SESSION['mapping_result'] = $processor->processFile($_SESSION['uploaded_csv']);
+$currentFile = $compareFiles[$currentFileIndex] ?? null;
+
+if (!$currentFile) {
+    error_log("ERROR: Current file not found - index $currentFileIndex not in compareFiles");
+    error_log("Available indices: " . implode(', ', array_keys($compareFiles)));
+    $_SESSION['compare_error'] = "File information not found for mapping.";
+    header('Location: compare.php');
+    exit;
 }
 
-$mappingResult = $_SESSION['mapping_result'];
+if (!file_exists($currentFile['path'])) {
+    error_log("ERROR: File path does not exist: " . ($currentFile['path'] ?? 'NULL'));
+    $_SESSION['compare_error'] = "File not found for mapping.";
+    header('Location: compare.php');
+    exit;
+}
+
+error_log("Successfully found file for mapping: " . $currentFile['path']);
+
+$processor = new CsvProcessor();
+
+// Process the mapping for current file
+if (!isset($_SESSION["mapping_result_$currentFileIndex"])) {
+    $_SESSION["mapping_result_$currentFileIndex"] = $processor->processFile($currentFile['path']);
+}
+
+$mappingResult = $_SESSION["mapping_result_$currentFileIndex"];
+
+// Get system fields (same as map_columns.php)
 $systemFields = [];
 $query = "SELECT DISTINCT SystemFieldName, 
           GROUP_CONCAT(DISTINCT CSVColumnName SEPARATOR ', ') as CSVColumnNames 
@@ -62,7 +121,6 @@ if ($result) {
 // Also add any system fields that might be missing from database but exist in JSON
 $allSystemFields = [];
 if (isset($mappingResult['format']) && $mappingResult['format']) {
-    $processor = new CsvProcessor();
     $mappings = json_decode(file_get_contents(__DIR__ . '/../config/csv_mappings.json'), true);
     if (isset($mappings[$mappingResult['format']]['column_mappings'])) {
         foreach ($mappings[$mappingResult['format']]['column_mappings'] as $csvCol => $systemField) {
@@ -91,7 +149,7 @@ foreach ($allSystemFields as $field => $label) {
 
 // Handle form submission for manual mapping
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
-    error_log("=== PROCESSING FORM SUBMISSION ===");
+    error_log("=== PROCESSING FORM SUBMISSION FOR FILE $currentFileIndex ===");
     
     $columnMapping = [];
     foreach ($_POST['mapping'] as $sourceCol => $targetCol) {
@@ -108,12 +166,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         $error_message = "Please map at least one column before proceeding.";
         error_log("ERROR: No columns mapped");
     } else {
-        error_log("Starting data transformation...");
+        error_log("Starting data transformation for comparison file...");
         
         // For manual mapping cases, we need to determine the format
         $format = null;
         if (isset($mappingResult['format']) && $mappingResult['format']) {
-            // Format was detected but needed confirmation
             $format = $mappingResult['format'];
             error_log("Using detected format: $format");
         } else {
@@ -133,7 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         error_log("Using format for transformation: " . ($format ?? 'null'));
         
         try {
-            $transformedData = $processor->transformData($_SESSION['uploaded_csv'], $columnMapping, $format);
+            $transformedData = $processor->transformData($currentFile['path'], $columnMapping, $format);
             error_log("Transformation completed. Rows: " . count($transformedData));
             
             if (empty($transformedData)) {
@@ -142,22 +199,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             } else {
                 error_log("Sample transformed data: " . json_encode($transformedData[0] ?? []));
                 
-                // Save transformed data to database
-                if (saveTransformedData($conn, $transformedData)) {
-                    error_log("Data successfully saved to database");
-                    $_SESSION['message'] = 'Data successfully imported and mapped.';
+                // Save transformed data to database with comparison flag
+                if (saveTransformedDataForComparison($conn, $transformedData, $currentFileIndex)) {
+                    error_log("Data successfully saved to database for comparison");
                     
-                    // CRITICAL: Clear mapping session data
-                    unset($_SESSION['mapping_result']);
-                    unset($_SESSION['uploaded_csv']);
-                    unset($_SESSION['csv_metadata']);
+                    // Mark this file as mapped
+                    $_SESSION['compare_files'][$currentFileIndex]['mapped'] = true;
+                    $_SESSION['compare_files'][$currentFileIndex]['upload_id'] = $_SESSION['latest_upload_id'];
                     
-                    error_log("Redirecting to overview.php");
-                    header('Location: overview.php');
-                    exit;
+                    // Clear mapping session data for this file
+                    unset($_SESSION["mapping_result_$currentFileIndex"]);
+                    
+                    // Check if we need to map the other file or proceed with comparison
+                    $nextFileIndex = ($currentFileIndex == 1) ? 2 : 1;
+                    $nextFile = $compareFiles[$nextFileIndex] ?? null;
+                    
+                    if ($nextFile && !isset($nextFile['mapped']) && isset($nextFile['needs_mapping']) && $nextFile['needs_mapping']) {
+                        // Redirect to map the next file
+                        error_log("Redirecting to map file $nextFileIndex");
+                        header("Location: map_columns_compare.php?file=$nextFileIndex");
+                        exit;
+                    } else {
+                        // All files are ready, proceed with comparison
+                        error_log("All files ready, redirecting to compare.php for comparison");
+                        $_SESSION['compare_ready'] = true;
+                        header('Location: compare.php');
+                        exit;
+                    }
                 } else {
                     error_log("ERROR: Failed to save data to database");
-                    // Check if we have a specific message from saveTransformedData
                     if (isset($_SESSION['upload_message'])) {
                         $error_message = $_SESSION['upload_message']['message'];
                         unset($_SESSION['upload_message']);
@@ -174,6 +244,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
     
     error_log("=== END FORM PROCESSING ===");
 }
+
+// Function to save transformed data specifically for comparison
+function saveTransformedDataForComparison($conn, $transformedData, $fileIndex) {
+    // Use the same saveTransformedData function but with comparison context
+    $result = saveTransformedData($conn, $transformedData);
+    
+    if ($result) {
+        // Store the upload ID for comparison use
+        if (isset($_SESSION['latest_upload_id'])) {
+            $_SESSION["compare_file_{$fileIndex}_upload_id"] = $_SESSION['latest_upload_id'];
+            error_log("Stored upload ID for comparison file $fileIndex: " . $_SESSION['latest_upload_id']);
+        }
+    }
+    
+    return $result;
+}
 ?>
 
 <!DOCTYPE html>
@@ -181,7 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Map CSV Columns - Web Traffic Analysis Dashboard</title>
+    <title>Map CSV Columns for Comparison - Web Traffic Analysis Dashboard</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="user_style.css">
 </head>
@@ -191,70 +277,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         
         <main>
             <section class="user-mapping-section">
-                <h2>Map CSV Columns</h2>
+                <h2>Map CSV Columns - File <?php echo $currentFileIndex; ?> for Comparison</h2>
+                
+                <div class="user-alert user-alert-info">
+                    <h4>📊 Mapping File <?php echo $currentFileIndex; ?> for Comparison</h4>
+                    <p><strong>File:</strong> <?php echo htmlspecialchars($currentFile['name'] ?? 'Unknown file'); ?></p>
+                    <p>This file requires manual column mapping before it can be used in the comparison. Please map the columns below and we'll return to the comparison page.</p>
+                </div>
+                
                 <?php if (isset($error_message)): ?>
-                    <?php 
-                    // Check if this is a validation error message with multiple errors
-                    if (strpos($error_message, 'Data validation errors found:') !== false): 
-                        // Parse the validation errors for better display
-                        $errorText = str_replace('Data validation errors found: ', '', $error_message);
-                        $errorText = str_replace('. Please correct these issues and upload again.', '', $errorText);
-                        
-                        // Split by row pattern to separate individual errors
-                        $errors = preg_split('/(?=Row \d+)/', $errorText);
-                        $errors = array_filter(array_map('trim', $errors)); // Remove empty elements
-                    ?>
-                        <div class="user-alert user-alert-danger">
-                            <h4>📋 Data Validation Issues Found</h4>
-                            <p><strong>Found <?php echo count($errors); ?> validation errors in your CSV file:</strong></p>
-                            
-                            <div class="validation-errors-list">
-                                <?php foreach ($errors as $error): ?>
-                                    <?php if (!empty($error)): ?>
-                                        <div class="error-item">
-                                            <?php
-                                            // Split error message and suggestions
-                                            if (strpos($error, ' Suggestions: ') !== false) {
-                                                $parts = explode(' Suggestions: ', $error);
-                                                $errorMsg = $parts[0];
-                                                $suggestions = $parts[1];
-                                            } else {
-                                                $errorMsg = $error;
-                                                $suggestions = null;
-                                            }
-                                            ?>
-                                            
-                                            <div class="error-message">
-                                                <i class="fas fa-exclamation-circle"></i>
-                                                <?php echo htmlspecialchars(trim($errorMsg)); ?>
-                                            </div>
-                                            
-                                            <?php if ($suggestions): ?>
-                                                <div class="error-suggestions">
-                                                    <i class="fas fa-lightbulb"></i>
-                                                    <strong>💡 Suggestions:</strong> <?php echo htmlspecialchars($suggestions); ?>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            </div>
-                            
-                            <p class="error-footer"><strong>Please correct these issues in your CSV file and upload again.</strong></p>
-                        </div>
-                    <?php else: ?>
-                        <!-- Display other types of messages -->
-                        <div class="user-alert user-alert-danger">
-                            <?php echo htmlspecialchars($error_message); ?>
-                        </div>
-                    <?php endif; ?>
+                    <div class="user-alert user-alert-danger">
+                        <?php echo htmlspecialchars($error_message); ?>
+                    </div>
                 <?php endif; ?>
 
                 <?php if (!isset($error_message)): ?>
                     <div class="user-alert user-alert-success">
                         <h4>🎉 Upload Successful!</h4>
                         <p><strong>Your CSV file has been successfully uploaded and validated.</strong></p>
-                        <p>Since the format wasn't automatically recognized, please review and confirm the column mappings below to complete the import process.</p>
+                        <p>Since the format wasn't automatically recognized, please review and confirm the column mappings below to continue with the comparison.</p>
                     </div>
                 <?php endif; ?>
                 
@@ -408,8 +449,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     </table>
                     
                     <div class="user-form-actions">
-                        <button type="submit" name="confirm_mapping" class="user-btn-primary">Confirm Mapping & Import Data</button>
-                        <a href="index.php?clear_mapping=1" class="user-btn-secondary">Cancel</a>
+                        <button type="submit" name="confirm_mapping" class="user-btn-primary">Confirm Mapping & Continue Comparison</button>
+                        <a href="compare.php" class="user-btn-secondary">Cancel Comparison</a>
                     </div>
                 </form>
                 
@@ -441,11 +482,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         
         <?php include 'user_footer.php'; ?>
     </div>
+
+<!-- Use the same JavaScript as map_columns.php -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const fieldSelects = document.querySelectorAll('.user-field-select');
     
-    // String similarity calculation function
+    // String similarity calculation function (same as map_columns.php)
     function calculateStringSimilarity(str1, str2) {
         // Convert to lowercase for comparison
         str1 = str1.toLowerCase().replace(/[_\s]/g, '');
@@ -581,7 +624,7 @@ document.addEventListener('DOMContentLoaded', function() {
     fieldSelects.forEach(select => {
         select.addEventListener('change', function() {
             updateAvailableOptions();
-            updateConfidence(this); // This will now work properly
+            updateConfidence(this);
         });
     });
     
@@ -595,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Rest of your existing form submission code...
+    // Form submission with progress animation
     const form = document.querySelector('form');
     const progressDiv = document.getElementById('mappingProgress');
     let formSubmitted = false;
@@ -614,7 +657,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1000);
     });
     
-    // Your existing animation functions...
+    // Progress animation functions (same as map_columns.php)
     function runProgressAnimation() {
         setTimeout(() => {
             updateMappingProgress(3, 20, 'Initializing data validation...');
