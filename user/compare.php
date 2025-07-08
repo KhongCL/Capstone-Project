@@ -36,17 +36,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
     $file2 = $_FILES['csv_file2'];
     
     try {
+        // Clear any previous comparison session data
+        unset($_SESSION['compare_files']);
+        unset($_SESSION['compare_ready']);
+        unset($_SESSION['compare_error']);
+        
+        // CRITICAL FIX: Set up basic comparison session structure BEFORE processing files
+        $_SESSION['compare_files'] = [
+            1 => [
+                'name' => $file1['name'],
+                'path' => null,  // Will be set after upload
+                'upload_id' => null,  // Will be set after upload
+                'needs_mapping' => false,  // Will be updated based on results
+                'mapped' => false,
+                'result' => null  // Will be set after upload
+            ],
+            2 => [
+                'name' => $file2['name'],
+                'path' => null,  // Will be set after upload
+                'upload_id' => null,  // Will be set after upload
+                'needs_mapping' => false,  // Will be updated based on results
+                'mapped' => false,
+                'result' => null  // Will be set after upload
+            ]
+        ];
+        error_log("Set initial compare_files session structure");
+        
         // Process both files through handleCsvUpload - they will be saved with unique hash names
-        $upload_result1 = handleCsvUpload($conn, $file1);
-        $upload_result2 = handleCsvUpload($conn, $file2);
+        $upload_result1 = handleCsvUploadForComparison($conn, $file1);
+        $upload_result2 = handleCsvUploadForComparison($conn, $file2);
         
         // Initialize variables for different scenarios
         $file1_valid = ($upload_result1['type'] === 'success' || $upload_result1['type'] === 'warning');
         $file2_valid = ($upload_result2['type'] === 'success' || $upload_result2['type'] === 'warning');
+        $file1_needs_mapping = ($upload_result1['type'] === 'needs_mapping');
+        $file2_needs_mapping = ($upload_result2['type'] === 'needs_mapping');
         
-        // Handle all 4 scenarios
+        // Update the session data with results
+        $compareFiles = $_SESSION['compare_files'];  // Get the structure we just created
+        
+        // Handle File 1 - UPDATE existing structure
+        if ($file1_valid || $file1_needs_mapping) {
+            $compareFiles[1]['path'] = $upload_result1['file_path'] ?? null;
+            $compareFiles[1]['upload_id'] = $upload_result1['upload_id'] ?? null;
+            $compareFiles[1]['needs_mapping'] = $file1_needs_mapping;
+            $compareFiles[1]['mapped'] = $file1_valid; // Already mapped if valid
+            $compareFiles[1]['result'] = $upload_result1;
+        }
+        
+        // Handle File 2 - UPDATE existing structure
+        if ($file2_valid || $file2_needs_mapping) {
+            $compareFiles[2]['path'] = $upload_result2['file_path'] ?? null;
+            $compareFiles[2]['upload_id'] = $upload_result2['upload_id'] ?? null;
+            $compareFiles[2]['needs_mapping'] = $file2_needs_mapping;
+            $compareFiles[2]['mapped'] = $file2_valid; // Already mapped if valid
+            $compareFiles[2]['result'] = $upload_result2;
+        }
+        
+        // Update session with complete information
+        $_SESSION['compare_files'] = $compareFiles;
+        error_log("Updated compare_files session with complete information: " . json_encode(array_keys($compareFiles)));
+        
+        session_write_close();
+        session_start();
+        error_log("Session data written and restarted before redirect logic");
+        
+        // Handle all 8 scenarios (4 original + 4 with mapping)
         if ($file1_valid && $file2_valid) {
-            // Both files are valid - proceed with comparison
+            // Scenario 1: Both files are valid - proceed with comparison
             $file1_path = $upload_result1['file_path'] ?? null;
             $file2_path = $upload_result2['file_path'] ?? null;
             
@@ -71,16 +128,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
                 $error_message = "Files were processed but could not be found for comparison.";
             }
             
-        } elseif ($file1_valid && !$file2_valid) {
-            // File 1 valid, File 2 invalid
-            $error_message = "File 1 uploaded successfully, but File 2 failed: " . $upload_result2['message'];
+        } elseif ($file1_needs_mapping && $file2_valid) {
+            // Scenario 2: File 1 needs mapping, File 2 is valid
+            error_log("Scenario 2: File 1 needs mapping, File 2 is valid - redirecting to map file 1");
+            // CRITICAL FIX: Force another session write before redirect
+            session_write_close();
+            header('Location: map_columns_compare.php?file=1');
+            exit;
             
-        } elseif (!$file1_valid && $file2_valid) {
-            // File 1 invalid, File 2 valid  
-            $error_message = "File 2 uploaded successfully, but File 1 failed: " . $upload_result1['message'];
+        } elseif ($file1_valid && $file2_needs_mapping) {
+            // Scenario 3: File 1 is valid, File 2 needs mapping
+            error_log("Scenario 3: File 1 is valid, File 2 needs mapping - redirecting to map file 2");
+            // CRITICAL FIX: Force another session write before redirect
+            session_write_close();
+            header('Location: map_columns_compare.php?file=2');
+            exit;
+            
+        } elseif ($file1_needs_mapping && $file2_needs_mapping) {
+            // Scenario 4: Both files need mapping - start with file 1
+            error_log("Scenario 4: Both files need mapping - redirecting to map file 1");
+            // CRITICAL FIX: Force another session write before redirect
+            session_write_close();
+            header('Location: map_columns_compare.php?file=1');
+            exit;
+            
+        } elseif (($file1_valid || $file1_needs_mapping) && !$file2_valid && !$file2_needs_mapping) {
+            // Scenario 5: File 1 valid/mappable, File 2 invalid
+            $error_message = "File 1 " . ($file1_needs_mapping ? "uploaded successfully (requires mapping)" : "uploaded successfully") . 
+                           ", but File 2 failed: " . $upload_result2['message'];
+            
+        } elseif (!$file1_valid && !$file1_needs_mapping && ($file2_valid || $file2_needs_mapping)) {
+            // Scenario 6: File 1 invalid, File 2 valid/mappable  
+            $error_message = "File 2 " . ($file2_needs_mapping ? "uploaded successfully (requires mapping)" : "uploaded successfully") . 
+                           ", but File 1 failed: " . $upload_result1['message'];
             
         } else {
-            // Both files invalid
+            // Scenario 7 & 8: Both files invalid or other error combinations
             $errors = [];
             if ($upload_result1['type'] === 'error') {
                 $errors[] = "File 1: " . $upload_result1['message'];
@@ -94,6 +177,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
     } catch (Exception $e) {
         $error_message = "Error processing files: " . $e->getMessage();
     }
+}
+
+// Check if we're returning from mapping and ready to compare
+if (isset($_SESSION['compare_ready']) && $_SESSION['compare_ready'] && isset($_SESSION['compare_files'])) {
+    $compareFiles = $_SESSION['compare_files'];
+    
+    // Both files should now be mapped and have upload IDs
+    if (isset($compareFiles[1]['upload_id']) && isset($compareFiles[2]['upload_id'])) {
+        try {
+            // Get file paths for comparison
+            $file1_path = $compareFiles[1]['path'];
+            $file2_path = $compareFiles[2]['path'];
+            
+            if ($file1_path && $file2_path && file_exists($file1_path) && file_exists($file2_path)) {
+                // Perform the comparison using the saved files
+                $comparison_results = compareCSVFiles($file1_path, $file2_path);
+                $success_message = "Comparison completed successfully after column mapping!";
+            } else {
+                $error_message = "Files were processed but could not be found for comparison.";
+            }
+        } catch (Exception $e) {
+            $error_message = "Error performing comparison: " . $e->getMessage();
+        }
+    }
+    
+    // Clear the comparison session data
+    unset($_SESSION['compare_ready']);
+    unset($_SESSION['compare_files']);
+}
+
+// Check for comparison error from mapping
+if (isset($_SESSION['compare_error'])) {
+    $error_message = $_SESSION['compare_error'];
+    unset($_SESSION['compare_error']);
+}
+
+// Add the new function for comparison upload handling
+function handleCsvUploadForComparison($conn, $file) {
+    // Add a flag to indicate this is a comparison context
+    $_POST['comparison_context'] = true;
+    
+    // Use the same logic as handleCsvUpload but with comparison context
+    $result = handleCsvUpload($conn, $file);
+    
+    // FIXED: Make sure we return the upload_id if available
+    if (isset($_SESSION['latest_upload_id'])) {
+        $result['upload_id'] = $_SESSION['latest_upload_id'];
+        error_log("Added upload_id to result: " . $_SESSION['latest_upload_id']);
+    }
+    
+    return $result;
 }
 
 // Handle saving comparison
@@ -213,8 +347,9 @@ function compareCSVFiles($file1_path, $file2_path) {
     
     // Define analytics metrics to look for
     $analytics_metrics = [
-    'sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
-    'events_per_session', 'event_count', 'key_events', 'session_key_event_rate', 'total_revenue'
+        'traffic_source', // Add this
+        'sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
+        'events_per_session', 'event_count', 'key_events', 'session_key_event_rate', 'total_revenue'
     ];
     
     $comparison = [
@@ -242,76 +377,143 @@ function compareCSVFiles($file1_path, $file2_path) {
     ];
     
     // Analyze analytics metrics
-    $common_headers = $comparison['headers']['common_headers'];
+    $common_headers = array_merge($comparison['headers']['common_headers'], $headers1, $headers2); // Use all headers for better matching
+    $semantic_common = [];
     foreach ($analytics_metrics as $metric) {
         // Find matching column (case-insensitive, flexible naming)
         $found_column = findMetricColumn($common_headers, $metric);
         
         if ($found_column) {
-            $values1 = array_column($data1, $found_column);
-            $values2 = array_column($data2, $found_column);
+            // Check if column exists in both files (or similar columns)
+            $col1 = findMetricColumn($headers1, $metric);
+            $col2 = findMetricColumn($headers2, $metric);
             
-            // Clean and convert to numeric
-            $numeric1 = cleanNumericValues($values1);
-            $numeric2 = cleanNumericValues($values2);
-            
-            if (count($numeric1) > 0 && count($numeric2) > 0) {
-                $stats1 = calculateStats($numeric1);
-                $stats2 = calculateStats($numeric2);
+            if ($col1 && $col2) {
+                    $semantic_common[] = $metric;
+                    $values1 = array_column($data1, $col1);
+                    $values2 = array_column($data2, $col2);
+                    
+                    // Handle conversions for bounce rate vs engagement rate
+                    if (strpos($col1, '_CONVERT_FROM_') !== false) {
+                        $actualCol1 = str_replace(['_CONVERT_FROM_ENGAGEMENT', '_CONVERT_FROM_BOUNCE'], '', $col1);
+                        $values1 = array_column($data1, $actualCol1);
+                        
+                        if (strpos($col1, '_CONVERT_FROM_ENGAGEMENT') !== false) {
+                            // Convert engagement rate to bounce rate: bounce_rate = 1 - engagement_rate
+                            $values1 = array_map(function($val) { return 1 - floatval($val); }, $values1);
+                        } elseif (strpos($col1, '_CONVERT_FROM_BOUNCE') !== false) {
+                            // Convert bounce rate to engagement rate: engagement_rate = 1 - bounce_rate
+                            $values1 = array_map(function($val) { return 1 - floatval($val); }, $values1);
+                        }
+                        $col1 = $actualCol1; // Update column name for display
+                    }
+                    
+                    if (strpos($col2, '_CONVERT_FROM_') !== false) {
+                        $actualCol2 = str_replace(['_CONVERT_FROM_ENGAGEMENT', '_CONVERT_FROM_BOUNCE'], '', $col2);
+                        $values2 = array_column($data2, $actualCol2);
+                        
+                        if (strpos($col2, '_CONVERT_FROM_ENGAGEMENT') !== false) {
+                            $values2 = array_map(function($val) { return 1 - floatval($val); }, $values2);
+                        } elseif (strpos($col2, '_CONVERT_FROM_BOUNCE') !== false) {
+                            $values2 = array_map(function($val) { return 1 - floatval($val); }, $values2);
+                        }
+                        $col2 = $actualCol2;
+                    }
+                    
+                    // Clean and convert to numeric
+                    $numeric1 = cleanNumericValues($values1);
+                    $numeric2 = cleanNumericValues($values2);
                 
-                // Fixed percentage calculation
-                $percent_change = 0;
-                if ($stats1['mean'] != 0) {
-                    $percent_change = round((($stats2['mean'] - $stats1['mean']) / $stats1['mean']) * 100, 2);
-                } elseif ($stats2['mean'] > 0) {
-                    // If Period 1 is 0 but Period 2 has value, it's a 100% increase
-                    $percent_change = 100;
+                if (count($numeric1) > 0 && count($numeric2) > 0) {
+                    $stats1 = calculateStats($numeric1);
+                    $stats2 = calculateStats($numeric2);
+                    
+                    // Fixed percentage calculation
+                    $percent_change = 0;
+                    if ($stats1['sum'] != 0) {
+                        $percent_change = round((($stats2['sum'] - $stats1['sum']) / abs($stats1['sum'])) * 100, 2);
+                    } elseif ($stats2['sum'] > 0) {
+                        $percent_change = 100;
+                    } elseif ($stats2['sum'] < 0) {
+                        $percent_change = -100;
+                    }
+                    
+                    $comparison['analytics_metrics'][$metric] = [
+                        'column_name' => "$col1 vs $col2",
+                        'file1_column' => $col1,
+                        'file2_column' => $col2,
+                        'file1_stats' => $stats1,
+                        'file2_stats' => $stats2,
+                        'comparison' => [
+                            'total_diff' => $stats2['sum'] - $stats1['sum'],
+                            'avg_diff' => $stats2['mean'] - $stats1['mean'],
+                            'percent_change' => $percent_change,
+                            'improvement' => determineImprovement($metric, $stats2['mean'], $stats1['mean'])
+                        ]
+                    ];
                 }
-                
-                $comparison['analytics_metrics'][$metric] = [
-                    'column_name' => $found_column,
-                    'file1_stats' => $stats1,
-                    'file2_stats' => $stats2,
-                    'comparison' => [
-                        'total_diff' => $stats2['sum'] - $stats1['sum'],
-                        'avg_diff' => $stats2['mean'] - $stats1['mean'],
-                        'percent_change' => $percent_change,
-                        'improvement' => determineImprovement($metric, $stats2['mean'], $stats1['mean'])
-                    ]
-                ];
             }
         }
     }
     
     // Calculate summary totals for key metrics
     $comparison['summary_comparison'] = calculateSummaryComparison($data1, $data2, $comparison['analytics_metrics']);
+    $comparison['headers']['semantic_common'] = $semantic_common;
+    $comparison['headers']['semantic_common_count'] = count($semantic_common);
     
     return $comparison;
 }
 
 function findMetricColumn($headers, $metric) {
     $metric_variations = [
-        'sessions' => ['Sessions', 'sessions', 'session', 'total_sessions'],
-        'engaged_sessions' => ['Engaged sessions', 'engaged_sessions', 'engaged sessions', 'engagedsessions'],
+        'sessions' => ['Sessions', 'sessions', 'session', 'total_sessions', 'User Sessions', 'visits'],
+        'engaged_sessions' => ['Engaged sessions', 'engaged_sessions', 'engaged sessions', 'engagedsessions', 'Engaged Sessions'],
         'engagement_rate' => ['Engagement rate', 'engagement_rate', 'engagement rate', 'engagementrate'],
-        'average_engagement_time_per_session' => ['Average engagement time per session', 'average_engagement_time_per_session', 'avg_engagement_time', 'engagement_time', 'Average engagement time'],
-        'events_per_session' => ['Events per session', 'events_per_session', 'events per session', 'eventspersession'],
-        'event_count' => ['Event count', 'event_count', 'events', 'total_events', 'Events'],
+        'average_engagement_time_per_session' => ['Average engagement time per session', 'average_engagement_time_per_session', 'avg_engagement_time', 'engagement_time', 'Average engagement time', 'Avg Session Time'],
+        'events_per_session' => ['Events per session', 'events_per_session', 'events per session', 'eventspersession', 'Events Per Session'],
+        'event_count' => ['Event count', 'event_count', 'events', 'total_events', 'Events', 'Total Events'],
         'key_events' => ['Key events', 'key_events', 'key events', 'keyevents', 'Conversions', 'conversions'],
-        'session_key_event_rate' => ['Session key event rate', 'session_key_event_rate', 'key_event_rate', 'conversion_rate', 'Session conversion rate'],
+        'session_key_event_rate' => ['Session key event rate', 'session_key_event_rate', 'key_event_rate', 'conversion_rate', 'Session conversion rate', 'Conversion Rate'],
         'total_revenue' => ['Total revenue', 'total_revenue', 'revenue', 'total revenue', 'Revenue', 'Purchase revenue'],
         'total_page_views' => ['total_page_views', 'page_views', 'pageviews', 'Views', 'Page views', 'Pageviews'],
         'unique_visitors' => ['unique_visitors', 'unique visitors', 'users', 'Users', 'Total users', 'Active users'],
-        'average_session_duration' => ['average_session_duration', 'avg_session_duration', 'session_duration', 'Average session duration', 'Session duration'],
-        'bounce_rate' => ['bounce_rate', 'bounce rate', 'bouncerate', 'Bounce rate']
+        'average_session_duration' => ['average_session_duration', 'avg_session_duration', 'session_duration', 'Average session duration', 'Session duration', 'Avg Session Time'],
+        'bounce_rate' => ['bounce_rate', 'bounce rate', 'bouncerate', 'Bounce rate', 'Bounce Rate'],
+        'traffic_source' => ['Traffic Source', 'traffic_source', 'Session primary channel group (Default channel group)', 'Channel', 'Source']
     ];
-    
+
+    // FIXED: First try direct matching to avoid recursion
     $variations = $metric_variations[$metric] ?? [$metric];
     
     foreach ($variations as $variation) {
         foreach ($headers as $header) {
             if (strcasecmp(trim($header), trim($variation)) === 0) {
                 return $header;
+            }
+        }
+    }
+    
+    // FIXED: Only try conversion if direct match failed AND to prevent infinite recursion
+    if ($metric === 'bounce_rate') {
+        // Look for engagement rate variations directly (no recursive call)
+        $engagement_variations = $metric_variations['engagement_rate'] ?? [];
+        foreach ($engagement_variations as $variation) {
+            foreach ($headers as $header) {
+                if (strcasecmp(trim($header), trim($variation)) === 0) {
+                    return $header . '_CONVERT_FROM_ENGAGEMENT';
+                }
+            }
+        }
+    }
+    
+    if ($metric === 'engagement_rate') {
+        // Look for bounce rate variations directly (no recursive call)
+        $bounce_variations = $metric_variations['bounce_rate'] ?? [];
+        foreach ($bounce_variations as $variation) {
+            foreach ($headers as $header) {
+                if (strcasecmp(trim($header), trim($variation)) === 0) {
+                    return $header . '_CONVERT_FROM_BOUNCE';
+                }
             }
         }
     }
@@ -669,6 +871,56 @@ function calculateStats($values) {
             overflow: hidden;
         }
 
+        .error-navigation {
+            background: #e2e3e5 !important;
+            border-radius: 6px !important;
+            padding: 12px !important;
+            margin-bottom: 20px !important;
+            display: flex !important;
+            justify-content: center !important;
+            gap: 15px !important;
+            flex-wrap: wrap !important;
+            border: 1px solid #adb5bd !important;
+        }
+
+        .error-nav-button {
+            background: #495057 !important;
+            color: white !important;
+            padding: 8px 16px !important;
+            border: none !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            font-weight: 500 !important;
+            transition: all 0.3s ease !important;
+            text-decoration: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+
+        .error-nav-button:hover {
+            background: #343a40 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+        }
+
+        .error-nav-button.active {
+            background: #dc3545 !important;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4) !important;
+        }
+
+        .error-nav-counter {
+            background: rgba(255,255,255,0.9) !important;
+            color: #495057 !important;
+            padding: 2px 6px !important;
+            border-radius: 12px !important;
+            font-size: 0.8em !important;
+            font-weight: bold !important;
+            min-width: 18px !important;
+            text-align: center !important;
+        }
+
         .user-alert-danger * {
             display: block !important;
             width: 100% !important;
@@ -685,13 +937,71 @@ function calculateStats($values) {
             overflow: hidden;
         }
 
+        /* Quick Jump Buttons */
+        .quick-jump-container {
+            position: fixed !important;
+            right: 20px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            z-index: 1000 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            opacity: 0.8 !important;
+            transition: opacity 0.3s ease !important;
+        }
+
+        .quick-jump-container:hover {
+            opacity: 1 !important;
+        }
+
+        .quick-jump-btn {
+            background: #495057 !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 12px !important;
+            border-radius: 20px !important;
+            cursor: pointer !important;
+            font-size: 0.8em !important;
+            font-weight: bold !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+            transition: all 0.3s ease !important;
+            min-width: 60px !important;
+            text-align: center !important;
+        }
+
+        .quick-jump-btn:hover {
+            background: #343a40 !important;
+            transform: scale(1.05) !important;
+        }
+
+        .quick-jump-btn.file1 {
+            background: #007bff !important;
+        }
+
+        .quick-jump-btn.file1:hover {
+            background: #0056b3 !important;
+        }
+
+        .quick-jump-btn.file2 {
+            background: #28a745 !important;
+        }
+
+        .quick-jump-btn.file2:hover {
+            background: #1e7e34 !important;
+        }
+
         .user-alert-danger .error-summary {
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #721c24;
+            font-weight: bold !important;
+            margin-bottom: 20px !important;
+            color: #721c24 !important;
             display: block !important;
             width: 100% !important;
             clear: both !important;
+            padding: 12px !important;
+            background: rgba(255,255,255,0.7) !important;
+            border-radius: 6px !important;
+            border-left: 4px solid #dc3545 !important;
         }
 
         .user-alert-danger .error-list {
@@ -701,46 +1011,80 @@ function calculateStats($values) {
             display: block !important;
             width: 100% !important;
             clear: both !important;
-            max-height: 400px;
-            overflow-y: auto;
+            max-height: 500px !important; /* Increased for better viewing */
+            overflow-y: auto !important;
+            scroll-behavior: smooth !important; /* Smooth scrolling */
         }
 
         .user-alert-danger .error-item {
             background: #fff5f5 !important;
             border: 1px solid #fed7e2 !important;
-            border-radius: 6px !important;
-            padding: 15px !important;
+            border-radius: 8px !important;
+            padding: 16px !important;
             margin-bottom: 12px !important;
-            border-left: 3px solid #e53e3e !important;
+            border-left: 4px solid #e53e3e !important;
             display: block !important;
             width: calc(100% - 2px) !important;
             box-sizing: border-box !important;
             clear: both !important;
             float: none !important;
+            transition: all 0.3s ease !important;
+            position: relative !important;
+        }
+
+        .user-alert-danger .error-item:hover {
+            background: #fff0f0 !important;
+            border-left-color: #dc3545 !important;
+            transform: translateX(4px) !important;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.15) !important;
+        }
+
+        .error-item-badge {
+            position: absolute !important;
+            top: -8px !important;
+            right: 12px !important;
+            background: #6c757d !important;
+            color: white !important;
+            padding: 4px 8px !important;
+            border-radius: 12px !important;
+            font-size: 0.75em !important;
+            font-weight: bold !important;
+            z-index: 5 !important;
+        }
+
+        .error-item-badge.file1 {
+            background: #007bff !important;
+        }
+
+        .error-item-badge.file2 {
+            background: #28a745 !important;
         }
 
         .user-alert-danger .error-message {
             font-weight: 500 !important;
             color: #721c24 !important;
-            margin-bottom: 8px !important;
+            margin-bottom: 10px !important;
             display: block !important;
             width: 100% !important;
             clear: both !important;
             word-wrap: break-word !important;
+            line-height: 1.4 !important;
+            padding-right: 60px !important; /* Space for badge */
         }
 
         .user-alert-danger .error-suggestions {
             background: #fff3cd !important;
             border: 1px solid #ffeaa7 !important;
-            border-radius: 3px !important;
-            padding: 8px !important;
+            border-radius: 4px !important;
+            padding: 10px !important;
             font-size: 0.9em !important;
             color: #856404 !important;
-            margin-top: 8px !important;
+            margin-top: 10px !important;
             display: block !important;
-            width: calc(100% - 18px) !important;
+            width: calc(100% - 22px) !important;
             box-sizing: border-box !important;
             clear: both !important;
+            border-left: 3px solid #ffc107 !important;
         }
 
         .user-alert-danger .suggestions-text {
@@ -758,6 +1102,101 @@ function calculateStats($values) {
             clear: both !important;
             padding: 10px 0 !important;
             width: 100% !important;
+        }
+
+        .file-section-header {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            color: white !important;
+            padding: 12px 16px !important;
+            margin: 20px 0 15px 0 !important;
+            border-radius: 8px !important;
+            font-weight: bold !important;
+            font-size: 1.1em !important;
+            text-align: center !important;
+            border-left: 4px solid #dc3545 !important;
+            box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3) !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 10 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 10px !important;
+        }
+
+        .file-section-header:first-of-type {
+            margin-top: 0 !important;
+        }
+
+        .file-section-header .file-icon {
+            font-size: 1.2em !important;
+            color: white !important;
+        }
+
+        .file-section-header .error-count-badge {
+            background: rgba(255, 255, 255, 0.9) !important;
+            color: #dc3545 !important;
+            padding: 4px 8px !important;
+            border-radius: 12px !important;
+            font-size: 0.85em !important;
+            font-weight: bold !important;
+            margin-left: 8px !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        }
+
+        /* CRITICAL FIX: Override any gray styling that might be applied initially */
+        .user-alert-danger .error-item[style*="background: #e9ecef"] {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            color: white !important;
+        }
+
+        .user-alert-danger .error-item[style*="border-left: 3px solid #6c757d"] {
+            border-left: 4px solid #dc3545 !important;
+        }
+
+        .user-alert-danger .error-item[style*="color: #495057"] .error-message {
+            color: white !important;
+        }
+
+        /* Add active state for quick jump buttons */
+        .quick-jump-btn.active {
+            background: #dc3545 !important;
+            transform: scale(1.1) !important;
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4) !important;
+        }
+
+        .quick-jump-btn.file1.active {
+            background: #0056b3 !important;
+            box-shadow: 0 4px 12px rgba(0, 86, 179, 0.4) !important;
+        }
+
+        .quick-jump-btn.file2.active {
+            background: #1e7e34 !important;
+            box-shadow: 0 4px 12px rgba(30, 126, 52, 0.4) !important;
+        }
+
+        /* Ensure error items have proper styling when highlighted */
+        .user-alert-danger .error-item.highlighted {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            color: white !important;
+            border-left-color: #721c24 !important;
+            transform: translateX(8px) !important;
+            box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3) !important;
+        }
+
+        .error-progress {
+            background: #e9ecef !important;
+            height: 4px !important;
+            border-radius: 2px !important;
+            margin: 15px 0 !important;
+            overflow: hidden !important;
+        }
+
+        .error-progress-bar {
+            background: linear-gradient(90deg, #dc3545, #c82333) !important;
+            height: 100% !important;
+            border-radius: 2px !important;
+            transition: width 0.3s ease !important;
         }
 
         /* =====================================================
@@ -819,6 +1258,57 @@ function calculateStats($values) {
             display: list-item !important;
             list-style-type: disc !important;
             width: auto !important;
+        }
+
+        @media (max-width: 768px) {
+            .error-navigation {
+                flex-direction: column !important;
+                align-items: center !important;
+            }
+            
+            .quick-jump-container {
+                position: fixed !important;
+                bottom: 20px !important;
+                right: 20px !important;
+                top: auto !important;
+                transform: none !important;
+                flex-direction: row !important;
+            }
+            
+            .user-alert-danger .error-list {
+                max-height: 400px !important;
+            }
+            
+            .file-section-header {
+                font-size: 1em !important;
+                padding: 10px 12px !important;
+            }
+            
+            .error-item-badge {
+                position: static !important;
+                display: inline-block !important;
+                margin-bottom: 8px !important;
+            }
+            
+            .user-alert-danger .error-message {
+                padding-right: 16px !important;
+            }
+        }
+
+        .scroll-indicator {
+            text-align: center !important;
+            padding: 8px !important;
+            color: #6c757d !important;
+            font-size: 0.85em !important;
+            font-style: italic !important;
+        }
+
+        .scroll-indicator.top {
+            background: linear-gradient(to bottom, rgba(248,215,218,0.9), transparent) !important;
+        }
+
+        .scroll-indicator.bottom {
+            background: linear-gradient(to top, rgba(248,215,218,0.9), transparent) !important;
         }
 
         /* =====================================================
@@ -1317,12 +1807,13 @@ function calculateStats($values) {
         </style>
 </head>
 <body>
-    <div class="container compare-user-compare-container" id="dashboard">
+    <div class="container">
         <?php include 'user_header.php'; ?>
 
         <main>
-            <h2><i class="fas fa-balance-scale"></i> Analytics CSV Comparison</h2>
-            <p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
+						<section class="user-section">
+            		<h2>Analytics CSV Comparison</h2>
+            		<p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
 
             <!-- Upload Form -->
             <div class="compare-user-upload-form">
@@ -1608,7 +2099,7 @@ function calculateStats($values) {
                         <div class="user-alert user-alert-danger">
                             <div class="error-container">
                                 <?php if (!empty($errorPrefix)): ?>
-                                    <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> <?php echo $errorPrefix; ?></p>
+                                    <p class="error-summary"><?php echo $errorPrefix; ?></p>
                                     <?php if ($file1ErrorCount > 0 && $file2ErrorCount > 0): ?>
                                         <p class="error-summary">File 1: <?php echo $file1ErrorCount; ?> errors | File 2: <?php echo $file2ErrorCount; ?> errors | Total: <?php echo $actualErrorCount; ?> validation errors</p>
                                     <?php elseif ($file1ErrorCount > 0): ?>
@@ -2014,7 +2505,7 @@ function calculateStats($values) {
         </main>
 
         <?php include 'user_footer.php'; ?>
-    </div>
+		</div>
 
     
     <script>
@@ -2426,6 +2917,402 @@ function calculateStats($values) {
             console.error('Error logging PDF export:', error);
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set global variables for confirmation logic
+        window.compareHasErrorMessages = document.querySelector('.user-alert-danger, .error-container, .validation-help') !== null;
+        window.compareHasComparisonResults = <?php echo isset($comparison_results) && !empty($comparison_results) ? 'true' : 'false'; ?>;
+        
+        console.log('Compare page loaded - hasErrorMessages:', window.compareHasErrorMessages);
+        console.log('Compare page loaded - hasComparisonResults:', window.compareHasComparisonResults);
+        
+        // Global confirmation function for file uploads
+        window.confirmComparisonFileUpload = function() {
+            const hasErrorMessages = window.compareHasErrorMessages;
+            const hasComparisonResults = window.compareHasComparisonResults;
+            
+            console.log('=== COMPARISON UPLOAD CONFIRMATION ===');
+            console.log('hasErrorMessages:', hasErrorMessages);
+            console.log('hasComparisonResults:', hasComparisonResults);
+            
+            // Show confirmation if there are error messages OR comparison results
+            if (!hasErrorMessages && !hasComparisonResults) {
+                console.log('No error messages or comparison results - proceeding without confirmation');
+                return true;
+            }
+            
+            let confirmMessage;
+            
+            // Prioritize error message warning if present
+            if (hasErrorMessages && !hasComparisonResults) {
+                confirmMessage = "⚠️ Clear Error Messages?\n\n" +
+                                "You have validation error messages displayed that contain helpful suggestions for fixing your CSV files:\n" +
+                                "• 💡 Data fix suggestions for each file\n" +
+                                "• 🔧 Quick fix guide for common issues\n" +
+                                "• 📋 Detailed error explanations\n\n" +
+                                "Uploading new files will clear these helpful messages.\n\n" +
+                                "Do you want to continue with the upload?";
+            } else if (hasErrorMessages && hasComparisonResults) {
+                confirmMessage = "⚠️ Replace Comparison & Clear Error Messages?\n\n" +
+                                "You have both comparison results AND error messages with helpful suggestions displayed.\n\n" +
+                                "Uploading new files will:\n" +
+                                "• Replace your current comparison completely\n" +
+                                "• Clear all comparison charts and analytics\n" +
+                                "• Remove saved comparison data\n" +
+                                "• Clear the helpful error messages and fix suggestions\n\n" +
+                                "This action cannot be undone. Do you want to continue?";
+            } else if (hasComparisonResults) {
+                confirmMessage = "⚠️ Replace Existing Comparison?\n\n" +
+                                "You already have comparison results displayed. Uploading new files will:\n" +
+                                "• Replace your current comparison completely\n" +
+                                "• Clear all comparison charts and analytics\n" +
+                                "• Remove performance overview and detailed metrics\n" +
+                                "• Reset all comparison data and exports\n\n" +
+                                "This action cannot be undone. Do you want to continue?";
+            }
+            
+            console.log('Showing confirmation dialog:', confirmMessage);
+            const result = confirm(confirmMessage);
+            console.log('Confirmation result:', result);
+            return result;
+        };
+        
+        // Add confirmation to the file upload form
+        const uploadForm = document.querySelector('form[enctype="multipart/form-data"]');
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', function(e) {
+                if (!window.confirmComparisonFileUpload()) {
+                    e.preventDefault();
+                    console.log('File upload cancelled by user');
+                    return false;
+                }
+            });
+        }
+        
+        // Browser refresh/navigation confirmation for error messages and comparison results
+        window.addEventListener('beforeunload', function(e) {
+            console.log('=== COMPARE BEFOREUNLOAD EVENT TRIGGERED ===');
+            
+            const hasErrorMessages = document.querySelector('.user-alert-danger, .error-container, .validation-help') !== null;
+            const hasComparisonResults = document.querySelector('.compare-comparison-card, .compare-metric-summary') !== null;
+            
+            console.log('hasErrorMessages:', hasErrorMessages);
+            console.log('hasComparisonResults:', hasComparisonResults);
+            
+            // Only show confirmation if there are error messages or comparison results
+            if (hasErrorMessages || hasComparisonResults) {
+                console.log('Conditions met for showing beforeunload confirmation in compare page');
+                
+                // Browser will show its own message regardless
+                e.preventDefault();
+                e.returnValue = ''; // Empty string is sufficient
+                
+                console.log('beforeunload event prevented in compare page');
+                return ''; // For older browsers
+            } else {
+                console.log('No conditions met, allowing navigation from compare page');
+            }
+        });
+        
+        // Update global variables when new content is loaded
+        function updateCompareGlobalState() {
+            window.compareHasErrorMessages = document.querySelector('.user-alert-danger, .error-container, .validation-help') !== null;
+            window.compareHasComparisonResults = document.querySelector('.compare-comparison-card, .compare-metric-summary') !== null;
+            
+            console.log('Compare state updated - hasErrorMessages:', window.compareHasErrorMessages);
+            console.log('Compare state updated - hasComparisonResults:', window.compareHasComparisonResults);
+        }
+        
+        // Call update function whenever the page content might change
+        // This can be extended if you have AJAX content loading
+        updateCompareGlobalState();
+        
+        // Also update state after form submissions (in case of page reload)
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function() {
+                // Update state before form submission
+                setTimeout(updateCompareGlobalState, 100);
+            });
+        });
+    });
+
+    // Add file selection confirmation for the compare form dropdowns
+    document.addEventListener('DOMContentLoaded', function() {
+        const compareForm = document.querySelector('form[method="POST"]:not([enctype])');
+        if (compareForm) {
+            compareForm.addEventListener('submit', function(e) {
+                const hasErrorMessages = window.compareHasErrorMessages;
+                const hasComparisonResults = window.compareHasComparisonResults;
+                
+                // Only show confirmation if user is replacing existing content
+                if (hasErrorMessages || hasComparisonResults) {
+                    let confirmMessage = "⚠️ Load New Comparison?\n\n";
+                    
+                    if (hasErrorMessages && hasComparisonResults) {
+                        confirmMessage += "This will replace your current comparison results and clear any error messages displayed.\n\n";
+                    } else if (hasErrorMessages) {
+                        confirmMessage += "This will clear the error messages currently displayed.\n\n";
+                    } else if (hasComparisonResults) {
+                        confirmMessage += "This will replace your current comparison results.\n\n";
+                    }
+                    
+                    confirmMessage += "Do you want to continue?";
+                    
+                    if (!confirm(confirmMessage)) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            });
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeErrorNavigation();
+    });
+
+    function initializeErrorNavigation() {
+        const errorList = document.querySelector('.user-alert-danger .error-list');
+        if (!errorList) return;
+        
+        const fileHeaders = errorList.querySelectorAll('[id^="file-"], .error-item[style*="File"]');
+        const hasBothFiles = document.querySelector('.user-alert-danger .error-summary')?.textContent?.includes('Both files failed') || 
+                            document.querySelector('.user-alert-danger .error-summary')?.textContent?.includes('File 1:') && 
+                            document.querySelector('.user-alert-danger .error-summary')?.textContent?.includes('File 2:');
+        
+        if (hasBothFiles) {
+            addQuickJumpButtons();
+            enhanceFileHeaders();
+            addScrollProgress();
+        }
+    }
+
+    function addQuickJumpButtons() {
+        // Only add the side navigation buttons, remove the back to top button
+        const jumpHTML = `
+            <div class="quick-jump-container">
+                <button class="quick-jump-btn file1" onclick="scrollToFile(1)" title="Jump to File 1 errors">
+                    <i class="fas fa-file"></i> F1
+                </button>
+                <button class="quick-jump-btn file2" onclick="scrollToFile(2)" title="Jump to File 2 errors">
+                    <i class="fas fa-file"></i> F2
+                </button>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', jumpHTML);
+    }
+
+    function enhanceFileHeaders() {
+        const errorList = document.querySelector('.user-alert-danger .error-list');
+        if (!errorList) return;
+        
+        const errorItems = errorList.querySelectorAll('.error-item');
+        let currentFile = null;
+        let fileErrorCount = {1: 0, 2: 0};
+        let firstErrorElements = {1: null, 2: null};
+        
+        errorItems.forEach((item, index) => {
+            const errorText = item.textContent;
+            
+            // Detect file separators and apply red styling immediately
+            if (errorText.includes('--- File 1 Errors ---')) {
+                currentFile = 1;
+                item.id = 'file-1-header';
+                item.className = 'file-section-header';
+                
+                // CRITICAL FIX: Apply red styling immediately via inline styles to override any existing gray
+                item.style.cssText = `
+                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+                    color: white !important;
+                    padding: 12px 16px !important;
+                    margin: 20px 0 15px 0 !important;
+                    border-radius: 8px !important;
+                    font-weight: bold !important;
+                    font-size: 1.1em !important;
+                    text-align: center !important;
+                    border-left: 4px solid #dc3545 !important;
+                    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3) !important;
+                    position: sticky !important;
+                    top: 0 !important;
+                    z-index: 10 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 10px !important;
+                `;
+                
+                item.innerHTML = `
+                    <i class="fas fa-file-alt file-icon" style="font-size: 1.2em !important; color: white !important;"></i>
+                    <span style="color: white !important;">File 1 Errors</span>
+                    <span class="error-count-badge" id="file1-count" style="background: rgba(255, 255, 255, 0.9) !important; color: #dc3545 !important; padding: 4px 8px !important; border-radius: 12px !important; font-size: 0.85em !important; font-weight: bold !important; margin-left: 8px !important; border: 1px solid rgba(255, 255, 255, 0.3) !important;">0</span>
+                `;
+                
+            } else if (errorText.includes('--- File 2 Errors ---')) {
+                currentFile = 2;
+                item.id = 'file-2-header';
+                item.className = 'file-section-header';
+                
+                // CRITICAL FIX: Apply red styling immediately via inline styles to override any existing gray
+                item.style.cssText = `
+                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+                    color: white !important;
+                    padding: 12px 16px !important;
+                    margin: 20px 0 15px 0 !important;
+                    border-radius: 8px !important;
+                    font-weight: bold !important;
+                    font-size: 1.1em !important;
+                    text-align: center !important;
+                    border-left: 4px solid #dc3545 !important;
+                    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3) !important;
+                    position: sticky !important;
+                    top: 0 !important;
+                    z-index: 10 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 10px !important;
+                `;
+                
+                item.innerHTML = `
+                    <i class="fas fa-file-alt file-icon" style="font-size: 1.2em !important; color: white !important;"></i>
+                    <span style="color: white !important;">File 2 Errors</span>
+                    <span class="error-count-badge" id="file2-count" style="background: rgba(255, 255, 255, 0.9) !important; color: #dc3545 !important; padding: 4px 8px !important; border-radius: 12px !important; font-size: 0.85em !important; font-weight: bold !important; margin-left: 8px !important; border: 1px solid rgba(255, 255, 255, 0.3) !important;">0</span>
+                `;
+                
+            } else if (currentFile && item.classList.contains('error-item')) {
+                // This is an actual error item
+                fileErrorCount[currentFile]++;
+                
+                // Set ID for the first actual error of each file
+                if (!firstErrorElements[currentFile]) {
+                    firstErrorElements[currentFile] = item;
+                    item.id = `file-${currentFile}-first-error`;
+                }
+                
+                // Add file badge to regular error items
+                const badge = document.createElement('div');
+                badge.className = `error-item-badge file${currentFile}`;
+                badge.textContent = `File ${currentFile}`;
+                item.appendChild(badge);
+                item.setAttribute('data-file', currentFile);
+            }
+        });
+        
+        // Update error counts
+        const file1CountBadge = document.getElementById('file1-count');
+        const file2CountBadge = document.getElementById('file2-count');
+        if (file1CountBadge) file1CountBadge.textContent = fileErrorCount[1];
+        if (file2CountBadge) file2CountBadge.textContent = fileErrorCount[2];
+    }
+
+    function scrollToFile(fileNumber) {
+        console.log(`Attempting to scroll to file ${fileNumber}`);
+        
+        // Try to scroll to the first actual error, not the header
+        let target = document.getElementById(`file-${fileNumber}-first-error`);
+        
+        if (!target) {
+            // Fallback to header if no errors found
+            target = document.getElementById(`file-${fileNumber}-header`);
+        }
+        
+        if (target) {
+            console.log(`Found target for file ${fileNumber}:`, target);
+            
+            target.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start',
+                inline: 'nearest' 
+            });
+            
+            // Highlight the section temporarily
+            const originalBackground = target.style.background;
+            target.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+            target.style.color = 'white';
+            
+            setTimeout(() => {
+                target.style.background = originalBackground;
+                target.style.color = '';
+            }, 1500);
+            
+            // Update active navigation button
+            document.querySelectorAll('.quick-jump-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to the clicked button
+            const clickedButton = document.querySelector(`.quick-jump-btn.file${fileNumber}`);
+            if (clickedButton) {
+                clickedButton.classList.add('active');
+            }
+        } else {
+            console.error(`Could not find target element for file ${fileNumber}`);
+            
+            // Enhanced fallback: try to find the section by text content
+            const errorItems = document.querySelectorAll('.error-item, .file-section-header');
+            for (let item of errorItems) {
+                if (item.textContent.includes(`--- File ${fileNumber} Errors ---`) || 
+                    item.textContent.includes(`File ${fileNumber} Errors`)) {
+                    console.log(`Found fallback target for file ${fileNumber}:`, item);
+                    item.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start',
+                        inline: 'nearest' 
+                    });
+                    break;
+                }
+            }
+        }
+    }
+
+    function scrollToTop() {
+        const errorContainer = document.querySelector('.user-alert-danger');
+        if (errorContainer) {
+            errorContainer.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }
+        
+        // Clear active navigation buttons
+        document.querySelectorAll('.error-nav-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+    }
+
+    function countFileErrors(fileName) {
+        const errorList = document.querySelector('.user-alert-danger .error-list');
+        if (!errorList) return 0;
+        
+        const errorItems = errorList.querySelectorAll('.error-item');
+        let count = 0;
+        let countingFile = false;
+        
+        errorItems.forEach(item => {
+            const text = item.textContent;
+            if (text.includes(`--- ${fileName} Errors ---`)) {
+                countingFile = true;
+            } else if (text.includes('--- File') && text.includes('Errors ---') && !text.includes(fileName)) {
+                countingFile = false;
+            } else if (countingFile && !text.includes('--- File')) {
+                count++;
+            }
+        });
+        
+        return count;
+    }
+
+    // Cleanup function for mobile
+    function cleanupErrorNavigation() {
+        const quickJump = document.querySelector('.quick-jump-container');
+        if (quickJump && window.innerWidth <= 768) {
+            quickJump.style.bottom = '80px'; // Adjust for mobile keyboard
+        }
+    }
+
+    window.addEventListener('resize', cleanupErrorNavigation);
     </script>    
 </body>
 </html>
