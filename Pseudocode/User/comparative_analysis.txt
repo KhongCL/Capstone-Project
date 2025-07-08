@@ -1,0 +1,167 @@
+START
+    IMPORT necessary PHP modules and session management
+
+    DEFINE FUNCTION compare_analytics_dashboard
+        START SESSION
+
+        IF user is not logged in
+            REDIRECT to login page
+            EXIT
+        END IF
+
+        SET page variables (title, active_page, etc.)
+        INCLUDE authentication, config, functions, and CSV processor files
+
+        GET userID from session
+
+        INITIALIZE comparison_results, error_message, success_message as null
+
+        // Load user's validated CSV uploads
+        PREPARE SQL to select validated uploads for user
+        EXECUTE and FETCH uploads into a list
+
+        // Handle CSV file upload and comparison
+        IF request is POST AND both csv_file1 and csv_file2 are uploaded
+            TRY
+                CALL handleCsvUpload for both files
+                IF both files are valid
+                    GET file paths
+                    IF both files exist
+                        CALL compareCSVFiles with file paths
+                        IF any file had warnings
+                            SET success_message to "Comparison completed with warnings"
+                        ELSE
+                            SET success_message to "Comparison completed successfully"
+                        END IF
+                    ELSE
+                        SET error_message to "Files processed but not found"
+                    END IF
+                ELSE IF only one file is valid
+                    SET error_message to indicate which file failed and why
+                ELSE
+                    SET error_message to both files failed, with details
+                END IF
+            CATCH any exception
+                SET error_message to exception message
+            END TRY
+        END IF
+
+        // Handle saving a comparison
+        IF request is POST AND 'compare' is set
+            GET selected upload1, upload2, and comparisonName
+            IF comparisonName is not empty
+                INSERT new comparison into saved_comparison table
+                INSERT both file links into comparison_file_link table
+                RESET dropdown selections
+            END IF
+        END IF
+
+        // Handle loading a saved comparison
+        IF request is POST AND 'load_comparison' is set
+            GET selectedComparisonID
+            QUERY for file links for this comparison
+            IF two files found
+                CONSTRUCT file paths
+                IF both files exist
+                    TRY
+                        CALL compareCSVFiles with file paths
+                        SET success_message to loaded comparison info
+                    CATCH exception
+                        SET error_message to exception message
+                    END TRY
+                ELSE
+                    SET error_message to "One or both files missing"
+                END IF
+            ELSE
+                SET error_message to "Invalid comparison data"
+            END IF
+        END IF
+
+        // Load user's uploaded CSV files for dropdown
+        QUERY for all uploads for user
+        STORE in csvFiles list
+
+        // Load user's saved comparisons for dropdown
+        QUERY for all saved_comparison for user
+        STORE in savedComparisons list
+
+        // DEFINE FUNCTION compareCSVFiles(file1_path, file2_path)
+            PARSE both CSV files into data arrays
+            IF either file is empty or invalid
+                THROW exception
+            END IF
+            GET headers from both files
+            DEFINE analytics_metrics list
+            INITIALIZE comparison dictionary with:
+                - basic_metrics (row/column counts)
+                - headers (common/unique)
+                - analytics_metrics (empty)
+                - summary_comparison (empty)
+                - data_sample (first 5 rows)
+            FOR each metric in analytics_metrics
+                FIND matching column in headers
+                IF found
+                    EXTRACT values from both files
+                    CLEAN numeric values
+                    IF both have data
+                        CALCULATE stats for both
+                        CALCULATE percent change and improvement
+                        STORE in comparison['analytics_metrics']
+                    END IF
+                END IF
+            END FOR
+            CALCULATE summary_comparison from analytics_metrics
+            RETURN comparison dictionary
+        END FUNCTION
+
+        // DEFINE helper functions:
+        // - findMetricColumn(headers, metric)
+        // - cleanNumericValues(values)
+        // - determineImprovement(metric, value2, value1)
+        // - calculateSummaryComparison(data1, data2, analytics_metrics)
+        // - parseCSV(file_path)
+        // - calculateStats(values)
+
+        // HTML OUTPUT
+        DISPLAY upload form for two CSV files
+        IF error_message exists
+            DISPLAY error with suggestions and quick fix guide
+        END IF
+
+        DISPLAY form to select and save new comparison from uploaded files
+
+        IF savedComparisons exist
+            DISPLAY dropdown to load saved comparison
+        END IF
+
+        IF comparison_results exist
+            DISPLAY export buttons (CSV, PDF)
+            DISPLAY debug info (headers, metrics found)
+            DISPLAY performance overview (summary_comparison)
+            DISPLAY detailed analytics comparison (analytics_metrics)
+            DISPLAY file info (row/column counts)
+            DISPLAY data samples (first 5 rows from each file)
+        END IF
+
+        INCLUDE user header and footer
+
+        // JAVASCRIPT
+        DEFINE exportToCSV()
+            BUILD CSV string from comparison_results
+            TRIGGER download
+            LOG export to database
+        END FUNCTION
+
+        DEFINE exportToPDF()
+            BUILD PDF using jsPDF from comparison_results
+            TRIGGER download
+            LOG export to database
+        END FUNCTION
+
+        DEFINE confirmation dialogs for uploads and navigation
+        DEFINE error navigation and quick jump for error lists
+
+    END FUNCTION
+
+    CALL compare_analytics_dashboard
+END

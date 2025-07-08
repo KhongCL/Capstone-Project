@@ -1,0 +1,308 @@
+
+
+//Overview.php
+START
+
+    IMPORT datetime
+
+    DEFINE FUNCTION export_data_table_to_csv WITH PARAMETERS data_table, filename
+        OPEN the file named filename in write mode
+            WRITE the column headers of data_table to the file, separated by commas
+            FOR each row in data_table
+                WRITE the row values to the file, separated by commas
+            END FOR
+        CLOSE the file
+        OUTPUT "Data table exported to CSV successfully."
+    END FUNCTION
+
+    DEFINE FUNCTION export_dashboard_view_to_csv WITH PARAMETERS dashboard_data, filename
+        OPEN the file named filename in write mode
+            WRITE "Dashboard Export" and the current date/time to the file
+            FOR each section in dashboard_data
+                WRITE the section title to the file
+                IF the section contains a table
+                    WRITE the table headers to the file
+                    FOR each row in the table
+                        WRITE the row values to the file, separated by commas
+                    END FOR
+                ELSE IF the section contains a metric or value
+                    WRITE the metric name and value to the file
+                END IF
+                WRITE a blank line to separate sections
+            END FOR
+        CLOSE the file
+        OUTPUT "Dashboard view exported to CSV successfully."
+    END FUNCTION
+
+    DEFINE FUNCTION export_dashboard_view_to_pdf WITH PARAMETERS dashboard_data, filename
+        INITIALIZE a new PDF document
+        ADD a title "Dashboard Export" and the current date/time to the PDF
+        FOR each section in dashboard_data
+            ADD the section title to the PDF
+            IF the section contains a chart
+                CAPTURE the chart as an image
+                ADD the chart image to the PDF
+            END IF
+            IF the section contains a table
+                ADD the table headers to the PDF
+                FOR each row in the table
+                    ADD the row values to the PDF
+                END FOR
+            ELSE IF the section contains a metric or value
+                ADD the metric name and value to the PDF
+            END IF
+            ADD a blank line or spacing to separate sections
+        END FOR
+        SAVE the PDF document with the given filename
+        OUTPUT "Dashboard view exported to PDF successfully."
+    END FUNCTION
+
+    DEFINE FUNCTION export_dashboard
+        OUTPUT "Export Dashboard"
+        OUTPUT "1. Export Data Table to CSV"
+        OUTPUT "2. Export Dashboard View to CSV"
+        OUTPUT "3. Export Dashboard View to PDF"
+        OUTPUT "4. Exit"
+
+        WHILE True
+            ASK the user to enter their choice as a number
+            IF the input is a valid number THEN
+                IF the choice is 1
+                    CALL export_data_table_to_csv WITH the current data table and "data_table_export.csv"
+                ELSE IF the choice is 2
+                    CALL export_dashboard_view_to_csv WITH the current dashboard data and "dashboard_export.csv"
+                ELSE IF the choice is 3
+                    CALL export_dashboard_view_to_pdf WITH the current dashboard data and "dashboard_export.pdf"
+                ELSE IF the choice is 4
+                    OUTPUT "Exiting export menu."
+                    BREAK
+                ELSE
+                    OUTPUT "Invalid choice. Please enter 1, 2, 3, or 4."
+                END IF
+            ELSE
+                OUTPUT "Invalid input. Please enter a number."
+            END IF
+        END WHILE
+    END FUNCTION
+
+END
+
+
+
+
+//traffic_sources.php
+START
+
+    IMPORT datetime
+
+    DEFINE FUNCTION export_table_to_csv WITH PARAMETERS table_data, filename
+        OPEN the file named filename in write mode
+            FOR each row in table_data
+                JOIN the row values with commas
+                WRITE the joined row followed by a newline to the file
+            END FOR
+        CLOSE the file
+        OUTPUT "Table exported to CSV successfully as " + filename
+    END FUNCTION
+
+    DEFINE FUNCTION export_dashboard_to_pdf WITH PARAMETERS dashboard_data, filename
+        // dashboard_data may include charts, tables, and summary info
+        INITIALIZE a new PDF document
+        SET page_number to 1
+
+        // Add dashboard title and date
+        ADD "Dashboard Report" as title to the PDF
+        ADD "Generated on: " + current date and time to the PDF
+
+        // Add summary section if available
+        IF dashboard_data contains summary
+            ADD summary section to the PDF
+        END IF
+
+        // Add charts if available
+        IF dashboard_data contains charts
+            FOR each chart in dashboard_data.charts
+                ADD chart image or representation to the PDF
+            END FOR
+        END IF
+
+        // Add tables if available
+        IF dashboard_data contains tables
+            FOR each table in dashboard_data.tables
+                ADD table title to the PDF
+                FOR each row in table
+                    ADD row data to the PDF as a table row
+                END FOR
+            END FOR
+        END IF
+
+        SAVE the PDF document as filename
+        OUTPUT "Dashboard exported to PDF successfully as " + filename
+    END FUNCTION
+
+    DEFINE FUNCTION get_dashboard_table_data
+        // Retrieve or generate the data table to be exported
+        RETURN table_data
+    END FUNCTION
+
+    DEFINE FUNCTION get_dashboard_view_data
+        // Retrieve or generate all dashboard data (charts, tables, summary)
+        RETURN dashboard_data
+    END FUNCTION
+
+    DEFINE FUNCTION dashboard_export_menu
+        OUTPUT "Dashboard Export Menu"
+        OUTPUT "1. Export Table to CSV"
+        OUTPUT "2. Export Dashboard to PDF"
+        OUTPUT "3. Exit"
+
+        WHILE True
+            ASK the user to enter their choice as a number
+            IF the input is a valid number THEN
+                IF the choice is 1
+                    CALL get_dashboard_table_data AND STORE in table_data
+                    ASK the user to enter a filename for the CSV export
+                    CALL export_table_to_csv WITH table_data, filename
+                ELSE IF the choice is 2
+                    CALL get_dashboard_view_data AND STORE in dashboard_data
+                    ASK the user to enter a filename for the PDF export
+                    CALL export_dashboard_to_pdf WITH dashboard_data, filename
+                ELSE IF the choice is 3
+                    OUTPUT "Exiting Dashboard Export Menu."
+                    RETURN
+                ELSE
+                    OUTPUT "Invalid choice. Please enter 1, 2, or 3."
+                END IF
+            ELSE
+                OUTPUT "Invalid input. Please enter a number."
+            END IF
+        END WHILE
+    END FUNCTION
+
+    // Entry point for dashboard export features
+    CALL dashboard_export_menu
+
+END
+
+
+
+
+//pages.php
+Start
+
+DEFINE FUNCTION export_table_to_csv
+    OUTPUT "Exporting table to CSV..."
+    GET the table element from the page
+    INITIALIZE an empty list called csv_rows
+
+    FOR each row in the table
+        INITIALIZE an empty list called cols
+        FOR each cell in the row
+            ADD the cell's text (trimmed and quoted) to cols
+        END FOR
+        JOIN cols with commas and ADD to csv_rows
+    END FOR
+
+    JOIN csv_rows with newline characters to form csv_content
+    CREATE a CSV file blob from csv_content
+    CREATE a download link for the CSV file
+    TRIGGER the download for the user
+
+    CALL log_export WITH parameters: export_type="CSV", description="Exported top pages table data"
+END FUNCTION
+
+DEFINE FUNCTION export_chart_to_pdf
+    OUTPUT "Exporting chart and table to PDF..."
+    INITIALIZE a new PDF document
+
+    GET the current date and time as generated_date
+    GET the username from the session
+
+    ADD a header to the PDF with the report title, generated_date, and username
+
+    IF sample data is used
+        ADD a sample data warning to the PDF
+    END IF
+
+    ADD a summary section to the PDF with:
+        - Total pages analyzed
+        - Total page views
+        - Total unique visitors
+        - Average views per visitor
+
+    ADD a table to the PDF with columns:
+        - Page URL
+        - Page Views
+        - Unique Visitors
+        - Views/Visitor
+
+    FOR each page in the data
+        ADD a row to the PDF table with the page's data
+    END FOR
+
+    ADD a chart image to the PDF by capturing the chart element as an image
+
+    ADD a "Key Insights" section with the top 3 most visited pages
+
+    IF data quality is estimated
+        ADD a data quality notice to the PDF
+    END IF
+
+    ADD a "Report Information" section with:
+        - Upload ID
+        - Report type
+        - Data source
+        - Totals
+
+    IF sample data is used
+        ADD a note about sample data to the PDF
+    END IF
+
+    SAVE the PDF file with a descriptive filename
+    TRIGGER the download for the user
+
+    CALL log_export WITH parameters: export_type="PDF", description="Exported top pages comprehensive report as PDF"
+END FUNCTION
+
+DEFINE FUNCTION log_export WITH PARAMETERS export_type, description
+    SEND a POST request to the server endpoint "log_export.php" with export_type and description
+    IF the server responds with success
+        OUTPUT "Export logged successfully."
+    ELSE
+        OUTPUT "Failed to log export."
+    END IF
+
+END 
+
+
+
+
+//log_export.php
+START
+    IMPORT config
+    IMPORT user_auth
+
+    IF the request method is POST THEN
+        START session
+        SET userId to the value of 'user_id' from session, or None if not set
+
+        IF userId is not set THEN
+            SET HTTP response code to 403
+            OUTPUT JSON: success = False, message = "User not authenticated"
+            EXIT
+        END IF
+
+        SET exportType to the value of 'exportType' from POST data, or "CSV" if not set
+        SET description to the value of 'description' from POST data, or empty string if not set
+
+        PREPARE SQL statement:
+            "INSERT INTO export_history (UserID, ExportType, ExportedDataDescription) VALUES (?, ?, ?)"
+        BIND userId, exportType, description to the SQL statement
+        EXECUTE the SQL statement and store the result in success
+
+        OUTPUT JSON: success = success
+    ELSE
+        SET HTTP response code to 405
+        OUTPUT JSON: success = False, message = "Invalid request method"
+    END IF
+END

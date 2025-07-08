@@ -1,0 +1,283 @@
+Summary Table:
+
+Feature	Files Involved
+Register/Login- admin_register.php, admin_login.php, admin_auth.php
+
+View Users- admin_users.php, user_management.php, user_management.js, api_users.php
+
+Suspend/Restore/Delete Users- admin_users.php, user_management.php, user_management.js, api_users.php, functions.php
+
+Supporting- admin_header.php, admin_footer.php, config.php
+
+
+
+//admin_login.php
+START
+    START session
+    IMPORT config.php
+
+    // Check for admin key in URL
+    SET admin_key TO value of GET parameter 'key' OR empty string
+    IF admin_key IS NOT 'trafanalyz' THEN
+        CALL displayAccessDeniedMessage
+    END IF
+
+    // Prevent End-User from accessing admin login
+    IF session 'role' IS SET AND session 'role' IS 'End-User' THEN
+        CALL displayAccessDeniedMessage
+    END IF
+
+    DEFINE FUNCTION displayAccessDeniedMessage
+        OUTPUT HTML page with "Access Denied" message and link to homepage
+        EXIT script
+    END FUNCTION
+
+    INITIALIZE errors AS empty dictionary
+
+    // Redirect if already logged in as admin
+    IF session 'user_id' IS SET AND session 'role' IS 'Admin' THEN
+        REDIRECT to 'admin/index.php'
+        EXIT script
+    END IF
+
+    // Handle form submission
+    IF request method IS POST THEN
+        SET username TO trimmed POST 'username' OR empty string
+        SET password TO POST 'password' OR empty string
+
+        // Validate input
+        IF username IS empty THEN
+            SET errors['username'] TO 'Username is required'
+        END IF
+        IF password IS empty THEN
+            SET errors['password'] TO 'Password is required'
+        END IF
+
+        // If no errors, process login
+        IF errors IS empty THEN
+            PREPARE SQL statement to SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ?
+            BIND username TO statement
+            EXECUTE statement
+            GET result
+
+            IF user record IS found THEN
+                IF AccountStatus IS 'Suspended' THEN
+                    SET errors['general'] TO 'Your account has been suspended. Please contact support.'
+                ELSE IF password matches PasswordHash THEN
+                    SET session 'user_id' TO UserID
+                    SET session 'username' TO Username
+                    SET session 'role' TO Role
+
+                    IF Role IS 'Admin' THEN
+                        REDIRECT to 'admin/index.php'
+                    ELSE
+                        REDIRECT to 'user/index.php'
+                    END IF
+                    EXIT script
+                ELSE
+                    SET errors['general'] TO 'Invalid username or password'
+                END IF
+            ELSE
+                SET errors['general'] TO 'Invalid username or password'
+            END IF
+        END IF
+    END IF
+
+    // Render HTML login form
+    OUTPUT HTML page:
+        - Show error messages if present
+        - Login form with username and password fields
+        - Password visibility toggle
+        - Remember me checkbox
+        - Links to admin registration and user login
+        - JavaScript for error bubbles and password toggle
+
+END
+
+
+
+
+//admin_register.php
+START
+    START session
+    IMPORT config.php
+
+    SET admin_key TO value from GET parameter 'key' OR empty string
+    IF admin_key IS NOT 'trafanalyz' THEN
+        CALL displayAccessDeniedMessage
+    END IF
+
+    IF session 'role' IS SET AND EQUALS 'End-User' THEN
+        CALL displayAccessDeniedMessage
+    END IF
+
+    DEFINE FUNCTION displayAccessDeniedMessage
+        OUTPUT HTML page with "Access Denied" message and link to homepage
+        EXIT script
+    END FUNCTION
+
+    INITIALIZE errors AS empty dictionary
+    INITIALIZE success AS False
+
+    IF request method IS POST THEN
+        SET firstname TO trimmed POST 'firstname' OR empty string
+        SET lastname TO trimmed POST 'lastname' OR empty string
+        SET username TO trimmed POST 'username' OR empty string
+        SET email TO trimmed POST 'email' OR empty string
+        SET password TO POST 'password' OR empty string
+        SET confirmPassword TO POST 'confirm-password' OR empty string
+        SET terms TO True IF POST 'terms' IS SET, ELSE False
+
+        // Validate input
+        IF firstname IS empty THEN
+            SET errors['firstname'] TO 'First name is required'
+        END IF
+
+        IF lastname IS empty THEN
+            SET errors['lastname'] TO 'Last name is required'
+        END IF
+
+        IF username IS empty THEN
+            SET errors['username'] TO 'Username is required'
+        ELSE IF length of username < 3 THEN
+            SET errors['username'] TO 'Username must be at least 3 characters'
+        END IF
+
+        IF email IS empty THEN
+            SET errors['email'] TO 'Email is required'
+        ELSE IF email IS NOT valid format THEN
+            SET errors['email'] TO 'Please enter a valid email address'
+        END IF
+
+        IF password IS empty THEN
+            SET errors['password'] TO 'Password is required'
+        ELSE IF length of password < 8 THEN
+            SET errors['password'] TO 'Password must be at least 8 characters'
+        END IF
+
+        IF password DOES NOT EQUAL confirmPassword THEN
+            SET errors['confirm-password'] TO 'Passwords do not match'
+        END IF
+
+        IF terms IS False THEN
+            SET errors['terms'] TO 'You must agree to the terms'
+        END IF
+
+        // Check for existing users if no errors
+        IF errors IS empty THEN
+            PREPARE SQL statement to SELECT UserID FROM user WHERE Username = ? OR Email = ?
+            BIND username and email to statement
+            EXECUTE statement
+            IF result has a row THEN
+                SET errors['general'] TO 'Username or email already exists'
+            ELSE
+                HASH password
+                PREPARE SQL statement to INSERT INTO user (Username, Email, PasswordHash, Role, AccountStatus) VALUES (?, ?, ?, 'Admin', 'Active')
+                BIND username, email, hashed password
+                IF statement executes successfully THEN
+                    SET success TO True
+                    SET session 'register_success' TO True
+                ELSE
+                    SET errors['general'] TO 'Registration failed. Please try again.'
+                END IF
+            END IF
+        END IF
+    END IF
+
+    OUTPUT HTML page:
+        - Registration form with fields: firstname, lastname, username, email, password, confirm-password, terms checkbox
+        - Show error messages if present
+        - Show success popup and redirect if registration is successful
+        - JavaScript for client-side validation and password visibility toggle
+
+END
+
+
+
+
+
+//admin_auth.php
+START
+
+    IF session is not started
+        START session
+    END IF
+
+    DEFINE FUNCTION displayAccessDeniedMessage
+        OUTPUT an HTML page with:
+            - Title: "Access Denied"
+            - Message: "Access denied. Admin area requires proper authorization."
+            - Link to return to homepage
+        TERMINATE script
+    END FUNCTION
+
+    // Authentication checks
+
+    IF 'user_id' is not set in session
+        CALL displayAccessDeniedMessage
+    END IF
+
+    IF 'role' is not set in session OR 'role' is not equal to 'Admin'
+        CALL displayAccessDeniedMessage
+    END IF
+
+    IF 'user_id' in session is empty
+        CALL displayAccessDeniedMessage
+    END IF
+
+    CLOSE session for writing
+
+END
+
+
+
+
+//functions.php
+DEFINE FUNCTION getAllUsers WITH PARAMETER conn
+    INITIALIZE users as empty list
+    TRY
+        EXECUTE SQL query to select UserID, Username, Email, Role, AccountStatus, CreatedAt from user table, ordered by UserID
+        FOR each row in query result
+            ADD row to users list
+        END FOR
+    CATCH any exception
+        LOG error message
+    END TRY
+    RETURN users
+END FUNCTION
+
+DEFINE FUNCTION updateUserStatus WITH PARAMETERS conn, userId, status
+    TRY
+        IF status is not 'Active' or 'Suspended'
+            RETURN False
+        END IF
+        PREPARE SQL statement to update AccountStatus in user table WHERE UserID = userId
+        BIND status and userId to statement
+        EXECUTE statement
+        RETURN True if successful
+    CATCH any exception
+        LOG error message
+        RETURN False
+    END TRY
+END FUNCTION
+
+DEFINE FUNCTION deleteUser WITH PARAMETERS conn, userId
+    TRY
+        BEGIN database transaction
+        PREPARE SQL statement to delete from user table WHERE UserID = userId
+        BIND userId to statement
+        EXECUTE statement
+        IF execution successful
+            COMMIT transaction
+            RETURN True
+        ELSE
+            ROLLBACK transaction
+            RETURN False
+        END IF
+    CATCH any exception
+        ROLLBACK transaction
+        LOG error message
+        RETURN False
+    END TRY
+END FUNCTION
+
