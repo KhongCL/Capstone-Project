@@ -1029,440 +1029,442 @@ function calculateStats($values) {
     </style>
 </head>
 <body>
-    <div class="container compare-user-compare-container" id="dashboard">
+    <div class="container">
         <?php include 'user_header.php'; ?>
 
         <main>
-            <h2><i class="fas fa-balance-scale"></i> Analytics CSV Comparison</h2>
-            <p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
+						<section class="user-section">
+            		<h2>Analytics CSV Comparison</h2>
+            		<p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
 
-            <!-- Upload Form -->
-            <div class="compare-user-upload-form">
-                <h3><i class="fas fa-upload"></i> Upload Analytics CSV Files</h3>
-                
-                <?php if ($error_message): ?>
-                    <?php 
-                    // Check if this is a validation error with suggestions OR a data validation error
-                    if (strpos($error_message, 'Data validation errors') !== false || 
-                        strpos($error_message, 'No valid data to save') !== false ||
-                        strpos($error_message, 'CSV parsing error') !== false ||
-                        strpos($error_message, 'trademark symbols') !== false ||
-                        strpos($error_message, 'scientific notation') !== false ||
-                        strpos($error_message, 'non-numeric characters') !== false ||
-                        strpos($error_message, 'Empty value') !== false ||
-                        strpos($error_message, 'whitespace') !== false): ?>
-                        <?php
-                        // Enhanced error message parsing to extract suggestions
-                        $errorMessage = $error_message;
-                        $errorMessage = str_replace("Error processing files: ", "", $errorMessage);
-                        $errorMessage = str_replace("File 1: ", "", $errorMessage);
-                        $errorMessage = str_replace("File 2: ", "", $errorMessage);
-                        $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
-                        $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
+            		<!-- Upload Form -->
+            		<div class="compare-user-upload-form">
+            		    <h3><i class="fas fa-upload"></i> Upload Analytics CSV Files</h3>
 
-                        // If it's "No valid data to save", create a more helpful error list
-                        if (strpos($error_message, 'No valid data to save') !== false) {
-                            $errorList = [
-                                "No valid data found in CSV file - All rows failed validation",
-                                "Common causes: Invalid file format, corrupt data, or unsupported CSV structure"
-                            ];
-                        } else {
-                            // Split by semicolons and parse suggestions
-                            $errorList = explode(';', $errorMessage);
-                        }
-                        ?>
+            		    <?php if ($error_message): ?>
+            		        <?php 
+            		        // Check if this is a validation error with suggestions OR a data validation error
+            		        if (strpos($error_message, 'Data validation errors') !== false || 
+            		            strpos($error_message, 'No valid data to save') !== false ||
+            		            strpos($error_message, 'CSV parsing error') !== false ||
+            		            strpos($error_message, 'trademark symbols') !== false ||
+            		            strpos($error_message, 'scientific notation') !== false ||
+            		            strpos($error_message, 'non-numeric characters') !== false ||
+            		            strpos($error_message, 'Empty value') !== false ||
+            		            strpos($error_message, 'whitespace') !== false): ?>
+            		            <?php
+            		            // Enhanced error message parsing to extract suggestions
+            		            $errorMessage = $error_message;
+            		            $errorMessage = str_replace("Error processing files: ", "", $errorMessage);
+            		            $errorMessage = str_replace("File 1: ", "", $errorMessage);
+            		            $errorMessage = str_replace("File 2: ", "", $errorMessage);
+            		            $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
+            		            $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
+										
+            		            // If it's "No valid data to save", create a more helpful error list
+            		            if (strpos($error_message, 'No valid data to save') !== false) {
+            		                $errorList = [
+            		                    "No valid data found in CSV file - All rows failed validation",
+            		                    "Common causes: Invalid file format, corrupt data, or unsupported CSV structure"
+            		                ];
+            		            } else {
+            		                // Split by semicolons and parse suggestions
+            		                $errorList = explode(';', $errorMessage);
+            		            }
+            		            ?>
 
-                        <div class="user-alert user-alert-danger">
-                            <div class="error-container">
-                                <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> Found validation errors in your CSV file(s):</p>
-                                <ul class="error-list">
-                                    <?php foreach($errorList as $error): ?>
-                                        <?php $error = trim($error); ?>
-                                        <?php if(!empty($error)): ?>
-                                            <?php
-                                            // Parse error and suggestions
-                                            $parts = explode(' Suggestions: ', $error);
-                                            $mainError = $parts[0];
-                                            $suggestions = isset($parts[1]) ? $parts[1] : '';
-                                            ?>
-                                            <li class="error-item">
-                                                <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
-                                                <?php if (!empty($suggestions)): ?>
-                                                    <div class="error-suggestions">
-                                                        <strong>💡 Suggestions:</strong> 
-                                                        <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
-                                                    </div>
-                                                <?php endif; ?>
-                                            </li>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-                                                
-                            <div class="validation-help">
-                                <h4>Quick Fix Guide:</h4>
-                                <div class="fix-guide">
-                                    <div class="fix-item">
-                                        <strong>📁 File Format Issues:</strong>
-                                        <ul>
-                                            <li>Ensure CSV has proper headers</li>
-                                            <li>Check for GA4 metadata lines starting with #</li>
-                                            <li>Verify file isn't corrupted or empty</li>
-                                            <li>Make sure data rows aren't all empty</li>
-                                        </ul>
-                                    </div>
-                                    <div class="fix-item">
-                                        <strong>🔢 Integer Issues:</strong>
-                                        <ul>
-                                            <li>Remove letters: "15a" → "15"</li>
-                                            <li>Evaluate expressions: "42+3" → "45"</li>
-                                            <li>Convert Unicode: "５０" → "50"</li>
-                                        </ul>
-                                    </div>
-                                    <div class="fix-item">
-                                        <strong>📊 Float/Decimal Issues:</strong>
-                                        <ul>
-                                            <li>Fix multiple decimals: "8..5" → "8.5"</li>
-                                            <li>Convert scientific: "1.2e3" → "1200"</li>
-                                            <li>Remove special chars: "~5.3" → "5.3"</li>
-                                        </ul>
-                                    </div>
-                                    <div class="fix-item">
-                                        <strong>⏰ Time Format Issues:</strong>
-                                        <ul>
-                                            <li>Use proper format: "10:65:30" → "11:05:30"</li>
-                                            <li>Convert units: "12m30s" → "12:30" or "750"</li>
-                                        </ul>
-                                    </div>
-                                    <div class="fix-item">
-                                        <strong>💰 Currency Issues:</strong>
-                                        <ul>
-                                            <li>Remove symbols: "$1,200" → "1200"</li>
-                                            <li>Remove commas: "500.abc" → "500"</li>
-                                        </ul>
-                                    </div>
-                                    <div class="fix-item">
-                                        <strong>🚫 Common CSV Issues:</strong>
-                                        <ul>
-                                            <li>Remove trademark symbols: ™, ®, ©</li>
-                                            <li>Fix unquoted commas in data fields</li>
-                                            <li>Remove leading/trailing whitespace</li>
-                                            <li>Check for mixed data types in columns</li>
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                                                
-                            <p class="error-footer">Please correct these issues and upload again.</p>
-                        </div>
-                                                
-                    <?php else: ?>
-                        <!-- Display other types of messages -->
-                        <div class="user-alert user-alert-danger">
-                            <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
-                        </div>
-                    <?php endif; ?>
-                <?php endif; ?>
-                    
-                <?php if ($success_message): ?>
-                    <div class="compare-user-alert compare-user-alert-success">
-                        <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success_message); ?>
-                    </div>
-                <?php endif; ?>
-
-                <form method="post" enctype="multipart/form-data">
-                    <div class="compare-user-file-input-group">
-                        <div>
-                            <label for="csv_file1">First Period CSV File</label>
-                            <input type="file" id="csv_file1" name="csv_file1" accept=".csv" required>
-                            <small>Upload your first analytics period data</small>
-                        </div>
-                        <div>
-                            <label for="csv_file2">Second Period CSV File</label>
-                            <input type="file" id="csv_file2" name="csv_file2" accept=".csv" required>
-                            <small>Upload your second analytics period data</small>
-                        </div>
-                    </div>
-                    <button type="submit" class="compare-user-btn-submit">
-                        <i class="fas fa-chart-bar"></i> Compare Analytics Data
-                    </button>
-                </form>
-            </div>
-
-            <div class="compare-comparison-container">
-                <h3>Compare CSV Files</h3>
-                            
-                <!-- Load Saved Comparison -->
-                <?php if (!empty($savedComparisons)): ?>
-                <div class="compare-saved-comparisons">
-                    <h4>Load Saved Comparison</h4>
-                    <form method="POST">
-                        <select name="saved_comparison_id" required>
-                            <option value="">Select a saved comparison...</option>
-                            <?php foreach ($savedComparisons as $comparison): ?>
-                                <option value="<?php echo $comparison['ComparisonID']; ?>">
-                                    <?php echo htmlspecialchars($comparison['ComparisonName']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button type="submit" name="load_comparison" class="compare-button">Load Comparison</button>
-                    </form>
-                    <hr>
-                </div>
-                <?php endif; ?>
-                            
-                <!-- New Comparison -->
-                <form method="POST">
-                    <div class="compare-file-selection">
-                        <label>First CSV File:</label>
-                        <select name="upload1" required>
-                            <option value="">Select first file...</option>
-                            <?php foreach ($csvFiles as $file): ?>
-                                <option value="<?php echo $file['UploadID']; ?>" 
-                                        <?php echo (isset($upload1) && $upload1 == $file['UploadID']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($file['FileName']) . ' (' . date('M j, Y g:i A', strtotime($file['UploadDate'])) . ')'; ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                            
-                    <div class="compare-file-selection">
-                        <label>Second CSV File:</label>
-                        <select name="upload2" required>
-                            <option value="">Select second file...</option>
-                            <?php foreach ($csvFiles as $file): ?>
-                                <option value="<?php echo $file['UploadID']; ?>"
-                                        <?php echo (isset($upload2) && $upload2 == $file['UploadID']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($file['FileName']) . ' (' . date('M j, Y g:i A', strtotime($file['UploadDate'])) . ')'; ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                            
-                    <div class="compare-comparison-name">
-                        <label>Comparison Name (optional):</label>
-                        <input type="text" name="comparisonName" placeholder="Enter a name to save this comparison">
-                    </div>
-                            
-                    <button type="submit" name="compare" class="compare-button">Save Comparison</button>
-                </form>
-            </div>
-
-            <!-- Export Controls (only show if we have comparison data) -->
-            <?php if (isset($comparison_results) && !empty($comparison_results)): ?>
-            <div class="user-export-controls" style="margin: 20px 0; text-align: right;">
-                <button class="user-export-btn csv" onclick="exportToCSV()" style="background: #28a745; color: white; padding: 10px 20px; margin-right: 10px; border: none; border-radius: 4px; cursor: pointer;">
-                    <i class="fas fa-file-csv"></i> Export to CSV
-                </button>
-                <button class="user-export-btn pdf" onclick="exportToPDF()" style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">
-                    <i class="fas fa-file-pdf"></i> Export to PDF
-                </button>
-            </div>
-            <?php endif; ?>
-
-
-            <!-- Comparison Results -->
-            <?php if ($comparison_results): ?>
-                <!-- Debug Information -->
-                <div class="compare-alert compare-alert-info">
-                    <h4><i class="fas fa-bug"></i> Debug Information</h4>
-                    <p><strong>Available CSV Headers:</strong><br>
-                    <small><?php echo implode(' | ', $comparison_results['headers']['common_headers']); ?></small></p>
-
-                    <p><strong>Analytics Metrics Detection Results:</strong><br>
-                    <?php 
-                    $all_metrics = ['sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
-                                   'events_per_session', 'event_count', 'key_events', 'session_key_event_rate',
-                                   'total_revenue', 'total_page_views', 'unique_visitors', 'average_session_duration',
-                                   'bounce_rate'];
-
-                    foreach ($all_metrics as $metric) {
-                        $found = isset($comparison_results['analytics_metrics'][$metric]);
-                        $color = $found ? 'green' : 'red';
-                        $status = $found ? '✓ Found' : '✗ Not Found';
-                        echo '<small style="color: ' . $color . ';">' . $metric . ': ' . $status;
-                        if ($found) {
-                            echo ' → ' . $comparison_results['analytics_metrics'][$metric]['column_name'];
-                        }
-                        echo '</small><br>';
-                    }
-                    ?>
-                    </p>
-
-                    <p><strong>Performance Overview Metrics:</strong><br>
-                    <?php 
-                    $key_metrics = ['sessions', 'engagement_rate', 'total_revenue', 'bounce_rate', 
-                                   'unique_visitors', 'total_page_views', 'average_session_duration'];
-                    foreach ($key_metrics as $metric) {
-                        $available = isset($comparison_results['summary_comparison'][$metric]);
-                        $color = $available ? 'blue' : 'orange';
-                        echo '<small style="color: ' . $color . ';">' . $metric . ': ' . ($available ? 'Available' : 'Not Available') . '</small><br>';
-                    }
-                    ?>
-                    </p>
-                </div>
-
-            <!-- Performance Overview -->
-            <?php if (!empty($comparison_results['summary_comparison'])): ?>
-                <div class="compare-metric-summary">
-                    <h3><i class="fas fa-tachometer-alt"></i> Performance Overview</h3>
-                    <div class="compare-user-stats-grid">
-                        <?php 
-                        // Dynamically show all available metrics from summary_comparison
-                        foreach ($comparison_results['summary_comparison'] as $metric => $data): 
-                        ?>
-                            <div class="compare-user-metric-box">
-                                <h4><?php echo number_format($data['file1_total']); ?></h4>
-                                <small><?php echo ucwords(str_replace('_', ' ', $metric)); ?></small>
-                                <div style="margin-top: 5px;">
-                                    <span class="compare-<?php echo $data['status'] === 'improved' ? 'improved' : ($data['status'] === 'declined' ? 'declined' : 'unchanged'); ?>">
-                                        <?php echo $data['percent_change']; ?>%
-                                        <i class="fas <?php echo $data['percent_change'] > 0 ? 'fa-arrow-up' : ($data['percent_change'] < 0 ? 'fa-arrow-down' : 'fa-minus'); ?>"></i>
-                                    </span>
-                                </div>
-                            </div>
-                        <?php 
-                        endforeach; 
-                        ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <!-- Detailed Analytics Comparison -->
-            <?php if (!empty($comparison_results['analytics_metrics'])): ?>
-                <div class="compare-comparison-card">
-                    <div class="compare-metric-header success">
-                        <i class="fas fa-chart-bar"></i> Detailed Analytics Comparison
-                    </div>
-                    <div class="compare-user-stats-grid">
-                        <?php foreach ($comparison_results['analytics_metrics'] as $metric => $analysis): ?>
-                            <div class="compare-comparison-item">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                                    <h5><?php echo ucwords(str_replace('_', ' ', $metric)); ?></h5>
-                                    <span class="compare-metric-percentage compare-<?php echo $analysis['comparison']['improvement']; ?>">
-                                        <?php echo $analysis['comparison']['percent_change'] > 0 ? '+' : ''; ?>
-                                        <?php echo $analysis['comparison']['percent_change']; ?>%
-                                    </span>
-                                </div>
-
-                                <div class="compare-detailed-vs-section">
-                                    <div class="compare-detailed-period-data">
-                                        <h6>Period 1</h6>
-                                        <div class="period-value"><?php echo number_format($analysis['file1_stats']['sum']); ?></div>
-                                        <div class="period-avg">Avg: <?php echo number_format($analysis['file1_stats']['mean'], 1); ?></div>
-                                    </div>
-
-                                    <div class="compare-vs-divider">VS</div>
-
-                                    <div class="compare-detailed-period-data">
-                                        <h6>Period 2</h6>
-                                        <div class="period-value"><?php echo number_format($analysis['file2_stats']['sum']); ?></div>
-                                        <div class="period-avg">Avg: <?php echo number_format($analysis['file2_stats']['mean'], 1); ?></div>
-                                    </div>
-                                </div>
-
-                                <div class="compare-change-summary compare-<?php echo $analysis['comparison']['improvement']; ?>">
-                                    <strong>
-                                        Change: <?php echo $analysis['comparison']['total_diff'] > 0 ? '+' : ''; ?>
-                                        <?php echo number_format($analysis['comparison']['total_diff']); ?>
-                                        (<?php echo $analysis['comparison']['percent_change'] > 0 ? '+' : ''; ?><?php echo $analysis['comparison']['percent_change']; ?>%)
-                                    </strong>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-                <!-- Basic File Information -->
-                <div class="compare-comparison-card">
-                    <div class="compare-metric-header primary">
-                        <i class="fas fa-info-circle"></i> File Information
-                    </div>
-                    <div class="compare-user-stats-grid">
-                        <div class="compare-user-metric-box">
-                            <h4><?php echo $comparison_results['basic_metrics']['file1_rows']; ?></h4>
-                            <small>Period 1 Records</small>
-                        </div>
-                        <div class="compare-user-metric-box">
-                            <h4><?php echo $comparison_results['basic_metrics']['file2_rows']; ?></h4>
-                            <small>Period 2 Records</small>
-                        </div>
-                        <div class="compare-user-metric-box">
-                            <h4><?php echo $comparison_results['basic_metrics']['file1_columns']; ?></h4>
-                            <small>Total Columns</small>
-                        </div>
-                        <div class="compare-user-metric-box">
-                            <h4><?php echo count($comparison_results['headers']['common_headers']); ?></h4>
-                            <small>Common Columns</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Data Samples -->
-                <div class="compare-comparison-card">
-                    <div class="compare-metric-header secondary">
-                        <i class="fas fa-eye"></i> Data Preview (First 5 Records)
-                    </div>
-                    <div class="compare-data-preview-section">
-                        <div class="compare-preview-column">
-                            <h4>Period 1 Sample</h4>
-                            <div class="compare-table-container">
-                                <table class="compare-preview-table">
-                                    <?php if (!empty($comparison_results['data_sample']['file1_sample'])): ?>
-                                        <thead>
-                                            <tr>
-                                                <?php foreach (array_keys($comparison_results['data_sample']['file1_sample'][0]) as $header): ?>
-                                                    <th><?php echo htmlspecialchars($header); ?></th>
-                                                <?php endforeach; ?>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($comparison_results['data_sample']['file1_sample'] as $row): ?>
-                                                <tr>
-                                                    <?php foreach ($row as $value): ?>
-                                                        <td><?php echo htmlspecialchars($value); ?></td>
-                                                    <?php endforeach; ?>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    <?php endif; ?>
-                                </table>
-                            </div>
-                        </div>
-                                                    
-                        <div class="compare-preview-column">
-                            <h4>Period 2 Sample</h4>
-                            <div class="compare-table-container">
-                                <table class="compare-preview-table">
-                                    <?php if (!empty($comparison_results['data_sample']['file2_sample'])): ?>
-                                        <thead>
-                                            <tr>
-                                                <?php foreach (array_keys($comparison_results['data_sample']['file2_sample'][0]) as $header): ?>
-                                                    <th><?php echo htmlspecialchars($header); ?></th>
-                                                <?php endforeach; ?>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php foreach ($comparison_results['data_sample']['file2_sample'] as $row): ?>
-                                                <tr>
-                                                    <?php foreach ($row as $value): ?>
-                                                        <td><?php echo htmlspecialchars($value); ?></td>
-                                                    <?php endforeach; ?>
-                                                </tr>
-                                            <?php endforeach; ?>
-                                        </tbody>
-                                    <?php endif; ?>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
+            		            <div class="user-alert user-alert-danger">
+            		                <div class="error-container">
+            		                    <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> Found validation errors in your CSV file(s):</p>
+            		                    <ul class="error-list">
+            		                        <?php foreach($errorList as $error): ?>
+            		                            <?php $error = trim($error); ?>
+            		                            <?php if(!empty($error)): ?>
+            		                                <?php
+            		                                // Parse error and suggestions
+            		                                $parts = explode(' Suggestions: ', $error);
+            		                                $mainError = $parts[0];
+            		                                $suggestions = isset($parts[1]) ? $parts[1] : '';
+            		                                ?>
+            		                                <li class="error-item">
+            		                                    <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
+            		                                    <?php if (!empty($suggestions)): ?>
+            		                                        <div class="error-suggestions">
+            		                                            <strong>💡 Suggestions:</strong> 
+            		                                            <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
+            		                                        </div>
+            		                                    <?php endif; ?>
+            		                                </li>
+            		                            <?php endif; ?>
+            		                        <?php endforeach; ?>
+            		                    </ul>
+            		                </div>
+																										
+            		                <div class="validation-help">
+            		                    <h4>Quick Fix Guide:</h4>
+            		                    <div class="fix-guide">
+            		                        <div class="fix-item">
+            		                            <strong>📁 File Format Issues:</strong>
+            		                            <ul>
+            		                                <li>Ensure CSV has proper headers</li>
+            		                                <li>Check for GA4 metadata lines starting with #</li>
+            		                                <li>Verify file isn't corrupted or empty</li>
+            		                                <li>Make sure data rows aren't all empty</li>
+            		                            </ul>
+            		                        </div>
+            		                        <div class="fix-item">
+            		                            <strong>🔢 Integer Issues:</strong>
+            		                            <ul>
+            		                                <li>Remove letters: "15a" → "15"</li>
+            		                                <li>Evaluate expressions: "42+3" → "45"</li>
+            		                                <li>Convert Unicode: "５０" → "50"</li>
+            		                            </ul>
+            		                        </div>
+            		                        <div class="fix-item">
+            		                            <strong>📊 Float/Decimal Issues:</strong>
+            		                            <ul>
+            		                                <li>Fix multiple decimals: "8..5" → "8.5"</li>
+            		                                <li>Convert scientific: "1.2e3" → "1200"</li>
+            		                                <li>Remove special chars: "~5.3" → "5.3"</li>
+            		                            </ul>
+            		                        </div>
+            		                        <div class="fix-item">
+            		                            <strong>⏰ Time Format Issues:</strong>
+            		                            <ul>
+            		                                <li>Use proper format: "10:65:30" → "11:05:30"</li>
+            		                                <li>Convert units: "12m30s" → "12:30" or "750"</li>
+            		                            </ul>
+            		                        </div>
+            		                        <div class="fix-item">
+            		                            <strong>💰 Currency Issues:</strong>
+            		                            <ul>
+            		                                <li>Remove symbols: "$1,200" → "1200"</li>
+            		                                <li>Remove commas: "500.abc" → "500"</li>
+            		                            </ul>
+            		                        </div>
+            		                        <div class="fix-item">
+            		                            <strong>🚫 Common CSV Issues:</strong>
+            		                            <ul>
+            		                                <li>Remove trademark symbols: ™, ®, ©</li>
+            		                                <li>Fix unquoted commas in data fields</li>
+            		                                <li>Remove leading/trailing whitespace</li>
+            		                                <li>Check for mixed data types in columns</li>
+            		                            </ul>
+            		                        </div>
+            		                    </div>
+            		                </div>
+																										
+            		                <p class="error-footer">Please correct these issues and upload again.</p>
+            		            </div>
+																										
+            		        <?php else: ?>
+            		            <!-- Display other types of messages -->
+            		            <div class="user-alert user-alert-danger">
+            		                <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
+            		            </div>
+            		        <?php endif; ?>
+            		    <?php endif; ?>
+												
+            		    <?php if ($success_message): ?>
+            		        <div class="compare-user-alert compare-user-alert-success">
+            		            <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success_message); ?>
+            		        </div>
+            		    <?php endif; ?>
+										
+            		    <form method="post" enctype="multipart/form-data">
+            		        <div class="compare-user-file-input-group">
+            		            <div>
+            		                <label for="csv_file1">First Period CSV File</label>
+            		                <input type="file" id="csv_file1" name="csv_file1" accept=".csv" required>
+            		                <small>Upload your first analytics period data</small>
+            		            </div>
+            		            <div>
+            		                <label for="csv_file2">Second Period CSV File</label>
+            		                <input type="file" id="csv_file2" name="csv_file2" accept=".csv" required>
+            		                <small>Upload your second analytics period data</small>
+            		            </div>
+            		        </div>
+            		        <button type="submit" class="compare-user-btn-submit">
+            		            <i class="fas fa-chart-bar"></i> Compare Analytics Data
+            		        </button>
+            		    </form>
+            		</div>
+										
+            		<div class="compare-comparison-container">
+            		    <h3>Compare CSV Files</h3>
+										
+            		    <!-- Load Saved Comparison -->
+            		    <?php if (!empty($savedComparisons)): ?>
+            		    <div class="compare-saved-comparisons">
+            		        <h4>Load Saved Comparison</h4>
+            		        <form method="POST">
+            		            <select name="saved_comparison_id" required>
+            		                <option value="">Select a saved comparison...</option>
+            		                <?php foreach ($savedComparisons as $comparison): ?>
+            		                    <option value="<?php echo $comparison['ComparisonID']; ?>">
+            		                        <?php echo htmlspecialchars($comparison['ComparisonName']); ?>
+            		                    </option>
+            		                <?php endforeach; ?>
+            		            </select>
+            		            <button type="submit" name="load_comparison" class="btn">Load Comparison</button>
+            		        </form>
+            		        <hr>
+            		    </div>
+            		    <?php endif; ?>
+																
+            		    <!-- New Comparison -->
+            		    <form method="POST">
+            		        <div class="compare-file-selection">
+            		            <label>First CSV File:</label>
+            		            <select name="upload1" required>
+            		                <option value="">Select first file...</option>
+            		                <?php foreach ($csvFiles as $file): ?>
+            		                    <option value="<?php echo $file['UploadID']; ?>" 
+            		                            <?php echo (isset($upload1) && $upload1 == $file['UploadID']) ? 'selected' : ''; ?>>
+            		                        <?php echo htmlspecialchars($file['FileName']) . ' (' . date('M j, Y g:i A', strtotime($file['UploadDate'])) . ')'; ?>
+            		                    </option>
+            		                <?php endforeach; ?>
+            		            </select>
+            		        </div>
+																
+            		        <div class="compare-file-selection">
+            		            <label>Second CSV File:</label>
+            		            <select name="upload2" required>
+            		                <option value="">Select second file...</option>
+            		                <?php foreach ($csvFiles as $file): ?>
+            		                    <option value="<?php echo $file['UploadID']; ?>"
+            		                            <?php echo (isset($upload2) && $upload2 == $file['UploadID']) ? 'selected' : ''; ?>>
+            		                        <?php echo htmlspecialchars($file['FileName']) . ' (' . date('M j, Y g:i A', strtotime($file['UploadDate'])) . ')'; ?>
+            		                    </option>
+            		                <?php endforeach; ?>
+            		            </select>
+            		        </div>
+																
+            		        <div class="compare-comparison-name">
+            		            <label>Comparison Name (optional):</label>
+            		            <input type="text" name="comparisonName" placeholder="Enter a name to save this comparison">
+            		        </div>
+																
+            		        <button type="submit" name="compare" class="btn">Save Comparison</button>
+            		    </form>
+            		</div>
+																
+            		<!-- Export Controls (only show if we have comparison data) -->
+            		<?php if (isset($comparison_results) && !empty($comparison_results)): ?>
+            		<div class="user-export-controls" style="margin: 20px 0; text-align: right;">
+            		    <button class="user-export-btn csv" onclick="exportToCSV()" style="background: #28a745; color: white; padding: 10px 20px; margin-right: 10px; border: none; border-radius: 		4px; cursor: pointer;">
+            		        <i class="fas fa-file-csv"></i> Export to CSV
+            		    </button>
+            		    <button class="user-export-btn pdf" onclick="exportToPDF()" style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;		">
+            		        <i class="fas fa-file-pdf"></i> Export to PDF
+            		    </button>
+            		</div>
+            		<?php endif; ?>
+								
+								
+            		<!-- Comparison Results -->
+            		<?php if ($comparison_results): ?>
+            		    <!-- Debug Information -->
+            		    <div class="compare-alert compare-alert-info">
+            		        <h4><i class="fas fa-bug"></i> Debug Information</h4>
+            		        <p><strong>Available CSV Headers:</strong><br>
+            		        <small><?php echo implode(' | ', $comparison_results['headers']['common_headers']); ?></small></p>
+								
+            		        <p><strong>Analytics Metrics Detection Results:</strong><br>
+            		        <?php 
+            		        $all_metrics = ['sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
+            		                       'events_per_session', 'event_count', 'key_events', 'session_key_event_rate',
+            		                       'total_revenue', 'total_page_views', 'unique_visitors', 'average_session_duration',
+            		                       'bounce_rate'];
+								
+            		        foreach ($all_metrics as $metric) {
+            		            $found = isset($comparison_results['analytics_metrics'][$metric]);
+            		            $color = $found ? 'green' : 'red';
+            		            $status = $found ? '✓ Found' : '✗ Not Found';
+            		            echo '<small style="color: ' . $color . ';">' . $metric . ': ' . $status;
+            		            if ($found) {
+            		                echo ' → ' . $comparison_results['analytics_metrics'][$metric]['column_name'];
+            		            }
+            		            echo '</small><br>';
+            		        }
+            		        ?>
+            		        </p>
+											
+            		        <p><strong>Performance Overview Metrics:</strong><br>
+            		        <?php 
+            		        $key_metrics = ['sessions', 'engagement_rate', 'total_revenue', 'bounce_rate', 
+            		                       'unique_visitors', 'total_page_views', 'average_session_duration'];
+            		        foreach ($key_metrics as $metric) {
+            		            $available = isset($comparison_results['summary_comparison'][$metric]);
+            		            $color = $available ? 'blue' : 'orange';
+            		            echo '<small style="color: ' . $color . ';">' . $metric . ': ' . ($available ? 'Available' : 'Not Available') . '</small><br>';
+            		        }
+            		        ?>
+            		        </p>
+            		    </div>
+											
+            		<!-- Performance Overview -->
+            		<?php if (!empty($comparison_results['summary_comparison'])): ?>
+            		    <div class="compare-metric-summary">
+            		        <h3><i class="fas fa-tachometer-alt"></i> Performance Overview</h3>
+            		        <div class="compare-user-stats-grid">
+            		            <?php 
+            		            // Dynamically show all available metrics from summary_comparison
+            		            foreach ($comparison_results['summary_comparison'] as $metric => $data): 
+            		            ?>
+            		                <div class="compare-user-metric-box">
+            		                    <h4><?php echo number_format($data['file1_total']); ?></h4>
+            		                    <small><?php echo ucwords(str_replace('_', ' ', $metric)); ?></small>
+            		                    <div style="margin-top: 5px;">
+            		                        <span class="compare-<?php echo $data['status'] === 'improved' ? 'improved' : ($data['status'] === 'declined' ? 'declined' : 'unchanged'); ?>">
+            		                            <?php echo $data['percent_change']; ?>%
+            		                            <i class="fas <?php echo $data['percent_change'] > 0 ? 'fa-arrow-up' : ($data['percent_change'] < 0 ? 'fa-arrow-down' : 'fa-minus'); ?>"></i>
+            		                        </span>
+            		                    </div>
+            		                </div>
+            		            <?php 
+            		            endforeach; 
+            		            ?>
+            		        </div>
+            		    </div>
+            		<?php endif; ?>
+													
+            		<!-- Detailed Analytics Comparison -->
+            		<?php if (!empty($comparison_results['analytics_metrics'])): ?>
+            		    <div class="compare-comparison-card">
+            		        <div class="compare-metric-header success">
+            		            <i class="fas fa-chart-bar"></i> Detailed Analytics Comparison
+            		        </div>
+            		        <div class="compare-user-stats-grid">
+            		            <?php foreach ($comparison_results['analytics_metrics'] as $metric => $analysis): ?>
+            		                <div class="compare-comparison-item">
+            		                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            		                        <h5><?php echo ucwords(str_replace('_', ' ', $metric)); ?></h5>
+            		                        <span class="compare-metric-percentage compare-<?php echo $analysis['comparison']['improvement']; ?>">
+            		                            <?php echo $analysis['comparison']['percent_change'] > 0 ? '+' : ''; ?>
+            		                            <?php echo $analysis['comparison']['percent_change']; ?>%
+            		                        </span>
+            		                    </div>
+														
+            		                    <div class="compare-detailed-vs-section">
+            		                        <div class="compare-detailed-period-data">
+            		                            <h6>Period 1</h6>
+            		                            <div class="period-value"><?php echo number_format($analysis['file1_stats']['sum']); ?></div>
+            		                            <div class="period-avg">Avg: <?php echo number_format($analysis['file1_stats']['mean'], 1); ?></div>
+            		                        </div>
+														
+            		                        <div class="compare-vs-divider">VS</div>
+														
+            		                        <div class="compare-detailed-period-data">
+            		                            <h6>Period 2</h6>
+            		                            <div class="period-value"><?php echo number_format($analysis['file2_stats']['sum']); ?></div>
+            		                            <div class="period-avg">Avg: <?php echo number_format($analysis['file2_stats']['mean'], 1); ?></div>
+            		                        </div>
+            		                    </div>
+														
+            		                    <div class="compare-change-summary compare-<?php echo $analysis['comparison']['improvement']; ?>">
+            		                        <strong>
+            		                            Change: <?php echo $analysis['comparison']['total_diff'] > 0 ? '+' : ''; ?>
+            		                            <?php echo number_format($analysis['comparison']['total_diff']); ?>
+            		                            (<?php echo $analysis['comparison']['percent_change'] > 0 ? '+' : ''; ?><?php echo $analysis['comparison']['percent_change']; ?>%)
+            		                        </strong>
+            		                    </div>
+            		                </div>
+            		            <?php endforeach; ?>
+            		        </div>
+            		    </div>
+            		<?php endif; ?>
+														
+            		    <!-- Basic File Information -->
+            		    <div class="compare-comparison-card">
+            		        <div class="compare-metric-header primary">
+            		            <i class="fas fa-info-circle"></i> File Information
+            		        </div>
+            		        <div class="compare-user-stats-grid">
+            		            <div class="compare-user-metric-box">
+            		                <h4><?php echo $comparison_results['basic_metrics']['file1_rows']; ?></h4>
+            		                <small>Period 1 Records</small>
+            		            </div>
+            		            <div class="compare-user-metric-box">
+            		                <h4><?php echo $comparison_results['basic_metrics']['file2_rows']; ?></h4>
+            		                <small>Period 2 Records</small>
+            		            </div>
+            		            <div class="compare-user-metric-box">
+            		                <h4><?php echo $comparison_results['basic_metrics']['file1_columns']; ?></h4>
+            		                <small>Total Columns</small>
+            		            </div>
+            		            <div class="compare-user-metric-box">
+            		                <h4><?php echo count($comparison_results['headers']['common_headers']); ?></h4>
+            		                <small>Common Columns</small>
+            		            </div>
+            		        </div>
+            		    </div>
+														
+            		    <!-- Data Samples -->
+            		    <div class="compare-comparison-card">
+            		        <div class="compare-metric-header secondary">
+            		            <i class="fas fa-eye"></i> Data Preview (First 5 Records)
+            		        </div>
+            		        <div class="compare-data-preview-section">
+            		            <div class="compare-preview-column">
+            		                <h4>Period 1 Sample</h4>
+            		                <div class="compare-table-container">
+            		                    <table class="compare-preview-table">
+            		                        <?php if (!empty($comparison_results['data_sample']['file1_sample'])): ?>
+            		                            <thead>
+            		                                <tr>
+            		                                    <?php foreach (array_keys($comparison_results['data_sample']['file1_sample'][0]) as $header): ?>
+            		                                        <th><?php echo htmlspecialchars($header); ?></th>
+            		                                    <?php endforeach; ?>
+            		                                </tr>
+            		                            </thead>
+            		                            <tbody>
+            		                                <?php foreach ($comparison_results['data_sample']['file1_sample'] as $row): ?>
+            		                                    <tr>
+            		                                        <?php foreach ($row as $value): ?>
+            		                                            <td><?php echo htmlspecialchars($value); ?></td>
+            		                                        <?php endforeach; ?>
+            		                                    </tr>
+            		                                <?php endforeach; ?>
+            		                            </tbody>
+            		                        <?php endif; ?>
+            		                    </table>
+            		                </div>
+            		            </div>
+																												
+            		            <div class="compare-preview-column">
+            		                <h4>Period 2 Sample</h4>
+            		                <div class="compare-table-container">
+            		                    <table class="compare-preview-table">
+            		                        <?php if (!empty($comparison_results['data_sample']['file2_sample'])): ?>
+            		                            <thead>
+            		                                <tr>
+            		                                    <?php foreach (array_keys($comparison_results['data_sample']['file2_sample'][0]) as $header): ?>
+            		                                        <th><?php echo htmlspecialchars($header); ?></th>
+            		                                    <?php endforeach; ?>
+            		                                </tr>
+            		                            </thead>
+            		                            <tbody>
+            		                                <?php foreach ($comparison_results['data_sample']['file2_sample'] as $row): ?>
+            		                                    <tr>
+            		                                        <?php foreach ($row as $value): ?>
+            		                                            <td><?php echo htmlspecialchars($value); ?></td>
+            		                                        <?php endforeach; ?>
+            		                                    </tr>
+            		                                <?php endforeach; ?>
+            		                            </tbody>
+            		                        <?php endif; ?>
+            		                    </table>
+            		                </div>
+            		            </div>
+            		        </div>
+            		    </div>
+            		<?php endif; ?>
+						</section>
         </main>
 
         <?php include 'user_footer.php'; ?>
-    </div>
+		</div>
 
     
     <script>

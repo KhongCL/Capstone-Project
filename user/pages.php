@@ -137,7 +137,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
   </style>
 </head>
 <body>
-  <div class="container user-pages-container">
+  <div class="container">
     <?php 
     // UPDATED: Use appropriate header based on user role
     if ($isAdmin) {
@@ -152,103 +152,105 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
     ?>
     
     <main>
-      <h2>Top Pages Dashboard</h2>
+			<section class="user-section">
+      		<h2>Top Pages Dashboard</h2>
 
-      <!-- Sample Data Notice -->
-      <?php if ($sampleNotice['is_sample']): ?>
-        <div class="<?php echo $isAdmin ? 'admin-notice' : 'sample-data-notice'; ?>">
-          <div class="notice-content">
-            <i class="fas fa-vial"></i>
-            <span><?php echo $sampleNotice['message']; ?></span>
-            <?php if (!$isAdmin): ?>
-                <?php echo $sampleNotice['action']; ?>
-            <?php else: ?>
-                <a href="<?php echo $backUrl; ?>" class="btn">Back to Admin Panel</a>
-            <?php endif; ?>
-          </div>
-        </div>
-      <?php endif; ?>
-
-      <?php if ($dataQuality['source_type'] === 'estimated'): ?>
-        <div class="data-quality-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-          <h4 style="margin: 0 0 10px 0; color: #856404;">📊 Data Quality Notice</h4>
-          <p style="margin: 0; color: #856404;">
-            <?php if ($dataQuality['estimation_method'] === 'sessions_70_percent_rule'): ?>
-              <strong>Estimated Unique Visitors:</strong> Your CSV doesn't contain unique visitor data. We've estimated it as 70% of sessions based on industry averages.
-            <?php elseif ($dataQuality['estimation_method'] === 'sessions_60_percent_rule'): ?>
-              <strong>Rough Estimate:</strong> Limited data available. Unique visitors estimated as 60% of available session data.
-            <?php endif ?>
-            <br><small>💡 For more accurate data, upload a CSV with both page views and unique visitor metrics.</small>
-          </p>
-        </div>
-        <?php elseif ($dataQuality['estimation_method'] === 'sessions_as_page_views'): ?>
-        <div class="data-quality-notice" style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-          <h4 style="margin: 0 0 10px 0; color: #0c5460;">ℹ️ Data Source Information</h4>
-          <p style="margin: 0; color: #0c5460;">
-            <strong>Using Sessions as Page Views:</strong> Your CSV contains session data which we're using as page view metrics.
-            <br><small>This provides accurate relative comparisons between traffic sources.</small>
-          </p>
-        </div>
-      <?php endif ?>
-
-      <section class="user-chart-section">
-        <h3>Most Visited Pages</h3>
-        <div class="user-chart-container" id="chartContainer">
-          <canvas id="pagesChart"></canvas>
-        </div>
-        <div style="margin-top: 10px;">
-          <button onclick="exportChartToPDF()" class="export-btn pdf">
-            <span class="icon">📄</span>
-            <span class="text">Export Chart to PDF</span>
-          </button>
-        </div>
-      </section>
-      
-      <section class="user-data-table-section">
-        <h3>Top Pages Detail</h3>
-        <table class="user-data-table" id="pagesTable">
-          <thead>
-            <tr>
-              <th>Page URL</th>
-              <th>Page Views</th>
-              <th>Unique Visitors 
-                <?php if ($dataQuality['source_type'] === 'estimated'): ?>
-                  <span style="font-size: 0.8em; color: #856404;">*</span>
-                <?php endif ?>
-              </th>
-              <th>Views/Visitor</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($pagesData as $page): ?>
-            <tr>
-              <td><?php echo htmlspecialchars($page['page_url']); ?></td>
-              <td><?php echo number_format($page['page_views']); ?></td>
-              <td>
-                <?php echo number_format($page['unique_visitors']); ?>
-                <?php if ($dataQuality['source_type'] === 'estimated'): ?>
-                  <span style="font-size: 0.8em; color: #856404;">*</span>
-                <?php endif ?>
-              </td>
-              <td><?php echo round($page['page_views'] / $page['unique_visitors'], 2); ?></td>
-            </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-        
-        <?php if ($dataQuality['source_type'] === 'estimated'): ?>
-        <p style="font-size: 0.9em; color: #856404; margin-top: 10px;">
-          <span style="font-size: 0.8em;">*</span> Estimated values based on available session data
-        </p>
-        <?php endif ?>
-        
-        <div style="margin-top: 10px;">
-          <button onclick="exportTableToCSV()" class="export-btn csv">
-            <span class="icon">📊</span>
-            <span class="text">Export Table to CSV</span>
-          </button>
-        </div>
-      </section>
+      		<!-- Sample Data Notice -->
+      		<?php if ($sampleNotice['is_sample']): ?>
+      		  <div class="<?php echo $isAdmin ? 'admin-notice' : 'sample-data-notice'; ?>">
+      		    <div class="notice-content">
+      		      <i class="fas fa-vial"></i>
+      		      <span><?php echo $sampleNotice['message']; ?></span>
+      		      <?php if (!$isAdmin): ?>
+      		          <?php echo $sampleNotice['action']; ?>
+      		      <?php else: ?>
+      		          <a href="<?php echo $backUrl; ?>" class="btn">Back to Admin Panel</a>
+      		      <?php endif; ?>
+      		    </div>
+      		  </div>
+      		<?php endif; ?>
+								
+      		<?php if ($dataQuality['source_type'] === 'estimated'): ?>
+      		  <div class="data-quality-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; 		margin-bottom: 20px; border-radius: 5px;">
+      		    <h4 style="margin: 0 0 10px 0; color: #856404;">📊 Data Quality Notice</h4>
+      		    <p style="margin: 0; color: #856404;">
+      		      <?php if ($dataQuality['estimation_method'] === 'sessions_70_percent_rule'): ?>
+      		        <strong>Estimated Unique Visitors:</strong> Your CSV doesn't contain unique visitor data. We've 		estimated it as 70% of sessions based on industry averages.
+      		      <?php elseif ($dataQuality['estimation_method'] === 'sessions_60_percent_rule'): ?>
+      		        <strong>Rough Estimate:</strong> Limited data available. Unique visitors estimated as 60% of 		available session data.
+      		      <?php endif ?>
+      		      <br><>💡 For more accurate data, upload a CSV with both page views and unique visitor metrics.</		small>
+      		    </p>
+      		  </div>
+      		  <?php elseif ($dataQuality['estimation_method'] === 'sessions_as_page_views'): ?>
+      		  <div class="data-quality-notice" style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; 		margin-bottom: 20px; border-radius: 5px;">
+      		    <h4 style="margin: 0 0 10px 0; color: #0c5460;">ℹ️ Data Source Information</h4>
+      		    <p style="margin: 0; color: #0c5460;">
+      		      <strong>Using Sessions as Page Views:</strong> Your CSV contains session data which we're using as 		page view metrics.
+      		      <br><small>This provides accurate relative comparisons between traffic sources.</small>
+      		    </p>
+      		  </div>
+      		<?php endif ?>
+						
+      		<div class="user-chart-section">
+      		  <h3><i class="fas fa-chart-bar"></i> Most Visited Pages</h3>
+      		  <div class="user-chart-container" id="chartContainer">
+      		    <canvas id="pagesChart"></canvas>
+      		  </div>
+      		  <div style="margin-top: 10px;">
+      		    <button onclick="exportChartToPDF()" class="user-export-btn pdf">
+      		      <span class="icon">📄</span>
+      		      <span class="text">Export Chart to PDF</span>
+      		    </button>
+      		  </div>
+      		</div>
+						
+      		<div class="user-data-table-section">
+      		  <h3><i class="fas fa-list-alt"></i> Top Pages Detail</h3>
+      		  <table class="user-data-table" id="pagesTable">
+      		    <thead>
+      		      <tr>
+      		        <th>Page URL</th>
+      		        <th>Page Views</th>
+      		        <th>Unique Visitors 
+      		          <?php if ($dataQuality['source_type'] === 'estimated'): ?>
+      		            <span style="font-size: 0.8em; color: #856404;">*</span>
+      		          <?php endif ?>
+      		        </th>
+      		        <th>Views/Visitor</th>
+      		      </tr>
+      		    </thead>
+      		    <tbody>
+      		      <?php foreach ($pagesData as $page): ?>
+      		      <tr>
+      		        <td><?php echo htmlspecialchars($page['page_url']); ?></td>
+      		        <td><?php echo number_format($page['page_views']); ?></td>
+      		        <td>
+      		          <?php echo number_format($page['unique_visitors']); ?>
+      		          <?php if ($dataQuality['source_type'] === 'estimated'): ?>
+      		            <span style="font-size: 0.8em; color: #856404;">*</span>
+      		          <?php endif ?>
+      		        </td>
+      		        <td><?php echo round($page['page_views'] / $page['unique_visitors'], 2); ?></td>
+      		      </tr>
+      		      <?php endforeach; ?>
+      		    </tbody>
+      		  </table>
+										
+      		  <?php if ($dataQuality['source_type'] === 'estimated'): ?>
+      		  <p style="font-size: 0.9em; color: #856404; margin-top: 10px;">
+      		    <span style="font-size: 0.8em;">*</span> Estimated values based on available session data
+      		  </p>
+      		  <?php endif ?>
+						
+      		  <div style="margin-top: 10px;">
+      		    <button onclick="exportTableToCSV()" class="user-export-btn csv">
+      		      <span class="icon">📊</span>
+      		      <span class="text">Export Table to CSV</span>
+      		    </button>
+      		  </div>
+      		</div>
+			</section>
     </main>
 
     <?php 
