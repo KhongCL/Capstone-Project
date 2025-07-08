@@ -2233,7 +2233,7 @@ function calculateStats($values) {
             </div>
 
             <div class="compare-comparison-container">
-                <h3>Compare CSV Files</h3>
+                <h3><i class="fas fa-balance-scale"></i> Compare CSV Files</h3>
                             
                 <!-- Load Saved Comparison -->
                 <?php if (!empty($savedComparisons)): ?>
@@ -2248,7 +2248,7 @@ function calculateStats($values) {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <button type="submit" name="load_comparison" class="compare-button">Load Comparison</button>
+                        <button type="submit" name="load_comparison" class="btn">Load Comparison</button>
                     </form>
                     <hr>
                 </div>
@@ -2287,7 +2287,7 @@ function calculateStats($values) {
                         <input type="text" name="comparisonName" placeholder="Enter a name to save this comparison">
                     </div>
                             
-                    <button type="submit" name="compare" class="compare-button">Save Comparison</button>
+                    <button type="submit" name="compare" class="btn">Save Comparison</button>
                 </form>
             </div>
 
