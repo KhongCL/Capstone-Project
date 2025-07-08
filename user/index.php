@@ -1040,7 +1040,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             </section>
         </main>
 
-        <?php include '../footer.php'; ?>
+        <?php include 'user_footer.php'; ?>
     </div>
 
     <script src="upload_progress.js"></script>

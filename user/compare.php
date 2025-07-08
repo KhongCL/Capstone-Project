@@ -36,17 +36,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
     $file2 = $_FILES['csv_file2'];
     
     try {
+        // Clear any previous comparison session data
+        unset($_SESSION['compare_files']);
+        unset($_SESSION['compare_ready']);
+        unset($_SESSION['compare_error']);
+        
+        // CRITICAL FIX: Set up basic comparison session structure BEFORE processing files
+        $_SESSION['compare_files'] = [
+            1 => [
+                'name' => $file1['name'],
+                'path' => null,  // Will be set after upload
+                'upload_id' => null,  // Will be set after upload
+                'needs_mapping' => false,  // Will be updated based on results
+                'mapped' => false,
+                'result' => null  // Will be set after upload
+            ],
+            2 => [
+                'name' => $file2['name'],
+                'path' => null,  // Will be set after upload
+                'upload_id' => null,  // Will be set after upload
+                'needs_mapping' => false,  // Will be updated based on results
+                'mapped' => false,
+                'result' => null  // Will be set after upload
+            ]
+        ];
+        error_log("Set initial compare_files session structure");
+        
         // Process both files through handleCsvUpload - they will be saved with unique hash names
-        $upload_result1 = handleCsvUpload($conn, $file1);
-        $upload_result2 = handleCsvUpload($conn, $file2);
+        $upload_result1 = handleCsvUploadForComparison($conn, $file1);
+        $upload_result2 = handleCsvUploadForComparison($conn, $file2);
         
         // Initialize variables for different scenarios
         $file1_valid = ($upload_result1['type'] === 'success' || $upload_result1['type'] === 'warning');
         $file2_valid = ($upload_result2['type'] === 'success' || $upload_result2['type'] === 'warning');
+        $file1_needs_mapping = ($upload_result1['type'] === 'needs_mapping');
+        $file2_needs_mapping = ($upload_result2['type'] === 'needs_mapping');
         
-        // Handle all 4 scenarios
+        // Update the session data with results
+        $compareFiles = $_SESSION['compare_files'];  // Get the structure we just created
+        
+        // Handle File 1 - UPDATE existing structure
+        if ($file1_valid || $file1_needs_mapping) {
+            $compareFiles[1]['path'] = $upload_result1['file_path'] ?? null;
+            $compareFiles[1]['upload_id'] = $upload_result1['upload_id'] ?? null;
+            $compareFiles[1]['needs_mapping'] = $file1_needs_mapping;
+            $compareFiles[1]['mapped'] = $file1_valid; // Already mapped if valid
+            $compareFiles[1]['result'] = $upload_result1;
+        }
+        
+        // Handle File 2 - UPDATE existing structure
+        if ($file2_valid || $file2_needs_mapping) {
+            $compareFiles[2]['path'] = $upload_result2['file_path'] ?? null;
+            $compareFiles[2]['upload_id'] = $upload_result2['upload_id'] ?? null;
+            $compareFiles[2]['needs_mapping'] = $file2_needs_mapping;
+            $compareFiles[2]['mapped'] = $file2_valid; // Already mapped if valid
+            $compareFiles[2]['result'] = $upload_result2;
+        }
+        
+        // Update session with complete information
+        $_SESSION['compare_files'] = $compareFiles;
+        error_log("Updated compare_files session with complete information: " . json_encode(array_keys($compareFiles)));
+        
+        session_write_close();
+        session_start();
+        error_log("Session data written and restarted before redirect logic");
+        
+        // Handle all 8 scenarios (4 original + 4 with mapping)
         if ($file1_valid && $file2_valid) {
-            // Both files are valid - proceed with comparison
+            // Scenario 1: Both files are valid - proceed with comparison
             $file1_path = $upload_result1['file_path'] ?? null;
             $file2_path = $upload_result2['file_path'] ?? null;
             
@@ -71,16 +128,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
                 $error_message = "Files were processed but could not be found for comparison.";
             }
             
-        } elseif ($file1_valid && !$file2_valid) {
-            // File 1 valid, File 2 invalid
-            $error_message = "File 1 uploaded successfully, but File 2 failed: " . $upload_result2['message'];
+        } elseif ($file1_needs_mapping && $file2_valid) {
+            // Scenario 2: File 1 needs mapping, File 2 is valid
+            error_log("Scenario 2: File 1 needs mapping, File 2 is valid - redirecting to map file 1");
+            // CRITICAL FIX: Force another session write before redirect
+            session_write_close();
+            header('Location: map_columns_compare.php?file=1');
+            exit;
             
-        } elseif (!$file1_valid && $file2_valid) {
-            // File 1 invalid, File 2 valid  
-            $error_message = "File 2 uploaded successfully, but File 1 failed: " . $upload_result1['message'];
+        } elseif ($file1_valid && $file2_needs_mapping) {
+            // Scenario 3: File 1 is valid, File 2 needs mapping
+            error_log("Scenario 3: File 1 is valid, File 2 needs mapping - redirecting to map file 2");
+            // CRITICAL FIX: Force another session write before redirect
+            session_write_close();
+            header('Location: map_columns_compare.php?file=2');
+            exit;
+            
+        } elseif ($file1_needs_mapping && $file2_needs_mapping) {
+            // Scenario 4: Both files need mapping - start with file 1
+            error_log("Scenario 4: Both files need mapping - redirecting to map file 1");
+            // CRITICAL FIX: Force another session write before redirect
+            session_write_close();
+            header('Location: map_columns_compare.php?file=1');
+            exit;
+            
+        } elseif (($file1_valid || $file1_needs_mapping) && !$file2_valid && !$file2_needs_mapping) {
+            // Scenario 5: File 1 valid/mappable, File 2 invalid
+            $error_message = "File 1 " . ($file1_needs_mapping ? "uploaded successfully (requires mapping)" : "uploaded successfully") . 
+                           ", but File 2 failed: " . $upload_result2['message'];
+            
+        } elseif (!$file1_valid && !$file1_needs_mapping && ($file2_valid || $file2_needs_mapping)) {
+            // Scenario 6: File 1 invalid, File 2 valid/mappable  
+            $error_message = "File 2 " . ($file2_needs_mapping ? "uploaded successfully (requires mapping)" : "uploaded successfully") . 
+                           ", but File 1 failed: " . $upload_result1['message'];
             
         } else {
-            // Both files invalid
+            // Scenario 7 & 8: Both files invalid or other error combinations
             $errors = [];
             if ($upload_result1['type'] === 'error') {
                 $errors[] = "File 1: " . $upload_result1['message'];
@@ -94,6 +177,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
     } catch (Exception $e) {
         $error_message = "Error processing files: " . $e->getMessage();
     }
+}
+
+// Check if we're returning from mapping and ready to compare
+if (isset($_SESSION['compare_ready']) && $_SESSION['compare_ready'] && isset($_SESSION['compare_files'])) {
+    $compareFiles = $_SESSION['compare_files'];
+    
+    // Both files should now be mapped and have upload IDs
+    if (isset($compareFiles[1]['upload_id']) && isset($compareFiles[2]['upload_id'])) {
+        try {
+            // Get file paths for comparison
+            $file1_path = $compareFiles[1]['path'];
+            $file2_path = $compareFiles[2]['path'];
+            
+            if ($file1_path && $file2_path && file_exists($file1_path) && file_exists($file2_path)) {
+                // Perform the comparison using the saved files
+                $comparison_results = compareCSVFiles($file1_path, $file2_path);
+                $success_message = "Comparison completed successfully after column mapping!";
+            } else {
+                $error_message = "Files were processed but could not be found for comparison.";
+            }
+        } catch (Exception $e) {
+            $error_message = "Error performing comparison: " . $e->getMessage();
+        }
+    }
+    
+    // Clear the comparison session data
+    unset($_SESSION['compare_ready']);
+    unset($_SESSION['compare_files']);
+}
+
+// Check for comparison error from mapping
+if (isset($_SESSION['compare_error'])) {
+    $error_message = $_SESSION['compare_error'];
+    unset($_SESSION['compare_error']);
+}
+
+// Add the new function for comparison upload handling
+function handleCsvUploadForComparison($conn, $file) {
+    // Add a flag to indicate this is a comparison context
+    $_POST['comparison_context'] = true;
+    
+    // Use the same logic as handleCsvUpload but with comparison context
+    $result = handleCsvUpload($conn, $file);
+    
+    // FIXED: Make sure we return the upload_id if available
+    if (isset($_SESSION['latest_upload_id'])) {
+        $result['upload_id'] = $_SESSION['latest_upload_id'];
+        error_log("Added upload_id to result: " . $_SESSION['latest_upload_id']);
+    }
+    
+    return $result;
 }
 
 // Handle saving comparison
@@ -213,8 +347,9 @@ function compareCSVFiles($file1_path, $file2_path) {
     
     // Define analytics metrics to look for
     $analytics_metrics = [
-    'sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
-    'events_per_session', 'event_count', 'key_events', 'session_key_event_rate', 'total_revenue'
+        'traffic_source', // Add this
+        'sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
+        'events_per_session', 'event_count', 'key_events', 'session_key_event_rate', 'total_revenue'
     ];
     
     $comparison = [
@@ -242,76 +377,143 @@ function compareCSVFiles($file1_path, $file2_path) {
     ];
     
     // Analyze analytics metrics
-    $common_headers = $comparison['headers']['common_headers'];
+    $common_headers = array_merge($comparison['headers']['common_headers'], $headers1, $headers2); // Use all headers for better matching
+    $semantic_common = [];
     foreach ($analytics_metrics as $metric) {
         // Find matching column (case-insensitive, flexible naming)
         $found_column = findMetricColumn($common_headers, $metric);
         
         if ($found_column) {
-            $values1 = array_column($data1, $found_column);
-            $values2 = array_column($data2, $found_column);
+            // Check if column exists in both files (or similar columns)
+            $col1 = findMetricColumn($headers1, $metric);
+            $col2 = findMetricColumn($headers2, $metric);
             
-            // Clean and convert to numeric
-            $numeric1 = cleanNumericValues($values1);
-            $numeric2 = cleanNumericValues($values2);
-            
-            if (count($numeric1) > 0 && count($numeric2) > 0) {
-                $stats1 = calculateStats($numeric1);
-                $stats2 = calculateStats($numeric2);
+            if ($col1 && $col2) {
+                    $semantic_common[] = $metric;
+                    $values1 = array_column($data1, $col1);
+                    $values2 = array_column($data2, $col2);
+                    
+                    // Handle conversions for bounce rate vs engagement rate
+                    if (strpos($col1, '_CONVERT_FROM_') !== false) {
+                        $actualCol1 = str_replace(['_CONVERT_FROM_ENGAGEMENT', '_CONVERT_FROM_BOUNCE'], '', $col1);
+                        $values1 = array_column($data1, $actualCol1);
+                        
+                        if (strpos($col1, '_CONVERT_FROM_ENGAGEMENT') !== false) {
+                            // Convert engagement rate to bounce rate: bounce_rate = 1 - engagement_rate
+                            $values1 = array_map(function($val) { return 1 - floatval($val); }, $values1);
+                        } elseif (strpos($col1, '_CONVERT_FROM_BOUNCE') !== false) {
+                            // Convert bounce rate to engagement rate: engagement_rate = 1 - bounce_rate
+                            $values1 = array_map(function($val) { return 1 - floatval($val); }, $values1);
+                        }
+                        $col1 = $actualCol1; // Update column name for display
+                    }
+                    
+                    if (strpos($col2, '_CONVERT_FROM_') !== false) {
+                        $actualCol2 = str_replace(['_CONVERT_FROM_ENGAGEMENT', '_CONVERT_FROM_BOUNCE'], '', $col2);
+                        $values2 = array_column($data2, $actualCol2);
+                        
+                        if (strpos($col2, '_CONVERT_FROM_ENGAGEMENT') !== false) {
+                            $values2 = array_map(function($val) { return 1 - floatval($val); }, $values2);
+                        } elseif (strpos($col2, '_CONVERT_FROM_BOUNCE') !== false) {
+                            $values2 = array_map(function($val) { return 1 - floatval($val); }, $values2);
+                        }
+                        $col2 = $actualCol2;
+                    }
+                    
+                    // Clean and convert to numeric
+                    $numeric1 = cleanNumericValues($values1);
+                    $numeric2 = cleanNumericValues($values2);
                 
-                // Fixed percentage calculation
-                $percent_change = 0;
-                if ($stats1['mean'] != 0) {
-                    $percent_change = round((($stats2['mean'] - $stats1['mean']) / $stats1['mean']) * 100, 2);
-                } elseif ($stats2['mean'] > 0) {
-                    // If Period 1 is 0 but Period 2 has value, it's a 100% increase
-                    $percent_change = 100;
+                if (count($numeric1) > 0 && count($numeric2) > 0) {
+                    $stats1 = calculateStats($numeric1);
+                    $stats2 = calculateStats($numeric2);
+                    
+                    // Fixed percentage calculation
+                    $percent_change = 0;
+                    if ($stats1['sum'] != 0) {
+                        $percent_change = round((($stats2['sum'] - $stats1['sum']) / abs($stats1['sum'])) * 100, 2);
+                    } elseif ($stats2['sum'] > 0) {
+                        $percent_change = 100;
+                    } elseif ($stats2['sum'] < 0) {
+                        $percent_change = -100;
+                    }
+                    
+                    $comparison['analytics_metrics'][$metric] = [
+                        'column_name' => "$col1 vs $col2",
+                        'file1_column' => $col1,
+                        'file2_column' => $col2,
+                        'file1_stats' => $stats1,
+                        'file2_stats' => $stats2,
+                        'comparison' => [
+                            'total_diff' => $stats2['sum'] - $stats1['sum'],
+                            'avg_diff' => $stats2['mean'] - $stats1['mean'],
+                            'percent_change' => $percent_change,
+                            'improvement' => determineImprovement($metric, $stats2['mean'], $stats1['mean'])
+                        ]
+                    ];
                 }
-                
-                $comparison['analytics_metrics'][$metric] = [
-                    'column_name' => $found_column,
-                    'file1_stats' => $stats1,
-                    'file2_stats' => $stats2,
-                    'comparison' => [
-                        'total_diff' => $stats2['sum'] - $stats1['sum'],
-                        'avg_diff' => $stats2['mean'] - $stats1['mean'],
-                        'percent_change' => $percent_change,
-                        'improvement' => determineImprovement($metric, $stats2['mean'], $stats1['mean'])
-                    ]
-                ];
             }
         }
     }
     
     // Calculate summary totals for key metrics
     $comparison['summary_comparison'] = calculateSummaryComparison($data1, $data2, $comparison['analytics_metrics']);
+    $comparison['headers']['semantic_common'] = $semantic_common;
+    $comparison['headers']['semantic_common_count'] = count($semantic_common);
     
     return $comparison;
 }
 
 function findMetricColumn($headers, $metric) {
     $metric_variations = [
-        'sessions' => ['Sessions', 'sessions', 'session', 'total_sessions'],
-        'engaged_sessions' => ['Engaged sessions', 'engaged_sessions', 'engaged sessions', 'engagedsessions'],
+        'sessions' => ['Sessions', 'sessions', 'session', 'total_sessions', 'User Sessions', 'visits'],
+        'engaged_sessions' => ['Engaged sessions', 'engaged_sessions', 'engaged sessions', 'engagedsessions', 'Engaged Sessions'],
         'engagement_rate' => ['Engagement rate', 'engagement_rate', 'engagement rate', 'engagementrate'],
-        'average_engagement_time_per_session' => ['Average engagement time per session', 'average_engagement_time_per_session', 'avg_engagement_time', 'engagement_time', 'Average engagement time'],
-        'events_per_session' => ['Events per session', 'events_per_session', 'events per session', 'eventspersession'],
-        'event_count' => ['Event count', 'event_count', 'events', 'total_events', 'Events'],
+        'average_engagement_time_per_session' => ['Average engagement time per session', 'average_engagement_time_per_session', 'avg_engagement_time', 'engagement_time', 'Average engagement time', 'Avg Session Time'],
+        'events_per_session' => ['Events per session', 'events_per_session', 'events per session', 'eventspersession', 'Events Per Session'],
+        'event_count' => ['Event count', 'event_count', 'events', 'total_events', 'Events', 'Total Events'],
         'key_events' => ['Key events', 'key_events', 'key events', 'keyevents', 'Conversions', 'conversions'],
-        'session_key_event_rate' => ['Session key event rate', 'session_key_event_rate', 'key_event_rate', 'conversion_rate', 'Session conversion rate'],
+        'session_key_event_rate' => ['Session key event rate', 'session_key_event_rate', 'key_event_rate', 'conversion_rate', 'Session conversion rate', 'Conversion Rate'],
         'total_revenue' => ['Total revenue', 'total_revenue', 'revenue', 'total revenue', 'Revenue', 'Purchase revenue'],
         'total_page_views' => ['total_page_views', 'page_views', 'pageviews', 'Views', 'Page views', 'Pageviews'],
         'unique_visitors' => ['unique_visitors', 'unique visitors', 'users', 'Users', 'Total users', 'Active users'],
-        'average_session_duration' => ['average_session_duration', 'avg_session_duration', 'session_duration', 'Average session duration', 'Session duration'],
-        'bounce_rate' => ['bounce_rate', 'bounce rate', 'bouncerate', 'Bounce rate']
+        'average_session_duration' => ['average_session_duration', 'avg_session_duration', 'session_duration', 'Average session duration', 'Session duration', 'Avg Session Time'],
+        'bounce_rate' => ['bounce_rate', 'bounce rate', 'bouncerate', 'Bounce rate', 'Bounce Rate'],
+        'traffic_source' => ['Traffic Source', 'traffic_source', 'Session primary channel group (Default channel group)', 'Channel', 'Source']
     ];
-    
+
+    // FIXED: First try direct matching to avoid recursion
     $variations = $metric_variations[$metric] ?? [$metric];
     
     foreach ($variations as $variation) {
         foreach ($headers as $header) {
             if (strcasecmp(trim($header), trim($variation)) === 0) {
                 return $header;
+            }
+        }
+    }
+    
+    // FIXED: Only try conversion if direct match failed AND to prevent infinite recursion
+    if ($metric === 'bounce_rate') {
+        // Look for engagement rate variations directly (no recursive call)
+        $engagement_variations = $metric_variations['engagement_rate'] ?? [];
+        foreach ($engagement_variations as $variation) {
+            foreach ($headers as $header) {
+                if (strcasecmp(trim($header), trim($variation)) === 0) {
+                    return $header . '_CONVERT_FROM_ENGAGEMENT';
+                }
+            }
+        }
+    }
+    
+    if ($metric === 'engagement_rate') {
+        // Look for bounce rate variations directly (no recursive call)
+        $bounce_variations = $metric_variations['bounce_rate'] ?? [];
+        foreach ($bounce_variations as $variation) {
+            foreach ($headers as $header) {
+                if (strcasecmp(trim($header), trim($variation)) === 0) {
+                    return $header . '_CONVERT_FROM_BOUNCE';
+                }
             }
         }
     }
@@ -1605,12 +1807,13 @@ function calculateStats($values) {
         </style>
 </head>
 <body>
-    <div class="container compare-user-compare-container" id="dashboard">
+    <div class="container">
         <?php include 'user_header.php'; ?>
 
         <main>
-            <h2><i class="fas fa-balance-scale"></i> Analytics CSV Comparison</h2>
-            <p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
+						<section class="user-section">
+            		<h2>Analytics CSV Comparison</h2>
+            		<p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
 
             <!-- Upload Form -->
             <div class="compare-user-upload-form">
@@ -2302,7 +2505,7 @@ function calculateStats($values) {
         </main>
 
         <?php include 'user_footer.php'; ?>
-    </div>
+		</div>
 
     
     <script>

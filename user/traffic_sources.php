@@ -130,7 +130,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
   </style>
 </head>
 <body>
-  <div class="container user-traffic-sources-container">
+  <div class="container">
     <?php 
     // UPDATED: Use appropriate header based on user role
     if ($isAdmin) {
@@ -145,69 +145,71 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     ?>
     
     <main>
-      <h2>Traffic Sources Dashboard</h2>
+			<section class="user-section">
+      		<h2>Traffic Sources Dashboard</h2>
 
-      <!-- Sample Data Notice (from current) -->
-      <?php if ($sampleNotice['is_sample']): ?>
-        <div class="<?php echo $isAdmin ? 'admin-notice' : 'sample-data-notice'; ?>">
-          <div class="notice-content">
-            <i class="fas fa-vial"></i>
-            <span><?php echo $sampleNotice['message']; ?></span>
-            <?php if (!$isAdmin): ?>
-                <?php echo $sampleNotice['action']; ?>
-            <?php else: ?>
-                <a href="<?php echo $backUrl; ?>" class="btn">Back to Admin Panel</a>
-            <?php endif; ?>
-          </div>
-        </div>
-      <?php endif; ?>
-
-      <section class="user-chart-section">
-        <h3>Traffic Sources Distribution</h3>
-        <div class="user-sources-chart-container" id="chartContainer">
-          <canvas id="sourcesChart"></canvas>
-        </div>
-        <div class="user-chart-type-toggle">
-          <button class="btn btn-sm active" data-chart-type="pie">Pie Chart</button>
-          <button class="btn btn-sm" data-chart-type="bar">Bar Chart</button>
-        </div>
-        <div class="user-export-controls">
-          <button onclick="exportChartToPDF()" class="user-export-btn pdf">
-            <span class="icon">📄</span>
-            <span class="text">Export Chart to PDF</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="user-data-table-section">
-        <h3>Traffic Sources Breakdown</h3>
-        <div class="user-sources-table-container">
-          <table class="user-data-table" id="sourcesTable">
-            <thead>
-              <tr>
-                <th>Source</th>
-                <th>Visits</th>
-                <th>Percentage</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($sourcesData as $source): ?>
-                <tr>
-                  <td><?php echo htmlspecialchars($source['traffic_source']); ?></td>
-                  <td><?php echo number_format($source['visit_count']); ?></td>
-                  <td><?php echo $source['percentage']; ?>%</td>
-                </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
-        </div>
-        <div class="user-export-controls">
-          <button onclick="exportTableToCSV()" class="user-export-btn csv">
-            <span class="icon">📊</span>
-            <span class="text">Export Table to CSV</span>
-          </button>
-        </div>
-      </section>
+      		<!-- Sample Data Notice (from current) -->
+      		<?php if ($sampleNotice['is_sample']): ?>
+      		  <div class="<?php echo $isAdmin ? 'admin-notice' : 'sample-data-notice'; ?>">
+      		    <div class="notice-content">
+      		      <i class="fas fa-vial"></i>
+      		      <span><?php echo $sampleNotice['message']; ?></span>
+      		      <?php if (!$isAdmin): ?>
+      		          <?php echo $sampleNotice['action']; ?>
+      		      <?php else: ?>
+      		          <a href="<?php echo $backUrl; ?>" class="btn">Back to Admin Panel</a>
+      		      <?php endif; ?>
+      		    </div>
+      		  </div>
+      		<?php endif; ?>
+								
+      		<div class="user-chart-section">
+      		  <h3><i class="fas fa-chart-pie"></i> Traffic Sources Distribution</h3>
+      		  <div class="user-sources-chart-container" id="chartContainer">
+      		    <canvas id="sourcesChart"></canvas>
+      		  </div>
+      		  <div class="user-chart-type-toggle">
+      		    <button class="btn btn-sm active" data-chart-type="pie">Pie Chart</button>
+      		    <button class="btn btn-sm" data-chart-type="bar">Bar Chart</button>
+      		  </div>
+      		  <div class="user-export-controls">
+      		    <button onclick="exportChartToPDF()" class="user-export-btn pdf">
+      		      <span class="icon">📄</span>
+      		      <span class="text">Export Chart to PDF</span>
+      		    </button>
+      		  </div>
+					</div>
+								
+      		<div class="user-data-table-section">
+      		  <h3><i class="fas fa-table"></i> Traffic Sources Breakdown</h3>
+      		  <div class="user-sources-table-container">
+      		    <table class="user-data-table" id="sourcesTable">
+      		      <thead>
+      		        <tr>
+      		          <th>Source</th>
+      		          <th>Visits</th>
+      		          <th>Percentage</th>
+      		        </tr>
+      		      </thead>
+      		      <tbody>
+      		        <?php foreach ($sourcesData as $source): ?>
+      		          <tr>
+      		            <td><?php echo htmlspecialchars($source['traffic_source']); ?></td>
+      		            <td><?php echo number_format($source['visit_count']); ?></td>
+      		            <td><?php echo $source['percentage']; ?>%</td>
+      		          </tr>
+      		        <?php endforeach; ?>
+      		      </tbody>
+      		    </table>
+      		  </div>
+      		  <div class="user-export-controls">
+      		    <button onclick="exportTableToCSV()" class="user-export-btn csv">
+      		      <span class="icon">📊</span>
+      		      <span class="text">Export Table to CSV</span>
+      		    </button>
+      		  </div>
+      		</div>
+			</section>
     </main>
 
     <?php 
