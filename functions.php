@@ -179,36 +179,64 @@ function handleCsvUpload($conn, $file) {
                     'file_path' => file_exists($filePath) ? $filePath : null
                 ];
             }
-                } else if ($result['status'] === 'needs_mapping') {
-                    // Store file path and mapping info in session for the mapping page
-                    if (session_status() == PHP_SESSION_NONE) {
-                        session_start();
-                    }
-                    $_SESSION['uploaded_csv'] = $filePath;
-                    $_SESSION['mapping_result'] = $result;
-                    $_SESSION['csv_metadata'] = $metadata;
-                    
-                    // CRITICAL FIX: Clear sample data session when user uploads their own file
-                    if (isset($_SESSION['using_sample_data'])) {
-                        unset($_SESSION['using_sample_data']);
-                        unset($_SESSION['sample_upload_id']);
-                        error_log("CRITICAL: Cleared sample data session for manual mapping");
-                    }
-                    
-                    // Check if this is an AJAX request
-                    $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-                            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-                    
-                    if ($isAjax) {
-                        return [
-                            'type' => 'needs_mapping',
-                            'message' => 'Format not automatically detected. Manual column mapping required.',
-                            'redirect' => 'map_columns.php'
-                        ];
-                    } else {
-                        header('Location: map_columns.php');
-                        exit;
-                    }
+        } else if ($result['status'] === 'needs_mapping') {
+            // Store file path and mapping info in session for the mapping page
+            if (session_status() == PHP_SESSION_NONE) {
+                session_start();
+            }
+            $_SESSION['uploaded_csv'] = $filePath;
+            $_SESSION['mapping_result'] = $result;
+            $_SESSION['csv_metadata'] = $metadata;
+            
+            // CRITICAL FIX: Clear sample data session when user uploads their own file
+            if (isset($_SESSION['using_sample_data'])) {
+                unset($_SESSION['using_sample_data']);
+                unset($_SESSION['sample_upload_id']);
+                error_log("CRITICAL: Cleared sample data session for manual mapping");
+            }
+            
+            // Check if this is an AJAX request
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+                    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+            
+            // NEW: Check if this is a comparison context by checking the HTTP_REFERER
+            $isComparison = false;
+            if (isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], 'compare.php') !== false) {
+                $isComparison = true;
+                error_log("Detected comparison context from HTTP_REFERER: " . $_SERVER['HTTP_REFERER']);
+            }
+            
+            // Also check if we're being called from a comparison context via a flag
+            if (isset($_POST['comparison_context']) || isset($_GET['comparison_context'])) {
+                $isComparison = true;
+                error_log("Detected comparison context from form parameter");
+            }
+            
+            if ($isAjax) {
+                return [
+                    'type' => 'needs_mapping',
+                    'message' => 'Format not automatically detected. Manual column mapping required.',
+                    'redirect' => $isComparison ? 'map_columns_compare.php' : 'map_columns.php',
+                    'file_path' => $filePath
+                ];
+            } else {
+                // CRITICAL FIX: For comparison context, DON'T redirect immediately
+                // Instead, return the result and let compare.php handle the redirect
+                if ($isComparison) {
+                    error_log("Comparison context detected - returning needs_mapping result instead of redirecting");
+                    return [
+                        'type' => 'needs_mapping',
+                        'message' => 'Format not automatically detected. Manual column mapping required.',
+                        'redirect' => 'map_columns_compare.php',
+                        'file_path' => $filePath
+                    ];
+                } else {
+                    $redirectPage = 'map_columns.php';
+                    error_log("Redirecting to: $redirectPage (isComparison: false)");
+                    header("Location: $redirectPage");
+                    exit;
+                }
+            }
         } else {
             // Clean up file since there was an error
             if (file_exists($filePath)) {
