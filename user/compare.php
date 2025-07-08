@@ -40,49 +40,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         $upload_result1 = handleCsvUpload($conn, $file1);
         $upload_result2 = handleCsvUpload($conn, $file2);
         
-        // Check if both uploads were successful
-        if ($upload_result1['type'] === 'success' && $upload_result2['type'] === 'success') {
-            // Get the file paths from the upload results
-            $file1_path = $upload_result1['file_path'];
-            $file2_path = $upload_result2['file_path'];
+        // Initialize variables for different scenarios
+        $file1_valid = ($upload_result1['type'] === 'success' || $upload_result1['type'] === 'warning');
+        $file2_valid = ($upload_result2['type'] === 'success' || $upload_result2['type'] === 'warning');
+        
+        // Handle all 4 scenarios
+        if ($file1_valid && $file2_valid) {
+            // Both files are valid - proceed with comparison
+            $file1_path = $upload_result1['file_path'] ?? null;
+            $file2_path = $upload_result2['file_path'] ?? null;
             
-            // Verify files exist
-            if (file_exists($file1_path) && file_exists($file2_path)) {
+            if ($file1_path && $file2_path && file_exists($file1_path) && file_exists($file2_path)) {
                 // Perform the comparison using the saved files
                 $comparison_results = compareCSVFiles($file1_path, $file2_path);
-                $success_message = "Comparison completed successfully! Files uploaded to database and saved to uploads directory.";
+                
+                $warning_parts = [];
+                if ($upload_result1['type'] === 'warning') {
+                    $warning_parts[] = "File 1 had validation warnings";
+                }
+                if ($upload_result2['type'] === 'warning') {
+                    $warning_parts[] = "File 2 had validation warnings";
+                }
+                
+                if (!empty($warning_parts)) {
+                    $success_message = "Comparison completed with warnings: " . implode(", ", $warning_parts) . ". Files uploaded to database and saved to uploads directory.";
+                } else {
+                    $success_message = "Comparison completed successfully! Files uploaded to database and saved to uploads directory.";
+                }
             } else {
                 $error_message = "Files were processed but could not be found for comparison.";
             }
             
-        } elseif ($upload_result1['type'] === 'warning' && $upload_result2['type'] === 'warning') {
-            // Both files had warnings but were processed
-            $file1_path = $upload_result1['file_path'];
-            $file2_path = $upload_result2['file_path'];
+        } elseif ($file1_valid && !$file2_valid) {
+            // File 1 valid, File 2 invalid
+            $error_message = "File 1 uploaded successfully, but File 2 failed: " . $upload_result2['message'];
             
-            if (file_exists($file1_path) && file_exists($file2_path)) {
-                $comparison_results = compareCSVFiles($file1_path, $file2_path);
-                $success_message = "Comparison completed with validation warnings. Files uploaded to database and saved to uploads directory.";
-            } else {
-                $error_message = "Files had validation warnings and could not be found for comparison.";
-            }
+        } elseif (!$file1_valid && $file2_valid) {
+            // File 1 invalid, File 2 valid  
+            $error_message = "File 2 uploaded successfully, but File 1 failed: " . $upload_result1['message'];
             
         } else {
-            // If either file failed validation, show the detailed error
+            // Both files invalid
+            $errors = [];
             if ($upload_result1['type'] === 'error') {
-                $error_message = "File 1: " . $upload_result1['message'];
-            } elseif ($upload_result2['type'] === 'error') {
-                $error_message = "File 2: " . $upload_result2['message'];
-            } else {
-                $error_message = "File 1: " . $upload_result1['message'] . " | File 2: " . $upload_result2['message'];
+                $errors[] = "File 1: " . $upload_result1['message'];
             }
+            if ($upload_result2['type'] === 'error') {
+                $errors[] = "File 2: " . $upload_result2['message'];
+            }
+            $error_message = implode(" | ", $errors);
         }
         
     } catch (Exception $e) {
         $error_message = "Error processing files: " . $e->getMessage();
     }
 }
-
 
 // Handle saving comparison
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['compare'])) {
@@ -421,6 +433,9 @@ function calculateStats($values) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        /* =====================================================
+        BASIC COMPONENT STYLES
+        ===================================================== */
         .comparison-card {
             border: 1px solid #dee2e6;
             border-radius: 8px;
@@ -429,6 +444,7 @@ function calculateStats($values) {
             background: white;
             padding: 20px;
         }
+
         .metric-box {
             background: #f8f9fa;
             border-radius: 6px;
@@ -437,8 +453,7 @@ function calculateStats($values) {
             margin-bottom: 10px;
             border: 1px solid #e9ecef;
         }
-        
-        /* Add styles for user-prefixed classes */
+
         .user-metric-box {
             background: #f8f9fa;
             border-radius: 6px;
@@ -447,47 +462,46 @@ function calculateStats($values) {
             margin-bottom: 10px;
             border: 1px solid #e9ecef;
         }
-        
+
         .user-metric-box h4 {
             color: #000 !important; /* Force black color */
             margin: 0 0 5px 0;
         }
-        
+
         .user-metric-box small {
             color: #000 !important; /* Force black color */
             font-weight: 500;
         }
-        
+
+        /* Status Color Classes */
         .improved { color: #28a745; }
         .declined { color: #dc3545; }
         .unchanged { color: #6c757d; }
         .neutral { color: #17a2b8; }
+
+        /* =====================================================
+        LAYOUT AND GRID STYLES
+        ===================================================== */
+        .stats-grid,
+        .user-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
         .table-container {
             max-height: 400px;
             overflow-y: auto;
-        }
-        .metric-summary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        /* Override the gradient background text color specifically for metric boxes inside metric-summary */
-        .metric-summary .user-metric-box h4,
-        .metric-summary .user-metric-box small {
-            color: #000 !important; /* Black text even inside the gradient background */
-        }
-        
-        .upload-form {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
             background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
         }
-        
+
+        /* =====================================================
+        FORM AND INPUT STYLES
+        ===================================================== */
+        .upload-form,
         .user-upload-form {
             background: white;
             border: 1px solid #ddd;
@@ -495,31 +509,26 @@ function calculateStats($values) {
             padding: 20px;
             margin-bottom: 20px;
         }
-        
-        .file-input-group {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        
+
+        .file-input-group,
         .user-file-input-group {
             display: flex;
             gap: 20px;
             margin-bottom: 20px;
         }
-        
+
         .file-input-group > div,
         .user-file-input-group > div {
             flex: 1;
         }
-        
+
         .file-input-group label,
         .user-file-input-group label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
         }
-        
+
         .file-input-group input,
         .user-file-input-group input {
             width: 100%;
@@ -527,13 +536,16 @@ function calculateStats($values) {
             border: 1px solid #ddd;
             border-radius: 4px;
         }
-        
+
         .file-input-group small,
         .user-file-input-group small {
             color: #666;
             font-size: 12px;
         }
-        
+
+        /* =====================================================
+        BUTTON STYLES
+        ===================================================== */
         .btn-submit,
         .user-btn-submit {
             background: #007bff;
@@ -544,62 +556,442 @@ function calculateStats($values) {
             cursor: pointer;
             font-size: 16px;
         }
-        
+
         .btn-submit:hover,
         .user-btn-submit:hover {
             background: #0056b3;
         }
-        
-        .alert {
-            padding: 12px;
-            margin-bottom: 20px;
+
+        button {
+            background-color: #007cba;
+            color: white;
+            padding: 10px 20px;
+            border: none;
             border-radius: 4px;
+            cursor: pointer;
         }
-        
+
+        button:hover {
+            background-color: #005a87;
+        }
+
+        /* =====================================================
+        EXPORT CONTROLS
+        ===================================================== */
+        .user-export-controls {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .user-export-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .user-export-btn.csv {
+            background: #28a745;
+            color: white;
+        }
+
+        .user-export-btn.csv:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        .user-export-btn.pdf {
+            background: #dc3545;
+            color: white;
+        }
+
+        .user-export-btn.pdf:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        /* =====================================================
+        ALERT AND MESSAGE STYLES
+        ===================================================== */
+        .alert,
         .user-alert {
             padding: 12px;
             margin-bottom: 20px;
             border-radius: 4px;
         }
-        
+
         .alert-danger,
         .user-alert-danger {
             background: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
-        
+
         .alert-info {
             background: #d1ecf1;
             color: #0c5460;
             border: 1px solid #bee5eb;
         }
-        
-        .stats-grid,
-        .user-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+
+        .user-alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        /* =====================================================
+        ERROR DISPLAY STYLES
+        ===================================================== */
+        .user-alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: block !important;
+            width: 100%;
+            box-sizing: border-box;
+            clear: both;
+            overflow: hidden;
+        }
+
+        .user-alert-danger * {
+            display: block !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            float: none !important;
+            clear: both !important;
+        }
+
+        .user-alert-danger .error-container {
+            margin-bottom: 20px;
+            display: block !important;
+            width: 100% !important;
+            clear: both !important;
+            overflow: hidden;
+        }
+
+        .user-alert-danger .error-summary {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #721c24;
+            display: block !important;
+            width: 100% !important;
+            clear: both !important;
+        }
+
+        .user-alert-danger .error-list {
+            list-style: none !important;
+            padding: 0 !important;
+            margin: 0 0 20px 0 !important;
+            display: block !important;
+            width: 100% !important;
+            clear: both !important;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .user-alert-danger .error-item {
+            background: #fff5f5 !important;
+            border: 1px solid #fed7e2 !important;
+            border-radius: 6px !important;
+            padding: 15px !important;
+            margin-bottom: 12px !important;
+            border-left: 3px solid #e53e3e !important;
+            display: block !important;
+            width: calc(100% - 2px) !important;
+            box-sizing: border-box !important;
+            clear: both !important;
+            float: none !important;
+        }
+
+        .user-alert-danger .error-message {
+            font-weight: 500 !important;
+            color: #721c24 !important;
+            margin-bottom: 8px !important;
+            display: block !important;
+            width: 100% !important;
+            clear: both !important;
+            word-wrap: break-word !important;
+        }
+
+        .user-alert-danger .error-suggestions {
+            background: #fff3cd !important;
+            border: 1px solid #ffeaa7 !important;
+            border-radius: 3px !important;
+            padding: 8px !important;
+            font-size: 0.9em !important;
+            color: #856404 !important;
+            margin-top: 8px !important;
+            display: block !important;
+            width: calc(100% - 18px) !important;
+            box-sizing: border-box !important;
+            clear: both !important;
+        }
+
+        .user-alert-danger .suggestions-text {
+            color: #856404 !important;
+            display: inline !important;
+            width: auto !important;
+        }
+
+        .user-alert-danger .error-footer {
+            font-weight: bold !important;
+            color: #721c24 !important;
+            margin-top: 15px !important;
+            text-align: center !important;
+            display: block !important;
+            clear: both !important;
+            padding: 10px 0 !important;
+            width: 100% !important;
+        }
+
+        /* =====================================================
+        VALIDATION HELP STYLES
+        ===================================================== */
+        .user-alert-danger .validation-help {
+            background: #e2e3e5 !important;
+            border-radius: 6px !important;
+            padding: 15px !important;
+            margin: 20px 0 !important;
+            display: block !important;
+            clear: both !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .user-alert-danger .validation-help h4 {
+            color: #495057 !important;
+            margin-bottom: 12px !important;
+            display: block !important;
+            width: 100% !important;
+        }
+
+        .user-alert-danger .fix-guide {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+            gap: 15px !important;
+            margin-bottom: 15px !important;
+            width: 100% !important;
+        }
+
+        .user-alert-danger .fix-item {
+            background: white !important;
+            border-radius: 4px !important;
+            padding: 12px !important;
+            border: 1px solid #ced4da !important;
+            display: block !important;
+            box-sizing: border-box !important;
+        }
+
+        .user-alert-danger .fix-item strong {
+            display: block !important;
+            margin-bottom: 8px !important;
+            color: #495057 !important;
+            width: 100% !important;
+        }
+
+        .user-alert-danger .fix-item ul {
+            margin: 0 !important;
+            padding-left: 20px !important;
+            display: block !important;
+            width: 100% !important;
+        }
+
+        .user-alert-danger .fix-item li {
+            font-size: 0.85em !important;
+            color: #6c757d !important;
+            margin-bottom: 4px !important;
+            display: list-item !important;
+            list-style-type: disc !important;
+            width: auto !important;
+        }
+
+        /* =====================================================
+        ERROR DISPLAY FALLBACK STYLES
+        ===================================================== */
+        .error-container {
+            margin-bottom: 20px;
+            display: block !important;
+            width: 100%;
+            clear: both;
+        }
+
+        .error-summary {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #721c24;
+            display: block !important;
+            width: 100%;
+        }
+
+        .error-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+            display: block !important;
+            width: 100%;
+        }
+
+        .error-item {
+            background: #fff5f5;
+            border: 1px solid #fed7e2;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 3px solid #e53e3e;
+            display: block !important;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .error-message {
+            font-weight: 500;
+            color: #721c24;
+            margin-bottom: 8px;
+            display: block !important;
+            width: 100%;
+        }
+
+        .error-suggestions {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 3px;
+            padding: 8px;
+            font-size: 0.9em;
+            color: #856404;
+            margin-top: 8px;
+            display: block !important;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .suggestions-text {
+            color: #856404;
+        }
+
+        .validation-help {
+            background: #e2e3e5;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            display: block !important;
+            clear: both;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .validation-help h4 {
+            color: #495057;
+            margin-bottom: 12px;
+            display: block !important;
+            width: 100%;
+        }
+
+        .fix-guide {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 15px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        .fix-item {
+            background: white;
+            border-radius: 4px;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            display: block !important;
+            box-sizing: border-box;
+        }
+
+        .fix-item strong {
+            display: block !important;
+            margin-bottom: 8px;
+            color: #495057;
+            width: 100%;
+        }
+
+        .fix-item ul {
+            margin: 0;
+            padding-left: 20px;
+            display: block !important;
+            width: 100%;
+        }
+
+        .fix-item li {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-bottom: 4px;
+            display: list-item !important;
+        }
+
+        .error-footer {
+            font-weight: bold;
+            color: #721c24;
+            margin-top: 15px;
+            text-align: center;
+            display: block !important;
+            clear: both;
+            padding: 10px 0;
+            width: 100%;
+        }
+
+        /* =====================================================
+        METRIC SUMMARY STYLES
+        ===================================================== */
+        .metric-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
             margin-bottom: 20px;
         }
-        
+
+        /* Override gradient background text color for metric boxes inside metric-summary */
+        .metric-summary .user-metric-box h4,
+        .metric-summary .user-metric-box small {
+            color: #000 !important;
+        }
+
+        /* =====================================================
+        METRIC CARD STYLES
+        ===================================================== */
         .metric-card {
             background: white;
             border: 1px solid #ddd;
             border-radius: 8px;
             padding: 15px;
         }
+
         .metric-header {
             background: #f8f9fa;
             padding: 10px 15px;
             border-bottom: 1px solid #ddd;
             font-weight: bold;
         }
+
         .metric-header.success { background: #28a745; color: white; }
         .metric-header.primary { background: #007bff; color: white; }
         .metric-header.secondary { background: #6c757d; color: white; }
 
-        /* Enhanced Detailed Analytics Comparison Styles */
+        /* =====================================================
+        COMPARISON ITEM STYLES
+        ===================================================== */
         .comparison-item {
             background: white;
             border: 1px solid #e9ecef;
@@ -608,19 +1000,22 @@ function calculateStats($values) {
             text-align: center;
             transition: box-shadow 0.3s ease;
         }
-        
+
         .comparison-item:hover {
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
-        
+
         .comparison-item h5 {
             color: #495057;
             margin-bottom: 15px;
-            font-size: 0.95em; /* Reduced from 1.1em */
+            font-size: 0.95em;
             font-weight: 600;
             text-transform: capitalize;
         }
-        
+
+        /* =====================================================
+        PERIOD COMPARISON STYLES
+        ===================================================== */
         .period-comparison {
             display: flex;
             justify-content: space-between;
@@ -630,33 +1025,33 @@ function calculateStats($values) {
             border-radius: 6px;
             padding: 15px;
         }
-        
+
         .period-data {
             text-align: center;
             flex: 1;
         }
-        
+
         .period-data h6 {
-            font-size: 0.75em; /* Reduced from 0.85em */
+            font-size: 0.75em;
             color: #6c757d;
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             font-weight: 600;
         }
-        
+
         .period-data .value {
-            font-size: 1.1em; /* Reduced from 1.4em */
+            font-size: 1.1em;
             font-weight: 700;
             color: #2c3e50;
             margin-bottom: 5px;
         }
-        
+
         .period-data small {
             color: #6c757d;
-            font-size: 0.7em; /* Reduced from 0.8em */
+            font-size: 0.7em;
         }
-        
+
         .vs-divider {
             display: flex;
             align-items: center;
@@ -664,53 +1059,12 @@ function calculateStats($values) {
             margin: 0 15px;
             color: #adb5bd;
             font-weight: bold;
-            font-size: 0.8em; /* Reduced from 0.9em */
+            font-size: 0.8em;
         }
-        
-        .change-summary {
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            font-size: 0.85em; /* Reduced from 0.95em */
-            border-left: 4px solid #dee2e6;
-        }
-        
-        .change-summary .improved {
-            border-left-color: #28a745;
-        }
-        
-        .change-summary .declined {
-            border-left-color: #dc3545;
-        }
-        
-        .change-summary .unchanged {
-            border-left-color: #6c757d;
-        }
-        
-        .metric-percentage {
-            font-size: 0.9em; /* Reduced from 1.1em */
-            font-weight: 600;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: #f8f9fa;
-        }
-        
-        .metric-percentage.improved {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .metric-percentage.declined {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .metric-percentage.unchanged {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-        
-        /* Fix the inconsistent VS section */
+
+        /* =====================================================
+        DETAILED VS SECTION STYLES
+        ===================================================== */
         .detailed-vs-section {
             display: flex;
             justify-content: space-between;
@@ -720,64 +1074,105 @@ function calculateStats($values) {
             border-radius: 6px;
             padding: 15px;
         }
-        
+
         .detailed-period-data {
             text-align: center;
             flex: 1;
         }
-        
+
         .detailed-period-data h6 {
-            font-size: 0.75em; /* Reduced from 0.85em */
+            font-size: 0.75em;
             color: #6c757d;
             margin-bottom: 8px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             font-weight: 600;
         }
-        
+
         .detailed-period-data .period-value {
-            font-size: 1.1em; /* Reduced from 1.4em */
+            font-size: 1.1em;
             font-weight: 700;
             color: #2c3e50;
             margin-bottom: 5px;
         }
-        
+
         .detailed-period-data .period-avg {
             color: #6c757d;
-            font-size: 0.7em; /* Reduced from 0.8em */
+            font-size: 0.7em;
             font-weight: 500;
         }
 
+        /* =====================================================
+        CHANGE SUMMARY STYLES
+        ===================================================== */
+        .change-summary {
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.85em;
+            border-left: 4px solid #dee2e6;
+        }
+
+        .change-summary .improved {
+            border-left-color: #28a745;
+        }
+
+        .change-summary .declined {
+            border-left-color: #dc3545;
+        }
+
+        .change-summary .unchanged {
+            border-left-color: #6c757d;
+        }
+
+        .metric-percentage {
+            font-size: 0.9em;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #f8f9fa;
+        }
+
+        .metric-percentage.improved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .metric-percentage.declined {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .metric-percentage.unchanged {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        /* =====================================================
+        DATA PREVIEW STYLES
+        ===================================================== */
         .data-preview-section {
             display: block;
         }
-        
+
         .preview-column {
             margin-bottom: 25px;
         }
-        
+
         .preview-column h4 {
             color: #495057;
             margin-bottom: 15px;
             font-size: 1.1em;
             font-weight: 600;
         }
-        
-        .table-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            background: white;
-        }
-        
+
         .preview-table {
             width: 100%;
             border-collapse: collapse;
             font-size: 0.85em;
             margin: 0;
         }
-        
+
         .preview-table th {
             background: #f8f9fa;
             color: #495057;
@@ -790,243 +1185,136 @@ function calculateStats($values) {
             top: 0;
             z-index: 10;
         }
-        
+
         .preview-table th:last-child {
             border-right: none;
         }
-        
+
         .preview-table td {
             padding: 10px 8px;
             border-bottom: 1px solid #f1f3f4;
             border-right: 1px solid #f1f3f4;
             color: #495057;
         }
-        
+
         .preview-table td:last-child {
             border-right: none;
         }
-        
+
         .preview-table tbody tr:hover {
             background-color: #f8f9fa;
         }
-        
+
         .preview-table tbody tr:nth-child(even) {
             background-color: #fdfdfd;
         }
-        
+
         .preview-table tbody tr:nth-child(even):hover {
             background-color: #f8f9fa;
         }
-        
-        /* Responsive table scroll */
-        .table-container::-webkit-scrollbar {
+
+        /* =====================================================
+        COMPARISON CONTAINER STYLES
+        ===================================================== */
+        .comparison-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .saved-comparisons {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .file-selection, .comparison-name {
+            margin-bottom: 15px;
+        }
+
+        .file-selection label, .comparison-name label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .file-selection select, .comparison-name input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* =====================================================
+        SCROLLBAR STYLES
+        ===================================================== */
+        .table-container::-webkit-scrollbar,
+        .user-alert-danger .error-list::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
-        
-        .table-container::-webkit-scrollbar-track {
+
+        .table-container::-webkit-scrollbar-track,
+        .user-alert-danger .error-list::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 4px;
         }
-        
-        .table-container::-webkit-scrollbar-thumb {
+
+        .table-container::-webkit-scrollbar-thumb,
+        .user-alert-danger .error-list::-webkit-scrollbar-thumb {
             background: #c1c1c1;
             border-radius: 4px;
         }
-        
-        .table-container::-webkit-scrollbar-thumb:hover {
+
+        .table-container::-webkit-scrollbar-thumb:hover,
+        .user-alert-danger .error-list::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
 
-        .user-alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+        /* =====================================================
+        CLEARFIX AND LAYOUT FIXES
+        ===================================================== */
+        .user-alert-danger::after,
+        .user-alert-danger .error-container::after,
+        .user-alert-danger .validation-help::after {
+            content: "" !important;
+            display: table !important;
+            clear: both !important;
         }
 
-        .comparison-container {
-        max-width: 800px;
-        margin: 20px auto;
-        padding: 20px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-    }
-
-    .saved-comparisons {
-        background-color: #f9f9f9;
-        padding: 15px;
-        border-radius: 5px;
-        margin-bottom: 20px;
-    }
-
-    .file-selection, .comparison-name {
-        margin-bottom: 15px;
-    }
-
-    .file-selection label, .comparison-name label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-    }
-
-    .file-selection select, .comparison-name input {
-        width: 100%;
-        padding: 8px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-    }
-
-    button {
-        background-color: #007cba;
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-
-    button:hover {
-        background-color: #005a87;
-    }
-
-    .error-container {
-            margin-bottom: 20px;
-        }
-        
-        .error-summary {
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #721c24;
-        }
-        
-        .error-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        
-        .error-item {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            border-radius: 4px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-        
-        .error-message {
-            font-weight: 500;
-            color: #721c24;
-            margin-bottom: 8px;
-        }
-        
-        .error-suggestions {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 3px;
-            padding: 8px;
-            font-size: 0.9em;
-        }
-        
-        .suggestions-text {
-            color: #856404;
-        }
-        
-        .validation-help {
-            background: #e2e3e5;
-            border-radius: 6px;
-            padding: 15px;
-            margin-top: 15px;
-        }
-        
-        .validation-help h4 {
-            color: #495057;
-            margin-bottom: 12px;
-        }
-        
-        .fix-guide {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-        }
-        
-        .fix-item {
-            background: white;
-            border-radius: 4px;
-            padding: 12px;
-            border: 1px solid #ced4da;
-        }
-        
-        .fix-item strong {
-            display: block;
-            margin-bottom: 8px;
-            color: #495057;
-        }
-        
-        .fix-item ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        
-        .fix-item li {
-            font-size: 0.85em;
-            color: #6c757d;
-            margin-bottom: 4px;
-        }
-        
-        .error-footer {
-            font-weight: bold;
-            color: #721c24;
-            margin-top: 15px;
-            text-align: center;
+        .user-alert-danger .error-container::after,
+        .user-alert-danger .validation-help::after,
+        .user-alert-danger .error-footer::after {
+            content: "";
+            display: table;
+            clear: both;
         }
 
-        .user-export-controls {
-        display: flex;
-        justify-content: flex-end;
-        gap: 10px;
-        margin: 20px 0;
-        padding: 15px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        border: 1px solid #dee2e6;
-    }
+        .user-alert-danger .error-container,
+        .user-alert-danger .validation-help,
+        .user-alert-danger .error-footer {
+            width: 100% !important;
+            float: none !important;
+            clear: both !important;
+            display: block !important;
+        }
 
-    .user-export-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 20px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        font-size: 14px;
-    }
-
-    .user-export-btn.csv {
-        background: #28a745;
-        color: white;
-    }
-
-    .user-export-btn.csv:hover {
-        background: #218838;
-        transform: translateY(-2px);
-    }
-
-    .user-export-btn.pdf {
-        background: #dc3545;
-        color: white;
-    }
-
-    .user-export-btn.pdf:hover {
-        background: #c82333;
-        transform: translateY(-2px);
-    }
-
-    
-    </style>
+        /* =====================================================
+        RESPONSIVE STYLES
+        ===================================================== */
+        @media (max-width: 768px) {
+            .user-alert-danger .fix-guide {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .user-alert-danger .error-list {
+                max-height: 300px !important;
+            }
+        }
+        </style>
 </head>
 <body>
     <div class="container compare-user-compare-container" id="dashboard">
@@ -1055,50 +1343,320 @@ function calculateStats($values) {
                         // Enhanced error message parsing to extract suggestions
                         $errorMessage = $error_message;
                         $errorMessage = str_replace("Error processing files: ", "", $errorMessage);
-                        $errorMessage = str_replace("File 1: ", "", $errorMessage);
-                        $errorMessage = str_replace("File 2: ", "", $errorMessage);
-                        $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
-                        $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
 
-                        // If it's "No valid data to save", create a more helpful error list
-                        if (strpos($error_message, 'No valid data to save') !== false) {
-                            $errorList = [
-                                "No valid data found in CSV file - All rows failed validation",
-                                "Common causes: Invalid file format, corrupt data, or unsupported CSV structure"
-                            ];
+                        error_log("=== COMPARE.PHP ERROR PARSING DEBUG ===");
+                        error_log("Original error message: " . $error_message);
+                        error_log("Cleaned error message: " . $errorMessage);
+
+                        // Determine the scenario and display appropriate prefix
+                        $errorPrefix = "";
+                        $allErrorList = [];
+                        $file1ErrorCount = 0;
+                        $file2ErrorCount = 0;
+
+                        // Check for specific file failure patterns
+                        if (strpos($errorMessage, 'File 1 uploaded successfully, but File 2 failed: ') !== false) {
+                            $errorPrefix = "✅ File 1 uploaded successfully, but ❌ File 2 failed";
+                            $cleanErrorForFile2 = str_replace('File 1 uploaded successfully, but File 2 failed: ', '', $errorMessage);
+                            $cleanErrorForFile2 = str_replace("Data validation errors found: ", "", $cleanErrorForFile2);
+                            $cleanErrorForFile2 = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanErrorForFile2);
+                            
+                            error_log("File 2 failed scenario - extracting File 2 errors");
+                            error_log("Clean error for File 2: " . $cleanErrorForFile2);
+                            
+                            // FIXED ERROR PARSING - Replace the existing parsing with this robust approach
+                            if (strpos($cleanErrorForFile2, 'No valid data to save') !== false) {
+                                $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
+                                $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
+                                $file2ErrorCount = 2;
+                            } else {
+                                // Use the robust error splitting approach
+                                if (strpos($cleanErrorForFile2, '; Row') !== false) {
+                                    // Split by '; Row' and handle properly
+                                    $parts = explode('; Row ', $cleanErrorForFile2);
+                                    
+                                    // First part contains the initial "Row X: ..." 
+                                    if (!empty(trim($parts[0]))) {
+                                        $allErrorList[] = trim($parts[0]);
+                                        $file2ErrorCount++;
+                                    }
+                                    
+                                    // Subsequent parts need "Row " prepended
+                                    for ($i = 1; $i < count($parts); $i++) {
+                                        $part = trim($parts[$i]);
+                                        if (!empty($part)) {
+                                            $allErrorList[] = 'Row ' . $part;
+                                            $file2ErrorCount++;
+                                        }
+                                    }
+                                } else {
+                                    // Single error case
+                                    if (!empty(trim($cleanErrorForFile2))) {
+                                        $allErrorList[] = trim($cleanErrorForFile2);
+                                        $file2ErrorCount++;
+                                    }
+                                }
+                                
+                                // Remove any empty entries and reindex
+                                $allErrorList = array_filter($allErrorList, function($item) {
+                                    return !empty(trim($item));
+                                });
+                                $allErrorList = array_values($allErrorList);
+                                $file2ErrorCount = count($allErrorList); // Correct count based on actual items
+                            }
+                            
+                        } elseif (strpos($errorMessage, 'File 2 uploaded successfully, but File 1 failed: ') !== false) {
+                            $errorPrefix = "❌ File 1 failed, but ✅ File 2 uploaded successfully";
+                            $cleanErrorForFile1 = str_replace('File 2 uploaded successfully, but File 1 failed: ', '', $errorMessage);
+                            $cleanErrorForFile1 = str_replace("Data validation errors found: ", "", $cleanErrorForFile1);
+                            $cleanErrorForFile1 = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanErrorForFile1);
+                            
+                            error_log("File 1 failed scenario - extracting File 1 errors");
+                            error_log("Clean error for File 1: " . $cleanErrorForFile1);
+                            
+                            // FIXED ERROR PARSING - Use the same robust approach
+                            if (strpos($cleanErrorForFile1, 'No valid data to save') !== false) {
+                                $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
+                                $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
+                                $file1ErrorCount = 2;
+                            } else {
+                                // Use the robust error splitting approach
+                                if (strpos($cleanErrorForFile1, '; Row') !== false) {
+                                    // Split by '; Row' and handle properly
+                                    $parts = explode('; Row ', $cleanErrorForFile1);
+                                    
+                                    // First part contains the initial "Row X: ..." 
+                                    if (!empty(trim($parts[0]))) {
+                                        $allErrorList[] = trim($parts[0]);
+                                        $file1ErrorCount++;
+                                    }
+                                    
+                                    // Subsequent parts need "Row " prepended
+                                    for ($i = 1; $i < count($parts); $i++) {
+                                        $part = trim($parts[$i]);
+                                        if (!empty($part)) {
+                                            $allErrorList[] = 'Row ' . $part;
+                                            $file1ErrorCount++;
+                                        }
+                                    }
+                                } else {
+                                    // Single error case
+                                    if (!empty(trim($cleanErrorForFile1))) {
+                                        $allErrorList[] = trim($cleanErrorForFile1);
+                                        $file1ErrorCount++;
+                                    }
+                                }
+                                
+                                // Remove any empty entries and reindex
+                                $allErrorList = array_filter($allErrorList, function($item) {
+                                    return !empty(trim($item));
+                                });
+                                $allErrorList = array_values($allErrorList);
+                                $file1ErrorCount = count($allErrorList); // Correct count based on actual items
+                            }
+                            
+                        } elseif (strpos($errorMessage, ' | ') !== false) {
+                            // Both files invalid - parse separately
+                            $errorPrefix = "❌ Both files failed validation";
+                            $fileParts = explode(' | ', $errorMessage);
+                            
+                            error_log("Both files failed - parsing " . count($fileParts) . " file parts");
+                            
+                            foreach ($fileParts as $index => $part) {
+                                $fileNumber = $index + 1;
+                                $cleanError = $part;
+                                
+                                // Clean the error message
+                                if (strpos($part, 'File 1: ') !== false) {
+                                    $cleanError = str_replace('File 1: ', '', $part);
+                                    $fileNumber = 1;
+                                } elseif (strpos($part, 'File 2: ') !== false) {
+                                    $cleanError = str_replace('File 2: ', '', $part);
+                                    $fileNumber = 2;
+                                }
+                                
+                                $cleanError = str_replace("Data validation errors found: ", "", $cleanError);
+                                $cleanError = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanError);
+                                
+                                error_log("Processing File $fileNumber errors: " . $cleanError);
+                                
+                                // Add file separator
+                                $allErrorList[] = "--- File $fileNumber Errors ---";
+                                
+                                if (strpos($cleanError, 'No valid data to save') !== false) {
+                                    $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
+                                    $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
+                                    if ($fileNumber === 1) {
+                                        $file1ErrorCount = 2;
+                                    } else {
+                                        $file2ErrorCount = 2;
+                                    }
+                                } else {
+                                    // FIXED ERROR PARSING - Use the robust approach
+                                    if (strpos($cleanError, '; Row') !== false) {
+                                        // Split by '; Row' and handle properly
+                                        $parts = explode('; Row ', $cleanError);
+                                        
+                                        // First part contains the initial "Row X: ..." 
+                                        if (!empty(trim($parts[0]))) {
+                                            $allErrorList[] = trim($parts[0]);
+                                            if ($fileNumber === 1) {
+                                                $file1ErrorCount++;
+                                            } else {
+                                                $file2ErrorCount++;
+                                            }
+                                        }
+                                        
+                                        // Subsequent parts need "Row " prepended
+                                        for ($i = 1; $i < count($parts); $i++) {
+                                            $part = trim($parts[$i]);
+                                            if (!empty($part)) {
+                                                $allErrorList[] = 'Row ' . $part;
+                                                if ($fileNumber === 1) {
+                                                    $file1ErrorCount++;
+                                                } else {
+                                                    $file2ErrorCount++;
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // Single error case
+                                        if (!empty(trim($cleanError))) {
+                                            $allErrorList[] = trim($cleanError);
+                                            if ($fileNumber === 1) {
+                                                $file1ErrorCount++;
+                                            } else {
+                                                $file2ErrorCount++;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
                         } else {
-                            // Split by semicolons and parse suggestions
-                            $errorList = explode(';', $errorMessage);
+                            // Single file error or generic error - should not happen in compare scenario
+                            $cleanError = $errorMessage;
+                            $cleanError = str_replace("Data validation errors found: ", "", $cleanError);
+                            $cleanError = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanError);
+                            
+                            error_log("Single file/generic error scenario: " . $cleanError);
+                            
+                            if (strpos($cleanError, 'No valid data to save') !== false) {
+                                $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
+                                $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
+                                $file1ErrorCount = 2; // Assume it's file 1 if not specified
+                            } else {
+                                // FIXED ERROR PARSING - Use the robust approach
+                                if (strpos($cleanError, '; Row') !== false) {
+                                    // Split by '; Row' and handle properly
+                                    $parts = explode('; Row ', $cleanError);
+                                    
+                                    // First part contains the initial "Row X: ..." 
+                                    if (!empty(trim($parts[0]))) {
+                                        $allErrorList[] = trim($parts[0]);
+                                        $file1ErrorCount++;
+                                    }
+                                    
+                                    // Subsequent parts need "Row " prepended
+                                    for ($i = 1; $i < count($parts); $i++) {
+                                        $part = trim($parts[$i]);
+                                        if (!empty($part)) {
+                                            $allErrorList[] = 'Row ' . $part;
+                                            $file1ErrorCount++;
+                                        }
+                                    }
+                                } else {
+                                    // Single error case
+                                    if (!empty(trim($cleanError))) {
+                                        $allErrorList[] = trim($cleanError);
+                                        $file1ErrorCount++;
+                                    }
+                                }
+                                
+                                // Remove any empty entries and reindex
+                                $allErrorList = array_filter($allErrorList, function($item) {
+                                    return !empty(trim($item));
+                                });
+                                $allErrorList = array_values($allErrorList);
+                                $file1ErrorCount = count(array_filter($allErrorList, function($item) {
+                                    return strpos($item, '--- File') === false; // Don't count file separators
+                                }));
+                            }
                         }
+
+                        // Calculate totals and log debug info
+                        $totalErrors = count($allErrorList);
+                        // Don't count file separators in total
+                        $separatorCount = 0;
+                        foreach ($allErrorList as $error) {
+                            if (strpos($error, '--- File') !== false) {
+                                $separatorCount++;
+                            }
+                        }
+                        $actualErrorCount = $totalErrors - $separatorCount;
+
+                        error_log("=== ERROR COUNT DEBUG ===");
+                        error_log("Total items in allErrorList: " . $totalErrors);
+                        error_log("File separator count: " . $separatorCount);
+                        error_log("Actual error count (excluding separators): " . $actualErrorCount);
+                        error_log("File 1 error count: " . $file1ErrorCount);
+                        error_log("File 2 error count: " . $file2ErrorCount);
+                        error_log("Expected total: " . ($file1ErrorCount + $file2ErrorCount));
+                        error_log("=== END ERROR COUNT DEBUG ===");
                         ?>
 
                         <div class="user-alert user-alert-danger">
                             <div class="error-container">
-                                <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> Found validation errors in your CSV file(s):</p>
+                                <?php if (!empty($errorPrefix)): ?>
+                                    <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> <?php echo $errorPrefix; ?></p>
+                                    <?php if ($file1ErrorCount > 0 && $file2ErrorCount > 0): ?>
+                                        <p class="error-summary">File 1: <?php echo $file1ErrorCount; ?> errors | File 2: <?php echo $file2ErrorCount; ?> errors | Total: <?php echo $actualErrorCount; ?> validation errors</p>
+                                    <?php elseif ($file1ErrorCount > 0): ?>
+                                        <p class="error-summary">Found <?php echo $file1ErrorCount; ?> validation errors in File 1:</p>
+                                    <?php elseif ($file2ErrorCount > 0): ?>
+                                        <p class="error-summary">Found <?php echo $file2ErrorCount; ?> validation errors in File 2:</p>
+                                    <?php else: ?>
+                                        <p class="error-summary">Found <?php echo $actualErrorCount; ?> validation errors in your CSV file(s):</p>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> Found <?php echo $actualErrorCount; ?> validation errors in your CSV file(s):</p>
+                                <?php endif; ?>
+                                
                                 <ul class="error-list">
-                                    <?php foreach($errorList as $error): ?>
+                                    <?php foreach($allErrorList as $error): ?>
                                         <?php $error = trim($error); ?>
                                         <?php if(!empty($error)): ?>
                                             <?php
-                                            // Parse error and suggestions
-                                            $parts = explode(' Suggestions: ', $error);
-                                            $mainError = $parts[0];
-                                            $suggestions = isset($parts[1]) ? $parts[1] : '';
+                                            // Check if this is a file separator
+                                            if (strpos($error, '--- File') !== false) {
+                                                ?>
+                                                <li class="error-item" style="background: #e9ecef !important; border-left: 3px solid #6c757d !important; font-weight: bold; text-align: center;">
+                                                    <div class="error-message" style="color: #495057 !important;"><?php echo htmlspecialchars($error); ?></div>
+                                                </li>
+                                                <?php
+                                            } else {
+                                                // Parse error and suggestions - same as index.php
+                                                $parts = explode(' Suggestions: ', $error);
+                                                $mainError = $parts[0];
+                                                $suggestions = isset($parts[1]) ? $parts[1] : '';
+                                                ?>
+                                                <li class="error-item">
+                                                    <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
+                                                    <?php if (!empty($suggestions)): ?>
+                                                        <div class="error-suggestions">
+                                                            <strong>💡 Suggestions:</strong> 
+                                                            <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </li>
+                                                <?php
+                                            }
                                             ?>
-                                            <li class="error-item">
-                                                <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
-                                                <?php if (!empty($suggestions)): ?>
-                                                    <div class="error-suggestions">
-                                                        <strong>💡 Suggestions:</strong> 
-                                                        <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
-                                                    </div>
-                                                <?php endif; ?>
-                                            </li>
                                         <?php endif; ?>
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
-                                                
+                                                                
                             <div class="validation-help">
                                 <h4>Quick Fix Guide:</h4>
                                 <div class="fix-guide">
@@ -1152,22 +1710,16 @@ function calculateStats($values) {
                                     </div>
                                 </div>
                             </div>
-                                                
+                                                                
                             <p class="error-footer">Please correct these issues and upload again.</p>
                         </div>
-                                                
+                                                                
                     <?php else: ?>
                         <!-- Display other types of messages -->
                         <div class="user-alert user-alert-danger">
                             <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
                         </div>
                     <?php endif; ?>
-                <?php endif; ?>
-                    
-                <?php if ($success_message): ?>
-                    <div class="compare-user-alert compare-user-alert-success">
-                        <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($success_message); ?>
-                    </div>
                 <?php endif; ?>
 
                 <form method="post" enctype="multipart/form-data">

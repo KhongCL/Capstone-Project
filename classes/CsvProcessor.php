@@ -537,7 +537,7 @@ class CsvProcessor {
                 return $format;
             }
             
-            error_log("Format $format: $matchCount/{count($detectionHeaders)} matches ({$matchPercentage}%)");
+            error_log("Format $format: $matchCount/" . count($detectionHeaders) . " matches ({$matchPercentage}%)");
         }
         
         error_log("No format detected from headers: " . implode(", ", $headers));

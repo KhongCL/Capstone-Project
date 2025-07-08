@@ -175,7 +175,8 @@ function handleCsvUpload($conn, $file) {
                 
                 return [
                     'type' => 'error',
-                    'message' => $saveResult['message']
+                    'message' => $saveResult['message'],
+                    'file_path' => file_exists($filePath) ? $filePath : null
                 ];
             }
                 } else if ($result['status'] === 'needs_mapping') {
