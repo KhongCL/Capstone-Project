@@ -669,6 +669,56 @@ function calculateStats($values) {
             overflow: hidden;
         }
 
+        .error-navigation {
+            background: #e2e3e5 !important;
+            border-radius: 6px !important;
+            padding: 12px !important;
+            margin-bottom: 20px !important;
+            display: flex !important;
+            justify-content: center !important;
+            gap: 15px !important;
+            flex-wrap: wrap !important;
+            border: 1px solid #adb5bd !important;
+        }
+
+        .error-nav-button {
+            background: #495057 !important;
+            color: white !important;
+            padding: 8px 16px !important;
+            border: none !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            font-size: 0.9em !important;
+            font-weight: 500 !important;
+            transition: all 0.3s ease !important;
+            text-decoration: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+
+        .error-nav-button:hover {
+            background: #343a40 !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+        }
+
+        .error-nav-button.active {
+            background: #dc3545 !important;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4) !important;
+        }
+
+        .error-nav-counter {
+            background: rgba(255,255,255,0.9) !important;
+            color: #495057 !important;
+            padding: 2px 6px !important;
+            border-radius: 12px !important;
+            font-size: 0.8em !important;
+            font-weight: bold !important;
+            min-width: 18px !important;
+            text-align: center !important;
+        }
+
         .user-alert-danger * {
             display: block !important;
             width: 100% !important;
@@ -685,13 +735,71 @@ function calculateStats($values) {
             overflow: hidden;
         }
 
+        /* Quick Jump Buttons */
+        .quick-jump-container {
+            position: fixed !important;
+            right: 20px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            z-index: 1000 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            opacity: 0.8 !important;
+            transition: opacity 0.3s ease !important;
+        }
+
+        .quick-jump-container:hover {
+            opacity: 1 !important;
+        }
+
+        .quick-jump-btn {
+            background: #495057 !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 12px !important;
+            border-radius: 20px !important;
+            cursor: pointer !important;
+            font-size: 0.8em !important;
+            font-weight: bold !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3) !important;
+            transition: all 0.3s ease !important;
+            min-width: 60px !important;
+            text-align: center !important;
+        }
+
+        .quick-jump-btn:hover {
+            background: #343a40 !important;
+            transform: scale(1.05) !important;
+        }
+
+        .quick-jump-btn.file1 {
+            background: #007bff !important;
+        }
+
+        .quick-jump-btn.file1:hover {
+            background: #0056b3 !important;
+        }
+
+        .quick-jump-btn.file2 {
+            background: #28a745 !important;
+        }
+
+        .quick-jump-btn.file2:hover {
+            background: #1e7e34 !important;
+        }
+
         .user-alert-danger .error-summary {
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #721c24;
+            font-weight: bold !important;
+            margin-bottom: 20px !important;
+            color: #721c24 !important;
             display: block !important;
             width: 100% !important;
             clear: both !important;
+            padding: 12px !important;
+            background: rgba(255,255,255,0.7) !important;
+            border-radius: 6px !important;
+            border-left: 4px solid #dc3545 !important;
         }
 
         .user-alert-danger .error-list {
@@ -701,46 +809,80 @@ function calculateStats($values) {
             display: block !important;
             width: 100% !important;
             clear: both !important;
-            max-height: 400px;
-            overflow-y: auto;
+            max-height: 500px !important; /* Increased for better viewing */
+            overflow-y: auto !important;
+            scroll-behavior: smooth !important; /* Smooth scrolling */
         }
 
         .user-alert-danger .error-item {
             background: #fff5f5 !important;
             border: 1px solid #fed7e2 !important;
-            border-radius: 6px !important;
-            padding: 15px !important;
+            border-radius: 8px !important;
+            padding: 16px !important;
             margin-bottom: 12px !important;
-            border-left: 3px solid #e53e3e !important;
+            border-left: 4px solid #e53e3e !important;
             display: block !important;
             width: calc(100% - 2px) !important;
             box-sizing: border-box !important;
             clear: both !important;
             float: none !important;
+            transition: all 0.3s ease !important;
+            position: relative !important;
+        }
+
+        .user-alert-danger .error-item:hover {
+            background: #fff0f0 !important;
+            border-left-color: #dc3545 !important;
+            transform: translateX(4px) !important;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.15) !important;
+        }
+
+        .error-item-badge {
+            position: absolute !important;
+            top: -8px !important;
+            right: 12px !important;
+            background: #6c757d !important;
+            color: white !important;
+            padding: 4px 8px !important;
+            border-radius: 12px !important;
+            font-size: 0.75em !important;
+            font-weight: bold !important;
+            z-index: 5 !important;
+        }
+
+        .error-item-badge.file1 {
+            background: #007bff !important;
+        }
+
+        .error-item-badge.file2 {
+            background: #28a745 !important;
         }
 
         .user-alert-danger .error-message {
             font-weight: 500 !important;
             color: #721c24 !important;
-            margin-bottom: 8px !important;
+            margin-bottom: 10px !important;
             display: block !important;
             width: 100% !important;
             clear: both !important;
             word-wrap: break-word !important;
+            line-height: 1.4 !important;
+            padding-right: 60px !important; /* Space for badge */
         }
 
         .user-alert-danger .error-suggestions {
             background: #fff3cd !important;
             border: 1px solid #ffeaa7 !important;
-            border-radius: 3px !important;
-            padding: 8px !important;
+            border-radius: 4px !important;
+            padding: 10px !important;
             font-size: 0.9em !important;
             color: #856404 !important;
-            margin-top: 8px !important;
+            margin-top: 10px !important;
             display: block !important;
-            width: calc(100% - 18px) !important;
+            width: calc(100% - 22px) !important;
             box-sizing: border-box !important;
             clear: both !important;
+            border-left: 3px solid #ffc107 !important;
         }
 
         .user-alert-danger .suggestions-text {
@@ -758,6 +900,101 @@ function calculateStats($values) {
             clear: both !important;
             padding: 10px 0 !important;
             width: 100% !important;
+        }
+
+        .file-section-header {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            color: white !important;
+            padding: 12px 16px !important;
+            margin: 20px 0 15px 0 !important;
+            border-radius: 8px !important;
+            font-weight: bold !important;
+            font-size: 1.1em !important;
+            text-align: center !important;
+            border-left: 4px solid #dc3545 !important;
+            box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3) !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 10 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 10px !important;
+        }
+
+        .file-section-header:first-of-type {
+            margin-top: 0 !important;
+        }
+
+        .file-section-header .file-icon {
+            font-size: 1.2em !important;
+            color: white !important;
+        }
+
+        .file-section-header .error-count-badge {
+            background: rgba(255, 255, 255, 0.9) !important;
+            color: #dc3545 !important;
+            padding: 4px 8px !important;
+            border-radius: 12px !important;
+            font-size: 0.85em !important;
+            font-weight: bold !important;
+            margin-left: 8px !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        }
+
+        /* CRITICAL FIX: Override any gray styling that might be applied initially */
+        .user-alert-danger .error-item[style*="background: #e9ecef"] {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            color: white !important;
+        }
+
+        .user-alert-danger .error-item[style*="border-left: 3px solid #6c757d"] {
+            border-left: 4px solid #dc3545 !important;
+        }
+
+        .user-alert-danger .error-item[style*="color: #495057"] .error-message {
+            color: white !important;
+        }
+
+        /* Add active state for quick jump buttons */
+        .quick-jump-btn.active {
+            background: #dc3545 !important;
+            transform: scale(1.1) !important;
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4) !important;
+        }
+
+        .quick-jump-btn.file1.active {
+            background: #0056b3 !important;
+            box-shadow: 0 4px 12px rgba(0, 86, 179, 0.4) !important;
+        }
+
+        .quick-jump-btn.file2.active {
+            background: #1e7e34 !important;
+            box-shadow: 0 4px 12px rgba(30, 126, 52, 0.4) !important;
+        }
+
+        /* Ensure error items have proper styling when highlighted */
+        .user-alert-danger .error-item.highlighted {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            color: white !important;
+            border-left-color: #721c24 !important;
+            transform: translateX(8px) !important;
+            box-shadow: 0 4px 16px rgba(220, 53, 69, 0.3) !important;
+        }
+
+        .error-progress {
+            background: #e9ecef !important;
+            height: 4px !important;
+            border-radius: 2px !important;
+            margin: 15px 0 !important;
+            overflow: hidden !important;
+        }
+
+        .error-progress-bar {
+            background: linear-gradient(90deg, #dc3545, #c82333) !important;
+            height: 100% !important;
+            border-radius: 2px !important;
+            transition: width 0.3s ease !important;
         }
 
         /* =====================================================
@@ -819,6 +1056,57 @@ function calculateStats($values) {
             display: list-item !important;
             list-style-type: disc !important;
             width: auto !important;
+        }
+
+        @media (max-width: 768px) {
+            .error-navigation {
+                flex-direction: column !important;
+                align-items: center !important;
+            }
+            
+            .quick-jump-container {
+                position: fixed !important;
+                bottom: 20px !important;
+                right: 20px !important;
+                top: auto !important;
+                transform: none !important;
+                flex-direction: row !important;
+            }
+            
+            .user-alert-danger .error-list {
+                max-height: 400px !important;
+            }
+            
+            .file-section-header {
+                font-size: 1em !important;
+                padding: 10px 12px !important;
+            }
+            
+            .error-item-badge {
+                position: static !important;
+                display: inline-block !important;
+                margin-bottom: 8px !important;
+            }
+            
+            .user-alert-danger .error-message {
+                padding-right: 16px !important;
+            }
+        }
+
+        .scroll-indicator {
+            text-align: center !important;
+            padding: 8px !important;
+            color: #6c757d !important;
+            font-size: 0.85em !important;
+            font-style: italic !important;
+        }
+
+        .scroll-indicator.top {
+            background: linear-gradient(to bottom, rgba(248,215,218,0.9), transparent) !important;
+        }
+
+        .scroll-indicator.bottom {
+            background: linear-gradient(to top, rgba(248,215,218,0.9), transparent) !important;
         }
 
         /* =====================================================
@@ -1608,7 +1896,7 @@ function calculateStats($values) {
                         <div class="user-alert user-alert-danger">
                             <div class="error-container">
                                 <?php if (!empty($errorPrefix)): ?>
-                                    <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> <?php echo $errorPrefix; ?></p>
+                                    <p class="error-summary"><?php echo $errorPrefix; ?></p>
                                     <?php if ($file1ErrorCount > 0 && $file2ErrorCount > 0): ?>
                                         <p class="error-summary">File 1: <?php echo $file1ErrorCount; ?> errors | File 2: <?php echo $file2ErrorCount; ?> errors | Total: <?php echo $actualErrorCount; ?> validation errors</p>
                                     <?php elseif ($file1ErrorCount > 0): ?>
@@ -2426,6 +2714,402 @@ function calculateStats($values) {
             console.error('Error logging PDF export:', error);
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set global variables for confirmation logic
+        window.compareHasErrorMessages = document.querySelector('.user-alert-danger, .error-container, .validation-help') !== null;
+        window.compareHasComparisonResults = <?php echo isset($comparison_results) && !empty($comparison_results) ? 'true' : 'false'; ?>;
+        
+        console.log('Compare page loaded - hasErrorMessages:', window.compareHasErrorMessages);
+        console.log('Compare page loaded - hasComparisonResults:', window.compareHasComparisonResults);
+        
+        // Global confirmation function for file uploads
+        window.confirmComparisonFileUpload = function() {
+            const hasErrorMessages = window.compareHasErrorMessages;
+            const hasComparisonResults = window.compareHasComparisonResults;
+            
+            console.log('=== COMPARISON UPLOAD CONFIRMATION ===');
+            console.log('hasErrorMessages:', hasErrorMessages);
+            console.log('hasComparisonResults:', hasComparisonResults);
+            
+            // Show confirmation if there are error messages OR comparison results
+            if (!hasErrorMessages && !hasComparisonResults) {
+                console.log('No error messages or comparison results - proceeding without confirmation');
+                return true;
+            }
+            
+            let confirmMessage;
+            
+            // Prioritize error message warning if present
+            if (hasErrorMessages && !hasComparisonResults) {
+                confirmMessage = "⚠️ Clear Error Messages?\n\n" +
+                                "You have validation error messages displayed that contain helpful suggestions for fixing your CSV files:\n" +
+                                "• 💡 Data fix suggestions for each file\n" +
+                                "• 🔧 Quick fix guide for common issues\n" +
+                                "• 📋 Detailed error explanations\n\n" +
+                                "Uploading new files will clear these helpful messages.\n\n" +
+                                "Do you want to continue with the upload?";
+            } else if (hasErrorMessages && hasComparisonResults) {
+                confirmMessage = "⚠️ Replace Comparison & Clear Error Messages?\n\n" +
+                                "You have both comparison results AND error messages with helpful suggestions displayed.\n\n" +
+                                "Uploading new files will:\n" +
+                                "• Replace your current comparison completely\n" +
+                                "• Clear all comparison charts and analytics\n" +
+                                "• Remove saved comparison data\n" +
+                                "• Clear the helpful error messages and fix suggestions\n\n" +
+                                "This action cannot be undone. Do you want to continue?";
+            } else if (hasComparisonResults) {
+                confirmMessage = "⚠️ Replace Existing Comparison?\n\n" +
+                                "You already have comparison results displayed. Uploading new files will:\n" +
+                                "• Replace your current comparison completely\n" +
+                                "• Clear all comparison charts and analytics\n" +
+                                "• Remove performance overview and detailed metrics\n" +
+                                "• Reset all comparison data and exports\n\n" +
+                                "This action cannot be undone. Do you want to continue?";
+            }
+            
+            console.log('Showing confirmation dialog:', confirmMessage);
+            const result = confirm(confirmMessage);
+            console.log('Confirmation result:', result);
+            return result;
+        };
+        
+        // Add confirmation to the file upload form
+        const uploadForm = document.querySelector('form[enctype="multipart/form-data"]');
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', function(e) {
+                if (!window.confirmComparisonFileUpload()) {
+                    e.preventDefault();
+                    console.log('File upload cancelled by user');
+                    return false;
+                }
+            });
+        }
+        
+        // Browser refresh/navigation confirmation for error messages and comparison results
+        window.addEventListener('beforeunload', function(e) {
+            console.log('=== COMPARE BEFOREUNLOAD EVENT TRIGGERED ===');
+            
+            const hasErrorMessages = document.querySelector('.user-alert-danger, .error-container, .validation-help') !== null;
+            const hasComparisonResults = document.querySelector('.compare-comparison-card, .compare-metric-summary') !== null;
+            
+            console.log('hasErrorMessages:', hasErrorMessages);
+            console.log('hasComparisonResults:', hasComparisonResults);
+            
+            // Only show confirmation if there are error messages or comparison results
+            if (hasErrorMessages || hasComparisonResults) {
+                console.log('Conditions met for showing beforeunload confirmation in compare page');
+                
+                // Browser will show its own message regardless
+                e.preventDefault();
+                e.returnValue = ''; // Empty string is sufficient
+                
+                console.log('beforeunload event prevented in compare page');
+                return ''; // For older browsers
+            } else {
+                console.log('No conditions met, allowing navigation from compare page');
+            }
+        });
+        
+        // Update global variables when new content is loaded
+        function updateCompareGlobalState() {
+            window.compareHasErrorMessages = document.querySelector('.user-alert-danger, .error-container, .validation-help') !== null;
+            window.compareHasComparisonResults = document.querySelector('.compare-comparison-card, .compare-metric-summary') !== null;
+            
+            console.log('Compare state updated - hasErrorMessages:', window.compareHasErrorMessages);
+            console.log('Compare state updated - hasComparisonResults:', window.compareHasComparisonResults);
+        }
+        
+        // Call update function whenever the page content might change
+        // This can be extended if you have AJAX content loading
+        updateCompareGlobalState();
+        
+        // Also update state after form submissions (in case of page reload)
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function() {
+                // Update state before form submission
+                setTimeout(updateCompareGlobalState, 100);
+            });
+        });
+    });
+
+    // Add file selection confirmation for the compare form dropdowns
+    document.addEventListener('DOMContentLoaded', function() {
+        const compareForm = document.querySelector('form[method="POST"]:not([enctype])');
+        if (compareForm) {
+            compareForm.addEventListener('submit', function(e) {
+                const hasErrorMessages = window.compareHasErrorMessages;
+                const hasComparisonResults = window.compareHasComparisonResults;
+                
+                // Only show confirmation if user is replacing existing content
+                if (hasErrorMessages || hasComparisonResults) {
+                    let confirmMessage = "⚠️ Load New Comparison?\n\n";
+                    
+                    if (hasErrorMessages && hasComparisonResults) {
+                        confirmMessage += "This will replace your current comparison results and clear any error messages displayed.\n\n";
+                    } else if (hasErrorMessages) {
+                        confirmMessage += "This will clear the error messages currently displayed.\n\n";
+                    } else if (hasComparisonResults) {
+                        confirmMessage += "This will replace your current comparison results.\n\n";
+                    }
+                    
+                    confirmMessage += "Do you want to continue?";
+                    
+                    if (!confirm(confirmMessage)) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            });
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeErrorNavigation();
+    });
+
+    function initializeErrorNavigation() {
+        const errorList = document.querySelector('.user-alert-danger .error-list');
+        if (!errorList) return;
+        
+        const fileHeaders = errorList.querySelectorAll('[id^="file-"], .error-item[style*="File"]');
+        const hasBothFiles = document.querySelector('.user-alert-danger .error-summary')?.textContent?.includes('Both files failed') || 
+                            document.querySelector('.user-alert-danger .error-summary')?.textContent?.includes('File 1:') && 
+                            document.querySelector('.user-alert-danger .error-summary')?.textContent?.includes('File 2:');
+        
+        if (hasBothFiles) {
+            addQuickJumpButtons();
+            enhanceFileHeaders();
+            addScrollProgress();
+        }
+    }
+
+    function addQuickJumpButtons() {
+        // Only add the side navigation buttons, remove the back to top button
+        const jumpHTML = `
+            <div class="quick-jump-container">
+                <button class="quick-jump-btn file1" onclick="scrollToFile(1)" title="Jump to File 1 errors">
+                    <i class="fas fa-file"></i> F1
+                </button>
+                <button class="quick-jump-btn file2" onclick="scrollToFile(2)" title="Jump to File 2 errors">
+                    <i class="fas fa-file"></i> F2
+                </button>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', jumpHTML);
+    }
+
+    function enhanceFileHeaders() {
+        const errorList = document.querySelector('.user-alert-danger .error-list');
+        if (!errorList) return;
+        
+        const errorItems = errorList.querySelectorAll('.error-item');
+        let currentFile = null;
+        let fileErrorCount = {1: 0, 2: 0};
+        let firstErrorElements = {1: null, 2: null};
+        
+        errorItems.forEach((item, index) => {
+            const errorText = item.textContent;
+            
+            // Detect file separators and apply red styling immediately
+            if (errorText.includes('--- File 1 Errors ---')) {
+                currentFile = 1;
+                item.id = 'file-1-header';
+                item.className = 'file-section-header';
+                
+                // CRITICAL FIX: Apply red styling immediately via inline styles to override any existing gray
+                item.style.cssText = `
+                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+                    color: white !important;
+                    padding: 12px 16px !important;
+                    margin: 20px 0 15px 0 !important;
+                    border-radius: 8px !important;
+                    font-weight: bold !important;
+                    font-size: 1.1em !important;
+                    text-align: center !important;
+                    border-left: 4px solid #dc3545 !important;
+                    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3) !important;
+                    position: sticky !important;
+                    top: 0 !important;
+                    z-index: 10 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 10px !important;
+                `;
+                
+                item.innerHTML = `
+                    <i class="fas fa-file-alt file-icon" style="font-size: 1.2em !important; color: white !important;"></i>
+                    <span style="color: white !important;">File 1 Errors</span>
+                    <span class="error-count-badge" id="file1-count" style="background: rgba(255, 255, 255, 0.9) !important; color: #dc3545 !important; padding: 4px 8px !important; border-radius: 12px !important; font-size: 0.85em !important; font-weight: bold !important; margin-left: 8px !important; border: 1px solid rgba(255, 255, 255, 0.3) !important;">0</span>
+                `;
+                
+            } else if (errorText.includes('--- File 2 Errors ---')) {
+                currentFile = 2;
+                item.id = 'file-2-header';
+                item.className = 'file-section-header';
+                
+                // CRITICAL FIX: Apply red styling immediately via inline styles to override any existing gray
+                item.style.cssText = `
+                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+                    color: white !important;
+                    padding: 12px 16px !important;
+                    margin: 20px 0 15px 0 !important;
+                    border-radius: 8px !important;
+                    font-weight: bold !important;
+                    font-size: 1.1em !important;
+                    text-align: center !important;
+                    border-left: 4px solid #dc3545 !important;
+                    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3) !important;
+                    position: sticky !important;
+                    top: 0 !important;
+                    z-index: 10 !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 10px !important;
+                `;
+                
+                item.innerHTML = `
+                    <i class="fas fa-file-alt file-icon" style="font-size: 1.2em !important; color: white !important;"></i>
+                    <span style="color: white !important;">File 2 Errors</span>
+                    <span class="error-count-badge" id="file2-count" style="background: rgba(255, 255, 255, 0.9) !important; color: #dc3545 !important; padding: 4px 8px !important; border-radius: 12px !important; font-size: 0.85em !important; font-weight: bold !important; margin-left: 8px !important; border: 1px solid rgba(255, 255, 255, 0.3) !important;">0</span>
+                `;
+                
+            } else if (currentFile && item.classList.contains('error-item')) {
+                // This is an actual error item
+                fileErrorCount[currentFile]++;
+                
+                // Set ID for the first actual error of each file
+                if (!firstErrorElements[currentFile]) {
+                    firstErrorElements[currentFile] = item;
+                    item.id = `file-${currentFile}-first-error`;
+                }
+                
+                // Add file badge to regular error items
+                const badge = document.createElement('div');
+                badge.className = `error-item-badge file${currentFile}`;
+                badge.textContent = `File ${currentFile}`;
+                item.appendChild(badge);
+                item.setAttribute('data-file', currentFile);
+            }
+        });
+        
+        // Update error counts
+        const file1CountBadge = document.getElementById('file1-count');
+        const file2CountBadge = document.getElementById('file2-count');
+        if (file1CountBadge) file1CountBadge.textContent = fileErrorCount[1];
+        if (file2CountBadge) file2CountBadge.textContent = fileErrorCount[2];
+    }
+
+    function scrollToFile(fileNumber) {
+        console.log(`Attempting to scroll to file ${fileNumber}`);
+        
+        // Try to scroll to the first actual error, not the header
+        let target = document.getElementById(`file-${fileNumber}-first-error`);
+        
+        if (!target) {
+            // Fallback to header if no errors found
+            target = document.getElementById(`file-${fileNumber}-header`);
+        }
+        
+        if (target) {
+            console.log(`Found target for file ${fileNumber}:`, target);
+            
+            target.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start',
+                inline: 'nearest' 
+            });
+            
+            // Highlight the section temporarily
+            const originalBackground = target.style.background;
+            target.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+            target.style.color = 'white';
+            
+            setTimeout(() => {
+                target.style.background = originalBackground;
+                target.style.color = '';
+            }, 1500);
+            
+            // Update active navigation button
+            document.querySelectorAll('.quick-jump-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to the clicked button
+            const clickedButton = document.querySelector(`.quick-jump-btn.file${fileNumber}`);
+            if (clickedButton) {
+                clickedButton.classList.add('active');
+            }
+        } else {
+            console.error(`Could not find target element for file ${fileNumber}`);
+            
+            // Enhanced fallback: try to find the section by text content
+            const errorItems = document.querySelectorAll('.error-item, .file-section-header');
+            for (let item of errorItems) {
+                if (item.textContent.includes(`--- File ${fileNumber} Errors ---`) || 
+                    item.textContent.includes(`File ${fileNumber} Errors`)) {
+                    console.log(`Found fallback target for file ${fileNumber}:`, item);
+                    item.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'start',
+                        inline: 'nearest' 
+                    });
+                    break;
+                }
+            }
+        }
+    }
+
+    function scrollToTop() {
+        const errorContainer = document.querySelector('.user-alert-danger');
+        if (errorContainer) {
+            errorContainer.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }
+        
+        // Clear active navigation buttons
+        document.querySelectorAll('.error-nav-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+    }
+
+    function countFileErrors(fileName) {
+        const errorList = document.querySelector('.user-alert-danger .error-list');
+        if (!errorList) return 0;
+        
+        const errorItems = errorList.querySelectorAll('.error-item');
+        let count = 0;
+        let countingFile = false;
+        
+        errorItems.forEach(item => {
+            const text = item.textContent;
+            if (text.includes(`--- ${fileName} Errors ---`)) {
+                countingFile = true;
+            } else if (text.includes('--- File') && text.includes('Errors ---') && !text.includes(fileName)) {
+                countingFile = false;
+            } else if (countingFile && !text.includes('--- File')) {
+                count++;
+            }
+        });
+        
+        return count;
+    }
+
+    // Cleanup function for mobile
+    function cleanupErrorNavigation() {
+        const quickJump = document.querySelector('.quick-jump-container');
+        if (quickJump && window.innerWidth <= 768) {
+            quickJump.style.bottom = '80px'; // Adjust for mobile keyboard
+        }
+    }
+
+    window.addEventListener('resize', cleanupErrorNavigation);
     </script>    
 </body>
 </html>
