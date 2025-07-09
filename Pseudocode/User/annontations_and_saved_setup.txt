@@ -1,4 +1,4 @@
-//delete_annontatitons.php
+//delete_annotatitons.php
 START
 
     IMPORT user_auth
@@ -38,7 +38,7 @@ END
 
 
 
-//edit_annontation.php
+//edit_annotation.php
 START
 
     IMPORT user authentication module
@@ -86,7 +86,7 @@ END
 
 
 
-//get_annontations.php
+//get_annotations.php
 START
 
     REQUIRE user authentication from '../auth/user_auth.php'
