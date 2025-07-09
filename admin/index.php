@@ -233,8 +233,8 @@ function getReportTypes($conn) {
             <section class="admin-section">
                 <h3><i class="fas fa-shield-alt"></i> Admin Actions</h3>
                 <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-                    <button href="../admin_register.php?key=trafanalyz" class="btn btn-primary">Register New Admin</button>
-                    <button href="export_users_pdf.php" target="_blank" class="btn btn-primary">Export User Report</button>
+                    <a href="../admin_register.php?key=trafanalyz" class="btn btn-primary">Register New Admin</a>
+                    <a href="export_users_pdf.php" target="_blank" class="btn btn-primary">Export User Report</a>
                     <button id="clearSampleDataBtn" class="btn btn-danger">Clear Sample Data</button>
                 </div>
             </section>
