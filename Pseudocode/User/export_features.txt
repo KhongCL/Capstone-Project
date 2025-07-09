@@ -304,3 +304,168 @@ START
         OUTPUT JSON: success = False, message = "Invalid request method"
     END IF
 END
+
+
+
+
+
+//compare.php
+START
+    DEFINE FUNCTION compareCSVFiles WITH PARAMETERS file1_path, file2_path
+        CALL parseCSV WITH file1_path AND STORE RESULT IN data1
+        CALL parseCSV WITH file2_path AND STORE RESULT IN data2
+
+        IF data1 IS EMPTY OR data2 IS EMPTY
+            THROW Exception "One or both CSV files are empty or invalid."
+        END IF
+
+        SET headers1 TO KEYS OF data1[0]
+        SET headers2 TO KEYS OF data2[0]
+
+        SET analytics_metrics TO [
+            'traffic_source', 'sessions', 'engaged_sessions', 'engagement_rate',
+            'average_engagement_time_per_session', 'events_per_session', 'event_count',
+            'key_events', 'session_key_event_rate', 'total_revenue'
+        ]
+
+        INITIALIZE comparison DICTIONARY WITH:
+            basic_metrics: row/column counts and differences
+            headers: file1_headers, file2_headers, common_headers, unique_to_file1, unique_to_file2
+            analytics_metrics: EMPTY DICTIONARY
+            summary_comparison: EMPTY DICTIONARY
+            data_sample: first 5 rows from each file
+
+        SET common_headers TO MERGE OF common_headers, headers1, headers2
+        INITIALIZE semantic_common AS EMPTY LIST
+
+        FOR EACH metric IN analytics_metrics
+            SET found_column TO CALL findMetricColumn WITH common_headers, metric
+
+            IF found_column EXISTS
+                SET col1 TO CALL findMetricColumn WITH headers1, metric
+                SET col2 TO CALL findMetricColumn WITH headers2, metric
+
+                IF col1 AND col2 EXIST
+                    APPEND metric TO semantic_common
+                    SET values1 TO COLUMN col1 FROM data1
+                    SET values2 TO COLUMN col2 FROM data2
+
+                    IF col1 OR col2 INDICATES CONVERSION (e.g., "_CONVERT_FROM_")
+                        HANDLE CONVERSION LOGIC (e.g., engagement_rate <-> bounce_rate)
+                    END IF
+
+                    CLEAN AND CONVERT values1 AND values2 TO NUMERIC ARRAYS
+
+                    IF numeric1 AND numeric2 ARE NOT EMPTY
+                        SET stats1 TO CALL calculateStats WITH numeric1
+                        SET stats2 TO CALL calculateStats WITH numeric2
+
+                        CALCULATE percent_change BETWEEN stats1 AND stats2
+
+                        ADD TO comparison.analytics_metrics[metric]:
+                            column_name, file1_column, file2_column, file1_stats, file2_stats,
+                            comparison: total_diff, avg_diff, percent_change, improvement
+                    END IF
+                END IF
+            END IF
+        END FOR
+
+        SET comparison.summary_comparison TO CALL calculateSummaryComparison WITH data1, data2, comparison.analytics_metrics
+        SET comparison.headers.semantic_common TO semantic_common
+        SET comparison.headers.semantic_common_count TO LENGTH OF semantic_common
+
+        RETURN comparison
+    END FUNCTION
+
+    // Export Features
+
+    DEFINE FUNCTION exportTableToCSV WITH PARAMETERS table_data, filename
+        OPEN filename IN WRITE MODE
+        FOR EACH row IN table_data
+            WRITE row AS CSV TO FILE
+        END FOR
+        CLOSE FILE
+    END FUNCTION
+
+    DEFINE FUNCTION exportDashboardToCSV WITH PARAMETERS dashboard_data, filename
+        EXTRACT TABLES AND CHART DATA FROM dashboard_data
+        CALL exportTableToCSV FOR EACH TABLE OR CHART DATA
+    END FUNCTION
+
+    DEFINE FUNCTION exportDashboardToPDF WITH PARAMETERS dashboard_view, filename
+        INITIALIZE PDF DOCUMENT
+        ADD CHARTS AND TABLES FROM dashboard_view TO PDF
+        SAVE PDF AS filename
+    END FUNCTION
+END
+
+
+
+
+//CsvProcessor.php
+START
+
+    IMPORT csv
+    IMPORT pdf_library
+
+    DEFINE FUNCTION export_table_to_csv WITH PARAMETERS table_data, filename
+        OPEN filename in write mode
+        FOR each row in table_data
+            WRITE row as CSV to the file
+        END FOR
+        CLOSE the file
+        OUTPUT "Table exported to CSV successfully."
+    END FUNCTION
+
+    DEFINE FUNCTION export_dashboard_to_csv WITH PARAMETERS dashboard_data, filename
+        OPEN filename in write mode
+        FOR each widget in dashboard_data
+            IF widget is a table
+                FOR each row in widget
+                    WRITE row as CSV to the file
+                END FOR
+            ELSE IF widget is a chart
+                WRITE chart summary or data points as CSV to the file
+            END IF
+        END FOR
+        CLOSE the file
+        OUTPUT "Dashboard view exported to CSV successfully."
+    END FUNCTION
+
+    DEFINE FUNCTION export_dashboard_to_pdf WITH PARAMETERS dashboard_data, filename
+        INITIALIZE a new PDF document
+        FOR each widget in dashboard_data
+            IF widget is a table
+                ADD table to PDF document
+            ELSE IF widget is a chart
+                ADD chart image or summary to PDF document
+            END IF
+        END FOR
+        SAVE the PDF document as filename
+        OUTPUT "Dashboard view exported to PDF successfully."
+    END FUNCTION
+
+    DEFINE FUNCTION export_menu
+        OUTPUT "Export Menu"
+        OUTPUT "1. Export Table to CSV"
+        OUTPUT "2. Export Dashboard to CSV"
+        OUTPUT "3. Export Dashboard to PDF"
+        OUTPUT "4. Return to Main Menu"
+
+        WHILE True
+            ASK user for choice
+            IF choice is 1
+                CALL export_table_to_csv WITH selected table and filename
+            ELSE IF choice is 2
+                CALL export_dashboard_to_csv WITH dashboard data and filename
+            ELSE IF choice is 3
+                CALL export_dashboard_to_pdf WITH dashboard data and filename
+            ELSE IF choice is 4
+                RETURN
+            ELSE
+                OUTPUT "Invalid choice. Please try again."
+            END IF
+        END WHILE
+    END FUNCTION
+
+END
