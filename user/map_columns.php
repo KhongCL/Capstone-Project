@@ -129,7 +129,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 $error_message = "File not found. Please upload your CSV file again.";
                 error_log("ERROR: File path not found or file doesn't exist: " . ($filePath ?? 'NULL'));
             } else {
-                // Rest of the existing transformation code...
                 // CRITICAL FIX: For manual mapping, set a default format to avoid validation errors
                 $format = 'manual_mapping'; // Use a special format identifier for manual mappings
                 
@@ -162,45 +161,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     // Clear the manual mapping flag
                     unset($_SESSION['manual_mapping_mode']);
                     
-                    // Rest of the existing success/error handling code remains the same...
                     if (empty($transformedData)) {
                         error_log("ERROR: No data returned from transformation");
                         
-                        // IMPROVED: Better error handling for validation errors
+                        // CRITICAL FIX: Redirect to index.php with validation errors instead of showing them on mapping page
                         if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
                             $validationErrors = $_SESSION['validation_errors'];
-                            error_log("Found validation errors: " . implode('; ', array_slice($validationErrors, 0, 5)));
+                            error_log("Found validation errors, redirecting to index.php: " . implode('; ', array_slice($validationErrors, 0, 5)));
                             
-                            // FIXED: Count unique error types instead of showing repetitive errors
+                            // Store file information for re-upload display
+                            $_SESSION['failed_file_info'] = [
+                                'name' => basename($filePath),
+                                'size' => file_exists($filePath) ? filesize($filePath) : 0,
+                                'mapping_attempted' => true,
+                                'mapped_columns' => count($columnMapping),
+                                'total_columns' => count($mappingResult['header'] ?? [])
+                            ];
+                            
+                            // Create a comprehensive error message for index.php
                             $uniqueErrors = array_unique($validationErrors);
                             $errorCount = count($validationErrors);
-                            $uniqueCount = count($uniqueErrors);
                             
-                            // Filter out "No format detected" errors for manual mapping
-                            $filteredErrors = array_filter($uniqueErrors, function($error) {
-                                return strpos($error, 'No format detected for validation') === false;
-                            });
-                            
-                            if (!empty($filteredErrors)) {
-                                if (count($filteredErrors) < 3) {
-                                    // Show all filtered errors if we have fewer than 3
-                                    $error_message = "Validation errors found: " . implode('; ', $filteredErrors);
-                                } else {
-                                    // Show first 2 filtered errors + count
-                                    $firstTwoErrors = array_slice($filteredErrors, 0, 2);
-                                    $error_message = "Validation errors found: " . implode('; ', $firstTwoErrors) . 
-                                                    " and " . (count($filteredErrors) - 2) . " more error type(s)";
-                                }
-                                
-                                $error_message .= ". Please review your column mappings and try again.";
+                            if (count($uniqueErrors) > 20) {
+                                // Too many errors - show summary
+                                $sampleErrors = array_slice($uniqueErrors, 0, 5);
+                                $errorMessage = "Your CSV file contains " . $errorCount . " validation errors across multiple rows. " .
+                                               "Sample errors: " . implode('; ', $sampleErrors) . "... " .
+                                               "Please fix the data issues in your CSV file and upload again.";
                             } else {
-                                // Only "No format detected" errors - this is a validation issue, not a data issue
-                                $error_message = 'Column mapping appears correct, but data validation failed. This may be due to unexpected data formats. Please check your CSV file for any unusual characters or formatting.';
+                                $errorMessage = "Data validation errors found: " . implode('; ', $uniqueErrors) . 
+                                               ". Please correct these issues and upload again.";
                             }
                             
-                            // Don't clear session data here - let user try again
+                            $_SESSION['upload_message'] = [
+                                'type' => 'error',
+                                'message' => $errorMessage,
+                                'validation_errors' => $validationErrors,
+                                'show_detailed_errors' => true
+                            ];
+                            
+                            // Clean up the uploaded file
+                            if (file_exists($filePath)) {
+                                unlink($filePath);
+                                error_log("Cleaned up failed file: $filePath");
+                            }
+                            
+                            // Clear mapping session data
+                            unset($_SESSION['uploaded_csv']);
+                            unset($_SESSION['mapping_result']);
+                            unset($_SESSION['csv_metadata']);
+                            unset($_SESSION['uploaded_file_name']);
+                            unset($_SESSION['uploaded_file_size']);
+                            
+                            error_log("Redirecting to index.php with validation errors");
+                            header('Location: index.php?mapping_failed=1');
+                            exit;
                         } else {
-                            $error_message = 'No valid data found after transformation. Please check your CSV file and column mappings.';
+                            // No validation errors but no data - general error
+                            $_SESSION['upload_message'] = [
+                                'type' => 'error',
+                                'message' => 'No valid data found after processing. Please check your CSV file and try again.'
+                            ];
+                            
+                            // Clean up
+                            if (file_exists($filePath)) {
+                                unlink($filePath);
+                            }
+                            unset($_SESSION['uploaded_csv']);
+                            unset($_SESSION['mapping_result']);
+                            unset($_SESSION['csv_metadata']);
+                            
+                            header('Location: index.php?upload_failed=1');
+                            exit;
                         }
                     } else {
                         error_log("Sample transformed data: " . json_encode($transformedData[0] ?? []));
@@ -242,7 +274,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     // Clear the manual mapping flag on error
                     unset($_SESSION['manual_mapping_mode']);
                     
-                    $error_message = 'Error processing data: ' . $e->getMessage();
+                    // CRITICAL FIX: Also redirect exceptions to index.php
+                    $_SESSION['upload_message'] = [
+                        'type' => 'error',
+                        'message' => 'Error processing data: ' . $e->getMessage()
+                    ];
+                    
+                    // Clean up
+                    if (isset($filePath) && file_exists($filePath)) {
+                        unlink($filePath);
+                    }
+                    unset($_SESSION['uploaded_csv']);
+                    unset($_SESSION['mapping_result']);
+                    unset($_SESSION['csv_metadata']);
+                    
+                    header('Location: index.php?processing_failed=1');
+                    exit;
                 }
             }
         }
