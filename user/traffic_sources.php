@@ -174,7 +174,9 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     		color: var(--white);
         border-radius: 8px;
         cursor: pointer;
+				font-family: inherit;
         font-size: 0.9em;
+				font-weight: 500;
         transition: all 0.3s ease;
     }
 

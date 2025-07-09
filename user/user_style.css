@@ -195,7 +195,7 @@ section {
 }
 
 .overview-section {
-	margin-bottom: 30px;
+		margin-bottom: 30px;
 }
 
 .user-metric {
@@ -205,11 +205,37 @@ section {
 }
 
 .user-metric-card {
-	  background-color: var(--white);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
+		backdrop-filter: blur(10px);
     box-shadow: var(--shadow);
+    position: relative;
+    border-width: 1px;
+    border-style: solid;
+    border-color: rgba(14, 165, 233, 0.2);
+    border-image: initial;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    overflow: hidden;
+    transition: 0.3s;
+}
+
+.user-metric-card:hover {
+		transform: translateY(-5px);
+}
+
+.user-metric-card h4 {
+		font-size: 0.875rem;
+    color: var(--dark-gray);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.user-metric-card p {
+		font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
 }
 
 .user-section {
@@ -566,6 +592,7 @@ label {
     padding: 8px 16px;
     border: none;
     border-radius: 8px;
+		font-family: inherit;
     font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
@@ -622,6 +649,7 @@ select:focus {
     padding: 12px 24px;
     border: none;
     border-radius: 8px;
+		font-family: inherit;
     font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
@@ -1282,7 +1310,7 @@ select:focus {
     display: flex;
     gap: 10px;
     justify-content: center;
-    margin-top: 15px;
+    margin-top: 20px;
     flex-wrap: wrap;
 }
 
@@ -1293,6 +1321,7 @@ select:focus {
     padding: 10px 16px;
     border: none;
     border-radius: 6px;
+		font-family: inherit;
     font-size: 0.9rem;
     font-weight: 500;
     cursor: pointer;
@@ -1404,6 +1433,7 @@ select:focus {
 
 .user-annotation-btn {
     padding: 4px 8px;
+		font-family: inherit;
     font-size: 0.8rem;
     border: none;
     border-radius: 4px;
@@ -1604,6 +1634,7 @@ select:focus {
     padding: 12px 24px;
     border: none;
     border-radius: 8px;
+		font-family: inherit;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
@@ -1625,6 +1656,7 @@ select:focus {
     padding: 12px 24px;
     border: none;
     border-radius: 8px;
+		font-family: inherit;
     font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
@@ -1727,7 +1759,6 @@ select:focus {
 .compare-user-file-input-group label {
     display: block;
     margin-bottom: 5px;
-    font-weight: bold;
 }
 
 .compare-file-input-group input,
@@ -1752,7 +1783,9 @@ select:focus {
     border: none;
     border-radius: 4px;
     cursor: pointer;
+		font-family: inherit;
     font-size: 16px;
+		font-weight: 500;
 }
 
 .compare-btn-submit:hover,
