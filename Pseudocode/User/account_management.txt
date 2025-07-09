@@ -172,3 +172,44 @@ START
         - Show server-side errors as bubbles on relevant fields
         - On successful registration, show popup and redirect to login page after 3 seconds
 END
+
+
+
+
+//user_auth.php
+START
+    DEFINE FUNCTION redirectToIndex
+        OUTPUT HTML page with:
+            - Title: "Access Denied"
+            - Message: "Access Denied"
+            - Message: "Please log in to access this page."
+            - Link: "Return to Landing Page" (points to ../index.php)
+        TERMINATE script execution
+    END FUNCTION
+END
+
+
+
+
+
+//flexible_auth.php
+START
+    DEFINE FUNCTION redirect_to_appropriate_login
+        SET is_admin_area TO True IF "/admin/" IS IN REQUEST_URI, ELSE False
+        IF is_admin_area IS True
+            SET login_url TO "../admin_login.php?key=trafanalyz"
+            SET home_url TO "../admin/index.php"
+        ELSE
+            SET login_url TO "../login.php"
+            SET home_url TO "../index.php"
+        END IF
+
+        OUTPUT HTML PAGE:
+            TITLE: "Access Denied"
+            MESSAGE: "Access Denied. Please log in to access this page."
+            LINK TO login_url WITH TEXT "Login"
+            LINK TO home_url WITH TEXT "Return to Homepage"
+
+        TERMINATE EXECUTION
+    END FUNCTION
+END

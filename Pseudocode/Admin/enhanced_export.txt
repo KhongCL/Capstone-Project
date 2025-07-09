@@ -77,3 +77,557 @@ START
     END
 
 END
+
+
+
+
+
+//compare.php
+START
+
+    IMPORT datetime
+
+    DEFINE FUNCTION compare_analytics_csv_files
+
+        START SESSION
+
+        IF user is not logged in
+            REDIRECT to login page
+            EXIT
+        END IF
+
+        SET page variables (title, active_page)
+
+        INCLUDE authentication, config, functions, and CSV processor files
+
+        GET user ID from session
+
+        INITIALIZE comparison_results, error_message, success_message
+
+        // Load user's validated CSV uploads
+        QUERY database for user's validated CSV uploads
+        STORE uploads in a list
+
+        // Handle file upload and comparison
+        IF request method is POST AND both CSV files are uploaded
+            TRY
+                CLEAR previous comparison session data
+
+                INITIALIZE session structure for compare_files
+
+                CALL handleCsvUploadForComparison for both files
+                STORE upload results
+
+                DETERMINE validity and mapping needs for both files
+
+                UPDATE session data with upload results
+
+                WRITE and restart session
+
+                // Handle all scenarios
+                IF both files are valid
+                    IF both files exist
+                        CALL compareCSVFiles with both file paths
+                        SET success_message (with warning if needed)
+                    ELSE
+                        SET error_message ("Files processed but not found")
+                    END IF
+                ELSE IF file 1 needs mapping and file 2 is valid
+                    REDIRECT to map_columns_compare.php for file 1
+                ELSE IF file 1 is valid and file 2 needs mapping
+                    REDIRECT to map_columns_compare.php for file 2
+                ELSE IF both files need mapping
+                    REDIRECT to map_columns_compare.php for file 1
+                ELSE IF file 1 valid/mappable and file 2 invalid
+                    SET error_message with details
+                ELSE IF file 1 invalid and file 2 valid/mappable
+                    SET error_message with details
+                ELSE
+                    SET error_message for both files invalid
+                END IF
+            CATCH exception
+                SET error_message with exception details
+            END TRY
+        END IF
+
+        // Handle return from mapping
+        IF session indicates compare_ready and compare_files
+            IF both files have upload IDs
+                TRY
+                    IF both files exist
+                        CALL compareCSVFiles with both file paths
+                        SET success_message ("Comparison completed after mapping")
+                    ELSE
+                        SET error_message ("Files processed but not found")
+                    END IF
+                CATCH exception
+                    SET error_message with exception details
+                END TRY
+            END IF
+            CLEAR compare_ready and compare_files from session
+        END IF
+
+        // Handle comparison error from mapping
+        IF session has compare_error
+            SET error_message from session
+            CLEAR compare_error from session
+        END IF
+
+        // Function: handleCsvUploadForComparison
+        DEFINE FUNCTION handleCsvUploadForComparison(connection, file)
+            SET comparison_context flag in POST
+            CALL handleCsvUpload with connection and file
+            IF session has latest_upload_id
+                ADD upload_id to result
+            END IF
+            RETURN result
+        END FUNCTION
+
+        // Handle saving comparison
+        IF request method is POST AND compare is set
+            GET upload1, upload2, comparisonName from POST
+            IF comparisonName is not empty
+                INSERT new saved_comparison into database
+                INSERT both files into comparison_file_link table
+                RESET dropdown selections
+            END IF
+        END IF
+
+        // Handle loading saved comparison
+        IF request method is POST AND load_comparison is set
+            GET selectedComparisonID from POST
+            QUERY database for files linked to this comparison
+            IF at least two files found
+                SET upload1 and upload2 from results
+                CONSTRUCT file paths
+                IF both files exist
+                    TRY
+                        CALL compareCSVFiles with both file paths
+                        SET success_message ("Loaded comparison")
+                    CATCH exception
+                        SET error_message with exception details
+                    END TRY
+                ELSE
+                    SET error_message ("Files for this comparison no longer exist")
+                END IF
+            ELSE
+                SET error_message ("Invalid comparison data")
+            END IF
+        END IF
+
+        // Load user's uploaded CSV files for dropdown
+        QUERY database for all user's CSV uploads
+        STORE in csvFiles list
+
+        // Load user's saved comparisons for dropdown
+        QUERY database for all user's saved comparisons
+        STORE in savedComparisons list
+
+        // Function: compareCSVFiles
+        DEFINE FUNCTION compareCSVFiles(file1_path, file2_path)
+            PARSE both CSV files into data1 and data2
+            IF either file is empty or invalid
+                THROW exception
+            END IF
+
+            EXTRACT headers from both files
+
+            DEFINE analytics_metrics list
+
+            INITIALIZE comparison dictionary with:
+                basic_metrics (row/column counts, differences)
+                headers (common, unique, etc.)
+                analytics_metrics (empty)
+                summary_comparison (empty)
+                data_sample (first 5 rows from each file)
+
+            // Analyze analytics metrics
+            FOR each metric in analytics_metrics
+                FIND matching columns in both files (case-insensitive, flexible naming)
+                IF found in both files
+                    EXTRACT values from both files
+                    HANDLE conversions (e.g., engagement rate <-> bounce rate)
+                    CLEAN and convert values to numeric
+                    IF both have numeric data
+                        CALCULATE stats for both
+                        CALCULATE percent change and improvement
+                        ADD to analytics_metrics in comparison
+                    END IF
+                END IF
+            END FOR
+
+            CALCULATE summary_comparison for key metrics
+            ADD semantic_common headers and count
+
+            RETURN comparison
+        END FUNCTION
+
+        // Helper functions: findMetricColumn, cleanNumericValues, determineImprovement, calculateSummaryComparison, parseCSV, calculateStats
+        // (Implement as per code, following pseudocode conventions)
+
+        // HTML OUTPUT SECTION
+        DISPLAY page header and upload form
+
+        IF error_message exists
+            IF error_message is a validation/data error
+                PARSE error_message for file-specific errors
+                DISPLAY error summary, counts, and suggestions
+                DISPLAY quick fix guide for common CSV issues
+            ELSE
+                DISPLAY generic error message
+            END IF
+        END IF
+
+        DISPLAY upload form for two CSV files
+
+        DISPLAY saved comparisons dropdown and new comparison form
+
+        IF comparison_results exist
+            DISPLAY export controls (CSV, PDF)
+
+            DISPLAY debug information (headers, metric detection, etc.)
+
+            IF summary_comparison exists
+                DISPLAY performance overview metrics
+            END IF
+
+            IF analytics_metrics exist
+                DISPLAY detailed analytics comparison
+            END IF
+
+            DISPLAY basic file information
+
+            DISPLAY data samples (first 5 records from each file)
+        END IF
+
+        DISPLAY page footer
+
+        // JAVASCRIPT SECTION
+        DEFINE exportToCSV FUNCTION
+            BUILD CSV string with:
+                - Report header, timestamp, user info
+                - Performance overview
+                - Detailed analytics
+                - File info
+                - Data samples
+                - Export metadata
+            TRIGGER CSV download
+            LOG export to database
+
+        DEFINE exportToPDF FUNCTION
+            IF jsPDF not loaded
+                ALERT user
+                RETURN
+            END IF
+            IF no comparison data
+                ALERT user
+                RETURN
+            END IF
+
+            INITIALIZE jsPDF document
+            ADD report title, timestamp, and user info to PDF
+
+            FOR each section (overview, analytics, file info, samples)
+                ADD section title and table to PDF
+                HANDLE page breaks as needed
+            END FOR
+
+            ADD export metadata to PDF footer
+
+            SAVE PDF file
+            LOG export to database
+
+        // Additional JS: confirmation dialogs for uploads, navigation, error navigation, etc.
+
+    END FUNCTION
+
+    CALL compare_analytics_csv_files
+
+END
+
+
+
+
+
+//CsvProcessor.PHP
+START
+
+    DEFINE CLASS CsvProcessor
+
+        DEFINE FUNCTION __construct
+            SET default charset and internal encoding to UTF-8
+            SET locale to 'en_US.UTF-8'
+            SET mappingsFile to the absolute path of 'config/csv_mappings.json'
+            IF mappingsFile does not exist
+                THROW Exception "Mappings file not found"
+            END IF
+            LOAD mappings from mappingsFile as JSON
+            IF mappings is empty
+                THROW Exception "Failed to load CSV mapping configurations"
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION processFile WITH PARAMETER filePath
+            IF file is empty
+                RETURN error "The CSV file is empty. Please upload a file with data."
+            END IF
+
+            OPEN filePath for reading
+            READ first line
+            IF first line starts with '#'
+                RETURN CALL processGoogleAnalyticsFormat WITH filePath
+            ELSE
+                SET result to CALL processSimpleFormat WITH filePath
+                IF result status is 'success'
+                    RETURN result
+                END IF
+            END IF
+
+            OPEN filePath for reading
+            READ header row
+            IF header is invalid
+                RETURN error "Invalid CSV file: No headers found or file is empty."
+            END IF
+
+            READ up to 5 data rows as sample
+            TRY
+                SET detectedFormat to CALL detectFormat WITH header
+                IF detectedFormat found
+                    RETURN success with format, header, mapping, data_types, and sample
+                ELSE
+                    RETURN needs_mapping with header, sample, and suggestions from suggestColumnMapping
+                END IF
+            CATCH Exception as e
+                RETURN error with e.message
+            END TRY
+        END FUNCTION
+
+        DEFINE FUNCTION processSimpleFormat WITH PARAMETER filePath
+            OPEN filePath for reading
+            READ header row and up to 5 data rows as sample
+            CHECK for GA4 indicators in header
+            IF at least 3 indicators found
+                SET detectedFormat to 'ga4_traffic_acquisition'
+                CREATE mapping based on column names
+                RETURN success with format, header, sample, and mapping
+            ELSE
+                RETURN needs_mapping with header, sample, and suggestions from suggestColumnMapping
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION processGoogleAnalyticsFormat WITH PARAMETER filePath
+            CALL validateRawCsvStructure WITH filePath
+            INITIALIZE headerLine, dataLines, metadataLines
+            OPEN filePath for reading
+            FOR first 50 lines
+                IF line contains required GA4 metadata keywords
+                    INCREMENT foundMetadataCount
+                IF line starts with '#'
+                    ADD line to metadataLines
+                    CONTINUE
+                IF headerLine is null
+                    SET headerLine to line
+                    CONTINUE
+                ADD line to dataLines
+            END FOR
+            IF foundMetadataCount < 3
+                RETURN error "This does not appear to be a Google Analytics export."
+            END IF
+
+            PARSE headerLine as CSV header
+            PARSE dataLines as CSV data
+            CALCULATE gaRelevanceScore by matching header columns to GA keywords
+            IF gaRelevanceScore < 2
+                RETURN error "This file does not appear to contain web analytics data."
+            END IF
+
+            FOR each format in mappings
+                CHECK if header matches required columns (case-insensitive)
+                IF match found (exact or >=70%)
+                    PREPARE mappingToUse and dataTypesToUse from config
+                    FOR each CSV column in header
+                        TRY to match with config columns (case-insensitive)
+                        ADD to mappingToUse if matched
+                    END FOR
+                    RETURN success with format, header, mapping, data_types, and sample
+                END IF
+            END FOR
+
+            RETURN needs_mapping with header, sample, and suggestions from suggestColumnMapping
+        END FUNCTION
+
+        DEFINE FUNCTION validateRawCsvStructure WITH PARAMETER filePath
+            READ all lines from filePath
+            FOR each line
+                SKIP metadata lines
+                IF header not found
+                    SET expectedFieldCount from header
+                    CONTINUE
+                CALCULATE fieldCount for line
+                IF fieldCount > expectedFieldCount
+                    DETECT problematic values (e.g., unquoted commas)
+                    ADD error message to structureErrors
+                END IF
+            END FOR
+            IF structureErrors not empty
+                THROW Exception with all structureErrors
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION detectFormat WITH PARAMETER headers
+            FOR each format in mappings
+                COUNT matches between headers and format_detection (case-insensitive)
+                IF match >= 70%
+                    SET detectedFormat
+                    RETURN format
+                END IF
+            END FOR
+            RETURN null
+        END FUNCTION
+
+        DEFINE FUNCTION suggestColumnMapping WITH PARAMETER headers
+            FOR each header
+                FOR each systemField and its keywords
+                    IF header matches keyword (exact or partial)
+                        ASSIGN mapping with confidence score
+                        BREAK
+                    END IF
+                END FOR
+                IF no match
+                    ASSIGN empty mapping with confidence 0
+            END FOR
+            RETURN suggestions
+        END FUNCTION
+
+        DEFINE FUNCTION transformData WITH PARAMETERS filePath, columnMapping, format
+            CLEAR previous validation errors and messages from session
+            SET columnMap from columnMapping
+            IF format is provided and exists in mappings
+                MERGE config column_mappings into columnMap
+            END IF
+            IF format is not provided
+                TRY to infer format from mapped fields
+            END IF
+
+            IF detectedFormat exists and has column_mappings
+                MERGE config column_mappings into columnMap
+            END IF
+
+            INITIALIZE transformed, validationErrors, validRows, rowNumber, totalRowsProcessed, skippedRows
+
+            DETECT if file is GA4 format (first line starts with '#')
+            IF GA4 format
+                SKIP metadata lines, find header, process data rows
+                FOR each data row
+                    MAP columns using columnMap (case-insensitive)
+                    VALIDATE each value using formatValue
+                    IF row has no errors
+                        ADD to transformed
+                    ELSE
+                        ADD error to validationErrors
+                        INCREMENT skippedRows
+                    END IF
+                END FOR
+            ELSE
+                READ header and process each data row
+                FOR each data row
+                    MAP columns using columnMap
+                    VALIDATE each value using formatValue
+                    IF row has no critical errors and has traffic_source
+                        ADD to transformed
+                    ELSE
+                        ADD error to validationErrors
+                        INCREMENT skippedRows
+                    END IF
+                END FOR
+            END IF
+
+            IF transformed is empty
+                STORE validationErrors and upload_message in session
+                DELETE uploaded CSV file if present
+                RETURN empty array
+            ELSE IF validationErrors not empty
+                STORE validationErrors as warnings in session
+                STORE upload_message as warning
+                RETURN transformed
+            ELSE
+                RETURN transformed
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION formatValue WITH PARAMETERS value, column
+            IF manual mapping mode
+                RETURN CALL validateManualMapping WITH value, column, targetField
+            END IF
+
+            IF value contains comma
+                THROW Exception "CSV parsing error: Value contains commas"
+            END IF
+
+            IF targetField is 'traffic_source'
+                CHECK for trademark or special symbols
+                IF found
+                    THROW Exception "Invalid traffic source value"
+                END IF
+                RETURN trimmed value
+            ELSE IF targetField is 'events_per_session'
+                VALIDATE as float, no scientific notation, no negative, not > 50
+                RETURN float value
+            ELSE IF targetField is 'key_events'
+                VALIDATE as integer, no decimal, not > 500
+                RETURN integer value
+            ELSE IF targetField is 'total_revenue'
+                VALIDATE as float, no currency symbols, no negative
+                RETURN float value
+            ELSE IF targetField is 'session_key_event_rate' or 'bounce_rate'
+                VALIDATE as percentage or decimal between 0-1
+                RETURN decimal value
+            END IF
+
+            IF data type is defined in mappings
+                VALIDATE value according to type (integer, float, percentage, currency, time, text)
+                RETURN formatted value
+            ELSE
+                RETURN value
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION validateManualMapping WITH PARAMETERS value, column, systemColumn
+            DETERMINE expected data type from systemColumn
+            VALIDATE value accordingly (numeric, percentage, text)
+            RETURN formatted value
+        END FUNCTION
+
+        DEFINE FUNCTION getExpectedDataType WITH PARAMETER systemColumn
+            RETURN 'numeric', 'percentage', 'text', or 'generic' based on systemColumn
+        END FUNCTION
+
+        DEFINE FUNCTION suggestDataFix WITH PARAMETERS value, expectedType, column
+            RETURN list of suggestions for fixing common validation errors
+        END FUNCTION
+
+        DEFINE FUNCTION evaluateSimpleExpression WITH PARAMETER expression
+            IF expression is simple addition or subtraction
+                RETURN result
+            ELSE
+                RETURN null
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION convertUnicodeDigits WITH PARAMETER value
+            REPLACE Unicode digits with ASCII digits
+            RETURN converted value
+        END FUNCTION
+
+        DEFINE FUNCTION extractGa4Metadata WITH PARAMETER filePath
+            OPEN filePath for reading
+            FOR first 15 lines
+                IF line contains 'Account:', 'Property:', 'Traffic acquisition:', 'Start date:', or 'End date:'
+                    EXTRACT and format metadata values
+            END FOR
+            RETURN metadata dictionary
+        END FUNCTION
+
+    END CLASS
+
+END

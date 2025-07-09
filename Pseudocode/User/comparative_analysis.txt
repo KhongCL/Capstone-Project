@@ -166,3 +166,226 @@ START
 
     CALL compare_analytics_dashboard
 END
+
+
+
+
+//CsvProcessor.php 
+START
+    DEFINE FUNCTION comparative_analysis
+        OUTPUT "Comparative Period Analysis"
+        OUTPUT "Please upload the first CSV file."
+        CALL upload_csv_file AND STORE as csv_file_1
+
+        OUTPUT "Please upload the second CSV file."
+        CALL upload_csv_file AND STORE as csv_file_2
+
+        IF csv_file_1 is None OR csv_file_2 is None
+            OUTPUT "Both CSV files must be uploaded for comparison."
+            RETURN
+        END IF
+
+        OUTPUT "Processing CSV files..."
+        CALL process_csv_file WITH csv_file_1 AND STORE as data_1
+        CALL process_csv_file WITH csv_file_2 AND STORE as data_2
+
+        IF data_1 is empty OR data_2 is empty
+            OUTPUT "One or both CSV files are empty or invalid."
+            RETURN
+        END IF
+
+        OUTPUT "Calculating metrics for both periods..."
+        CALL calculate_metrics WITH data_1 AND STORE as metrics_1
+        CALL calculate_metrics WITH data_2 AND STORE as metrics_2
+
+        OUTPUT "Comparative Metrics:"
+        OUTPUT "Metric Name      | Period 1 Value | Period 2 Value | Difference"
+        FOR each metric in metrics_1.keys
+            SET value_1 to metrics_1[metric]
+            SET value_2 to metrics_2[metric] IF metric exists in metrics_2 ELSE "N/A"
+            IF value_1 and value_2 are numbers
+                SET difference to value_2 - value_1
+            ELSE
+                SET difference to "N/A"
+            END IF
+            OUTPUT metric, value_1, value_2, difference
+        END FOR
+
+        OUTPUT "Comparative analysis complete."
+    END FUNCTION
+
+    DEFINE FUNCTION upload_csv_file
+        PROMPT user to select or upload a CSV file
+        IF file is selected and valid
+            RETURN file path
+        ELSE
+            RETURN None
+        END IF
+    END FUNCTION
+
+    DEFINE FUNCTION process_csv_file WITH PARAMETER file_path
+        OPEN file_path in read mode
+        READ all rows into a list of dictionaries or lists
+        IF file is empty or cannot be read
+            RETURN empty list
+        END IF
+        RETURN data
+    END FUNCTION
+
+    DEFINE FUNCTION calculate_metrics WITH PARAMETER data
+        INITIALIZE metrics as an empty dictionary
+        FOR each row in data
+            FOR each relevant column in row
+                UPDATE metrics (e.g., sum, count, average, etc.)
+            END FOR
+        END FOR
+        RETURN metrics
+    END FUNCTION
+END
+
+
+
+
+//map_columns_compare.php
+START
+
+    IMPORT necessary PHP modules (e.g., file handling, CSV parsing)
+
+    DEFINE FUNCTION display_comparative_analysis_page
+        OUTPUT HTML header and styles
+        OUTPUT form for uploading two CSV files (Period 1 and Period 2)
+        IF there are any warning or info messages
+            OUTPUT the messages in a styled alert box
+        END IF
+    END FUNCTION
+
+    DEFINE FUNCTION handle_file_upload
+        IF both CSV files are uploaded successfully
+            MOVE uploaded files to a temporary directory
+            RETURN the file paths
+        ELSE
+            OUTPUT error message
+            RETURN None
+        END IF
+    END FUNCTION
+
+    DEFINE FUNCTION parse_csv_file WITH PARAMETER file_path
+        OPEN file_path in read mode
+        INITIALIZE an empty list for rows
+        FOR each row in the CSV file
+            PARSE the row into an array
+            ADD the array to the list of rows
+        END FOR
+        CLOSE the file
+        RETURN the list of rows
+    END FUNCTION
+
+    DEFINE FUNCTION map_columns WITH PARAMETERS csv1_headers, csv2_headers
+        OUTPUT a form to let the user map columns from CSV 1 to CSV 2
+        FOR each header in csv1_headers
+            OUTPUT a dropdown to select the corresponding header from csv2_headers
+        END FOR
+        RETURN the mapping as a dictionary
+    END FUNCTION
+
+    DEFINE FUNCTION calculate_metrics WITH PARAMETERS csv_data, column_mapping
+        INITIALIZE a dictionary for metrics
+        FOR each mapped column
+            CALCULATE relevant metrics (e.g., sum, average, count) for the column
+            STORE the metrics in the dictionary
+        END FOR
+        RETURN the metrics dictionary
+    END FUNCTION
+
+    DEFINE FUNCTION display_comparative_metrics WITH PARAMETERS metrics1, metrics2, column_mapping
+        OUTPUT a table with columns for:
+            - Metric name
+            - Value for Period 1
+            - Value for Period 2
+            - Difference or percentage change
+        FOR each metric in metrics1 and metrics2
+            OUTPUT the metric values side by side
+        END FOR
+    END FUNCTION
+
+    DEFINE FUNCTION main
+        CALL display_comparative_analysis_page
+        IF the form is submitted
+            CALL handle_file_upload
+            IF file upload is successful
+                CALL parse_csv_file for both files
+                EXTRACT headers from both CSV files
+                CALL map_columns to get user-defined column mapping
+                CALL calculate_metrics for both CSV files using the mapping
+                CALL display_comparative_metrics to show the results
+            END IF
+        END IF
+    END FUNCTION
+
+    CALL main
+
+END
+
+
+
+
+
+//functions.php
+START
+    DEFINE FUNCTION comparative_period_analysis
+        OUTPUT "Comparative Period Analysis"
+        OUTPUT "Please upload the first CSV file (Period 1):"
+        CALL get_csv_file WITH "Period 1" AND STORE AS period1_data
+
+        OUTPUT "Please upload the second CSV file (Period 2):"
+        CALL get_csv_file WITH "Period 2" AND STORE AS period2_data
+
+        IF period1_data IS EMPTY OR period2_data IS EMPTY
+            OUTPUT "Error: One or both files could not be loaded or are empty."
+            RETURN
+        END IF
+
+        CALL extract_metrics WITH period1_data AND STORE AS metrics1
+        CALL extract_metrics WITH period2_data AND STORE AS metrics2
+
+        OUTPUT "Comparative Metrics (Period 1 vs Period 2):"
+        FOR EACH metric IN metrics1 KEYS
+            IF metric EXISTS IN metrics2
+                OUTPUT metric, ": ", metrics1[metric], " vs ", metrics2[metric]
+                OUTPUT "Difference: ", metrics2[metric] - metrics1[metric]
+            ELSE
+                OUTPUT metric, " only in Period 1: ", metrics1[metric]
+            END IF
+        END FOR
+
+        FOR EACH metric IN metrics2 KEYS
+            IF metric NOT IN metrics1
+                OUTPUT metric, " only in Period 2: ", metrics2[metric]
+            END IF
+        END FOR
+
+        OUTPUT "Comparative analysis complete."
+    END FUNCTION
+
+    DEFINE FUNCTION get_csv_file WITH PARAMETER period_label
+        OUTPUT "Enter the filename for ", period_label, ":"
+        GET filename FROM USER
+        OPEN filename IN READ MODE
+        IF FILE FOUND
+            READ CSV DATA INTO data_list
+            RETURN data_list
+        ELSE
+            OUTPUT "File not found."
+            RETURN EMPTY LIST
+        END IF
+    END FUNCTION
+
+    DEFINE FUNCTION extract_metrics WITH PARAMETER data_list
+        INITIALIZE metrics AS EMPTY DICTIONARY
+        FOR EACH ROW IN data_list
+            PARSE ROW TO EXTRACT metric_name AND metric_value
+            ADD metric_name: metric_value TO metrics
+        END FOR
+        RETURN metrics
+    END FUNCTION
+END
