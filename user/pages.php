@@ -141,9 +141,9 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
     <?php 
     // UPDATED: Use appropriate header based on user role
     if ($isAdmin) {
-        echo '<header style="background: #343a40; color: #fff; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px;">
-                <div style="display: flex; align-items: center; justify-content: center;">
-                    <h1 style="margin: 0; font-size: 1.5em;"><i class="fas fa-file-alt"></i> Top Pages - Admin View</h1>
+        echo '<header class="pages-header">
+                <div class="pages-header-content">
+                    <h1 class="pages-title"><i class="fas fa-file-alt"></i> Top Pages - Admin View</h1>
                 </div>
               </header>';
     } else {
@@ -172,8 +172,8 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
 								
       		<?php if ($dataQuality['source_type'] === 'estimated'): ?>
       		  <div class="data-quality-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; 		margin-bottom: 20px; border-radius: 5px;">
-      		    <h4 style="margin: 0 0 10px 0; color: #856404;">📊 Data Quality Notice</h4>
-      		    <p style="margin: 0; color: #856404;">
+      		    <h4 class="data-quality-title">📊 Data Quality Notice</h4>
+      		    <p class="data-quality-text">
       		      <?php if ($dataQuality['estimation_method'] === 'sessions_70_percent_rule'): ?>
       		        <strong>Estimated Unique Visitors:</strong> Your CSV doesn't contain unique visitor data. We've 		estimated it as 70% of sessions based on industry averages.
       		      <?php elseif ($dataQuality['estimation_method'] === 'sessions_60_percent_rule'): ?>
@@ -184,8 +184,8 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
       		  </div>
       		  <?php elseif ($dataQuality['estimation_method'] === 'sessions_as_page_views'): ?>
       		  <div class="data-quality-notice" style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; 		margin-bottom: 20px; border-radius: 5px;">
-      		    <h4 style="margin: 0 0 10px 0; color: #0c5460;">ℹ️ Data Source Information</h4>
-      		    <p style="margin: 0; color: #0c5460;">
+      		    <h4 class="data-source-title">ℹ️ Data Source Information</h4>
+      		    <p class="data-source-text">
       		      <strong>Using Sessions as Page Views:</strong> Your CSV contains session data which we're using as 		page view metrics.
       		      <br><small>This provides accurate relative comparisons between traffic sources.</small>
       		    </p>
@@ -200,7 +200,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
       		  <div style="margin-top: 10px;">
       		    <button onclick="exportChartToPDF()" class="user-export-btn pdf">
       		      <span class="icon">📄</span>
-      		      <span class="text">Export Chart to PDF</span>
+      		      <span class="text">Export to PDF</span>
       		    </button>
       		  </div>
       		</div>
@@ -214,7 +214,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
       		        <th>Page Views</th>
       		        <th>Unique Visitors 
       		          <?php if ($dataQuality['source_type'] === 'estimated'): ?>
-      		            <span style="font-size: 0.8em; color: #856404;">*</span>
+      		            <span class="approximate-data">*</span>
       		          <?php endif ?>
       		        </th>
       		        <th>Views/Visitor</th>
