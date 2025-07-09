@@ -203,28 +203,87 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 if (saveTransformedDataForComparison($conn, $transformedData, $currentFileIndex)) {
                     error_log("Data successfully saved to database for comparison");
                     
-                    // Mark this file as mapped
+                    // Mark this file as mapped and update session
                     $_SESSION['compare_files'][$currentFileIndex]['mapped'] = true;
                     $_SESSION['compare_files'][$currentFileIndex]['upload_id'] = $_SESSION['latest_upload_id'];
+                    $_SESSION['compare_files'][$currentFileIndex]['needs_mapping'] = false; // CRITICAL: Set to false after mapping
+                    
+                    // CRITICAL FIX: Ensure the name is preserved - get it from the current file structure
+                    if (!isset($_SESSION['compare_files'][$currentFileIndex]['name']) || 
+                        $_SESSION['compare_files'][$currentFileIndex]['name'] === 'Unknown file') {
+                        
+                        // Try to extract filename from path if name is missing
+                        if (isset($currentFile['path']) && $currentFile['path']) {
+                            $extractedName = basename($currentFile['path']);
+                            // Remove the hash prefix (e.g., "dd09fba0_" from "dd09fba0_test70_90.csv")
+                            $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
+                            $_SESSION['compare_files'][$currentFileIndex]['name'] = $cleanName;
+                            error_log("FIXED: Restored filename for file $currentFileIndex: $cleanName");
+                        }
+                    } else {
+                        // Name already exists, just log it
+                        error_log("Filename already preserved for file $currentFileIndex: " . $_SESSION['compare_files'][$currentFileIndex]['name']);
+                    }
+                    
+                    error_log("File $currentFileIndex name after mapping: " . ($_SESSION['compare_files'][$currentFileIndex]['name'] ?? 'STILL NOT SET'));
                     
                     // Clear mapping session data for this file
                     unset($_SESSION["mapping_result_$currentFileIndex"]);
                     
+                    // FIXED: Get fresh session data and check properly
+                    $updatedCompareFiles = $_SESSION['compare_files'];
+                    error_log("Updated compare files after mapping file $currentFileIndex: " . json_encode($updatedCompareFiles));
+                    
                     // Check if we need to map the other file or proceed with comparison
                     $nextFileIndex = ($currentFileIndex == 1) ? 2 : 1;
-                    $nextFile = $compareFiles[$nextFileIndex] ?? null;
+                    $nextFile = $updatedCompareFiles[$nextFileIndex] ?? null;
                     
-                    if ($nextFile && !isset($nextFile['mapped']) && isset($nextFile['needs_mapping']) && $nextFile['needs_mapping']) {
+                    error_log("Checking next file (index $nextFileIndex): " . json_encode($nextFile));
+                    
+                    // FIXED: Better logic to determine if next file needs mapping
+                    $nextFileNeedsMapping = false;
+                    if ($nextFile) {
+                        // Check multiple conditions to determine if mapping is needed
+                        $nextFileNeedsMapping = (
+                            isset($nextFile['needs_mapping']) && $nextFile['needs_mapping'] === true &&
+                            (!isset($nextFile['mapped']) || $nextFile['mapped'] === false)
+                        );
+                        
+                        error_log("Next file needs mapping check: needs_mapping=" . 
+                                ($nextFile['needs_mapping'] ?? 'not set') . 
+                                ", mapped=" . ($nextFile['mapped'] ?? 'not set') . 
+                                ", result=" . ($nextFileNeedsMapping ? 'YES' : 'NO'));
+                    }
+                    
+                    if ($nextFileNeedsMapping) {
                         // Redirect to map the next file
                         error_log("Redirecting to map file $nextFileIndex");
                         header("Location: map_columns_compare.php?file=$nextFileIndex");
                         exit;
                     } else {
                         // All files are ready, proceed with comparison
-                        error_log("All files ready, redirecting to compare.php for comparison");
-                        $_SESSION['compare_ready'] = true;
-                        header('Location: compare.php');
-                        exit;
+                        error_log("All files ready for comparison");
+                        
+                        // CRITICAL: Verify both files have upload IDs
+                        $file1Ready = isset($updatedCompareFiles[1]['upload_id']) && $updatedCompareFiles[1]['upload_id'] !== null;
+                        $file2Ready = isset($updatedCompareFiles[2]['upload_id']) && $updatedCompareFiles[2]['upload_id'] !== null;
+                        
+                        error_log("File readiness check - File 1: " . ($file1Ready ? 'READY' : 'NOT READY') . 
+                                ", File 2: " . ($file2Ready ? 'READY' : 'NOT READY'));
+                        
+                        if ($file1Ready && $file2Ready) {
+                            $_SESSION['compare_ready'] = true;
+                            error_log("Both files ready, setting compare_ready flag and redirecting");
+                            header('Location: compare.php');
+                            exit;
+                        } else {
+                            error_log("ERROR: Not all files have upload IDs - File 1: " . 
+                                    ($updatedCompareFiles[1]['upload_id'] ?? 'NULL') . 
+                                    ", File 2: " . ($updatedCompareFiles[2]['upload_id'] ?? 'NULL'));
+                            $_SESSION['compare_error'] = "File processing incomplete. Please try uploading again.";
+                            header('Location: compare.php');
+                            exit;
+                        }
                     }
                 } else {
                     error_log("ERROR: Failed to save data to database");
@@ -281,7 +340,54 @@ function saveTransformedDataForComparison($conn, $transformedData, $fileIndex) {
                 
                 <div class="user-alert user-alert-info">
                     <h4>📊 Mapping File <?php echo $currentFileIndex; ?> for Comparison</h4>
-                    <p><strong>File:</strong> <?php echo htmlspecialchars($currentFile['name'] ?? 'Unknown file'); ?></p>
+                    
+                    <?php 
+                    // ENHANCED DEBUG: Show actual file name and how we got it
+                    $displayName = $currentFile['name'] ?? 'Unknown file';
+                    $actualPath = $currentFile['path'] ?? 'No path';
+                    $extractedFromPath = $actualPath ? basename($actualPath) : 'No path';
+                    
+                    error_log("=== FILE NAME DEBUG for File $currentFileIndex ===");
+                    error_log("currentFile['name']: " . ($currentFile['name'] ?? 'NOT SET'));
+                    error_log("currentFile['path']: " . ($currentFile['path'] ?? 'NOT SET'));
+                    error_log("extracted from path: " . $extractedFromPath);
+                    error_log("final display name: " . $displayName);
+                    ?>
+                    
+                    <p><strong>File Name:</strong> <?php echo htmlspecialchars($displayName); ?></p>
+                    
+                    <?php if ($displayName === 'Unknown file' && $actualPath): ?>
+                        <p><small><strong>Debug Info:</strong> Path: <?php echo htmlspecialchars($extractedFromPath); ?></small></p>
+                    <?php endif; ?>
+                    
+                    <?php if (isset($_SESSION['compare_files'])): ?>
+                        <?php $compareFiles = $_SESSION['compare_files']; ?>
+                        <p><strong>Comparison Overview:</strong></p>
+                        <ul style="margin: 10px 0; padding-left: 20px;">
+                            <?php if (isset($compareFiles[1])): ?>
+                                <li><strong>File 1:</strong> <?php echo htmlspecialchars($compareFiles[1]['name'] ?? 'Unknown'); ?> 
+                                    <?php if ($compareFiles[1]['mapped'] ?? false): ?>
+                                        <span style="color: #28a745;">✓ Mapped</span>
+                                    <?php elseif ($compareFiles[1]['needs_mapping'] ?? false): ?>
+                                        <span style="color: #ffc107;">⚠ Needs Mapping</span>
+                                    <?php else: ?>
+                                        <span style="color: #6c757d;">⏳ Pending</span>
+                                    <?php endif; ?>
+                                </li>
+                            <?php endif; ?>
+                            <?php if (isset($compareFiles[2])): ?>
+                                <li><strong>File 2:</strong> <?php echo htmlspecialchars($compareFiles[2]['name'] ?? 'Unknown'); ?>
+                                    <?php if ($compareFiles[2]['mapped'] ?? false): ?>
+                                        <span style="color: #28a745;">✓ Mapped</span>
+                                    <?php elseif ($compareFiles[2]['needs_mapping'] ?? false): ?>
+                                        <span style="color: #ffc107;">⚠ Needs Mapping</span>
+                                    <?php else: ?>
+                                        <span style="color: #6c757d;">⏳ Pending</span>
+                                    <?php endif; ?>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                    <?php endif; ?>
                     <p>This file requires manual column mapping before it can be used in the comparison. Please map the columns below and we'll return to the comparison page.</p>
                 </div>
                 
