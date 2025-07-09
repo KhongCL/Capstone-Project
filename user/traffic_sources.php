@@ -677,9 +677,12 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       currentFilters.minPercentage = 0;
       currentFilters.selectedSources = [];
       
+      let filterName = '';
+      
       switch(type) {
         case 'major':
           // For major sources, show only sources > 5%
+          filterName = 'Major Sources (>5%)';
           const majorSources = sourcesData.filter(source => {
             const pct = parseFloat(source.percentage);
             return pct > 5;
@@ -689,6 +692,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
           break;
         case 'moderate':
           // For moderate sources, show only sources between 1-5%
+          filterName = 'Moderate Sources (1-5%)';
           const moderateSources = sourcesData.filter(source => {
             const pct = parseFloat(source.percentage);
             return pct >= 1 && pct <= 5;
@@ -698,6 +702,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
           break;
         case 'minor':
           // For minor sources, show only sources < 1%
+          filterName = 'Minor Sources (<1%)';
           console.log('Processing minor filter');
           const minorSources = sourcesData.filter(source => {
             const pct = parseFloat(source.percentage);
@@ -711,6 +716,13 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       }
       
       applyFilters();
+      
+      // Show alert if no data found after filtering
+      if (currentFilters.selectedSources.length === 0) {
+        alert(`No data found for ${filterName}. All sources in your data fall outside this range.`);
+        // Optionally, you could clear filters and show all data again
+        // clearAllFilters();
+      }
     }
 
     function clearAllFilters() {
@@ -764,6 +776,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 
     function updateTable() {
       const tableRows = document.querySelectorAll('#sourcesTable tbody tr');
+      let visibleRowCount = 0;
       
       tableRows.forEach(row => {
         const sourceName = row.dataset.sourceName;
@@ -791,14 +804,40 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         if (showRow) {
           row.style.display = '';
           row.classList.remove('table-row-filtered');
+          visibleRowCount++;
         } else {
           row.style.display = 'none';
           row.classList.add('table-row-filtered');
         }
       });
       
+      // Show/hide no data message for table
+      updateTableNoDataMessage(visibleRowCount === 0);
+      
       // Update table percentages for visible rows
       updateTablePercentages();
+    }
+
+    function updateTableNoDataMessage(showNoDataMessage) {
+      const tableContainer = document.querySelector('.user-sources-table-container');
+      let noDataMsg = tableContainer.querySelector('.no-data-table-message');
+      
+      if (showNoDataMessage) {
+        if (!noDataMsg) {
+          noDataMsg = document.createElement('div');
+          noDataMsg.className = 'no-data-table-message';
+          noDataMsg.style.cssText = 'text-align: center; padding: 40px; color: #666; font-size: 16px; background: #f8f9fa; border-radius: 8px; margin: 20px 0; border: 2px dashed #dee2e6;';
+          noDataMsg.innerHTML = '<i class="fas fa-table" style="font-size: 48px; color: #ccc; display: block; margin-bottom: 15px;"></i><strong>No Data to Display</strong><br><small>The current filters exclude all traffic sources. Try adjusting your filters or click "Clear Filters" to see all data.</small>';
+          tableContainer.appendChild(noDataMsg);
+        }
+        noDataMsg.style.display = 'block';
+        document.getElementById('sourcesTable').style.display = 'none';
+      } else {
+        if (noDataMsg) {
+          noDataMsg.style.display = 'none';
+        }
+        document.getElementById('sourcesTable').style.display = 'table';
+      }
     }
 
     function updateTablePercentages() {
