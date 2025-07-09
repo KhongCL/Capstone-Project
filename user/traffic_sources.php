@@ -258,6 +258,88 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         display: none;
     }
 
+    /* No Data Notification Styles */
+    .no-data-notification {
+        background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%);
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: center;
+        color: #856404;
+        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+        display: none;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    .no-data-notification.show {
+        display: block;
+    }
+
+    .no-data-notification .icon {
+        font-size: 2.5em;
+        margin-bottom: 15px;
+        display: block;
+    }
+
+    .no-data-notification h4 {
+        margin: 0 0 10px 0;
+        color: #856404;
+        font-size: 1.2em;
+    }
+
+    .no-data-notification p {
+        margin: 0 0 15px 0;
+        color: #856404;
+        font-size: 1em;
+        line-height: 1.5;
+    }
+
+    .no-data-notification .action-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .no-data-notification .btn {
+        padding: 8px 16px;
+        border: 1px solid #856404;
+        background: transparent;
+        color: #856404;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        font-size: 0.9em;
+    }
+
+    .no-data-notification .btn:hover {
+        background: #856404;
+        color: #fff;
+        transform: translateY(-1px);
+    }
+
+    .no-data-notification .btn.primary {
+        background: #856404;
+        color: #fff;
+    }
+
+    .no-data-notification .btn.primary:hover {
+        background: #6c5103;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
     @media (max-width: 768px) {
         .filter-controls {
             flex-direction: column;
@@ -345,6 +427,18 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         </div>
       </div>
 
+      <!-- No Data Notification -->
+      <div class="no-data-notification" id="noDataNotification">
+        <span class="icon">🔍</span>
+        <h4>No Traffic Sources Found</h4>
+        <p>Your current filters have excluded all traffic sources from the display.<br>
+        Try adjusting your filter criteria to see the data.</p>
+        <div class="action-buttons">
+          <button class="btn primary" onclick="clearAllFilters()">Clear All Filters</button>
+          <button class="btn" onclick="selectAllSources()">Select All Sources</button>
+        </div>
+      </div>
+
       		<!-- Sample Data Notice (from current) -->
       		<?php if ($sampleNotice['is_sample']): ?>
       		  <div class="<?php echo $isAdmin ? 'admin-notice' : 'sample-data-notice'; ?>">
@@ -383,15 +477,23 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       		    <table class="user-data-table" id="sourcesTable">
       		      <thead>
       		        <tr>
-      		          <th>Source</th>
+      		          <th>
+      		            <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllRows(this)">
+      		            Source
+      		          </th>
       		          <th>Visits</th>
       		          <th>Percentage</th>
       		        </tr>
       		      </thead>
       		      <tbody>
-      		        <?php foreach ($sourcesData as $source): ?>
-      		          <tr>
-      		            <td><?php echo htmlspecialchars($source['traffic_source']); ?></td>
+      		        <?php foreach ($sourcesData as $index => $source): ?>
+      		          <tr data-source-index="<?php echo $index; ?>" data-source-name="<?php echo htmlspecialchars($source['traffic_source']); ?>" 
+      		              data-visit-count="<?php echo $source['visit_count']; ?>" data-percentage="<?php echo $source['percentage']; ?>"
+      		              onclick="toggleRowSelection(this)" style="cursor: pointer;">
+      		            <td>
+      		              <input type="checkbox" class="row-checkbox" onclick="event.stopPropagation(); toggleRowSelection(this.closest('tr'))">
+      		              <?php echo htmlspecialchars($source['traffic_source']); ?>
+      		            </td>
       		            <td><?php echo number_format($source['visit_count']); ?></td>
       		            <td><?php echo $source['percentage']; ?>%</td>
       		          </tr>
@@ -449,6 +551,9 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       minPercentage: 0,
       selectedSources: []
     };
+    
+    // Track if a quick filter button was used
+    let quickFilterUsed = false;
 
     // Create chart context
     let currentChart = null;
@@ -461,6 +566,36 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       
       // Use filtered data for chart
       const chartData = getFilteredChartData();
+      
+      // Check if there's no data to display
+      if (chartData.labels.length === 0) {
+        // Hide canvas and show no data message
+        const canvas = document.getElementById('sourcesChart');
+        const container = document.getElementById('chartContainer');
+        canvas.style.display = 'none';
+        
+        // Create or show no data message
+        let noDataMsg = container.querySelector('.no-data-chart-message');
+        if (!noDataMsg) {
+          noDataMsg = document.createElement('div');
+          noDataMsg.className = 'no-data-chart-message';
+          noDataMsg.style.cssText = 'text-align: center; padding: 40px; color: #666; font-size: 16px; background: #f8f9fa; border-radius: 8px; margin: 20px 0;';
+          noDataMsg.innerHTML = '<i class="fas fa-chart-pie" style="font-size: 48px; color: #ccc; display: block; margin-bottom: 15px;"></i><strong>No Data to Display</strong><br><small>Apply different filters to see chart data</small>';
+          container.appendChild(noDataMsg);
+        }
+        noDataMsg.style.display = 'block';
+        return;
+      }
+      
+      // Show canvas and hide no data message if data exists
+      const canvas = document.getElementById('sourcesChart');
+      const container = document.getElementById('chartContainer');
+      canvas.style.display = 'block';
+      
+      const noDataMsg = container.querySelector('.no-data-chart-message');
+      if (noDataMsg) {
+        noDataMsg.style.display = 'none';
+      }
       
       // Chart configuration (enhanced from current with sample data support)
       const config = {
@@ -598,17 +733,26 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function handleTopSourcesChange() {
+      // Reset quick filter flag when manually changing top sources filter
+      quickFilterUsed = false;
+      
       currentFilters.topSources = document.getElementById('topSourcesFilter').value;
       applyFilters();
     }
 
     function handleMinPercentageChange() {
+      // Reset quick filter flag when manually changing percentage filter
+      quickFilterUsed = false;
+      
       const value = parseFloat(document.getElementById('minPercentageFilter').value) || 0;
       currentFilters.minPercentage = value;
       applyFilters();
     }
 
     function handleSourceSelectionChange() {
+      // Reset quick filter flag when manually changing source selection
+      quickFilterUsed = false;
+      
       const checkboxes = document.querySelectorAll('#sourceSelection input[type="checkbox"]');
       const selected = [];
       
@@ -624,6 +768,9 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function applyQuickFilter(type) {
+      // Set flag to indicate a quick filter was used
+      quickFilterUsed = true;
+      
       // Clear other filters first
       document.getElementById('topSourcesFilter').value = 'all';
       document.getElementById('minPercentageFilter').value = '';
@@ -667,6 +814,9 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function clearAllFilters() {
+      // Reset quick filter flag
+      quickFilterUsed = false;
+      
       // Reset all filters
       document.getElementById('topSourcesFilter').value = 'all';
       document.getElementById('minPercentageFilter').value = '';
@@ -683,6 +833,9 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function selectAllSources() {
+      // Reset quick filter flag when manually selecting all
+      quickFilterUsed = false;
+      
       const checkboxes = document.querySelectorAll('#sourceSelection input[type="checkbox"]');
       checkboxes.forEach(checkbox => checkbox.checked = true);
       
@@ -692,6 +845,9 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function deselectAllSources() {
+      // Reset quick filter flag when manually deselecting all
+      quickFilterUsed = false;
+      
       const checkboxes = document.querySelectorAll('#sourceSelection input[type="checkbox"]');
       checkboxes.forEach(checkbox => checkbox.checked = false);
       
@@ -777,6 +933,25 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     function updateFilterSummary() {
       const summaryDiv = document.getElementById('filterSummary');
       const summaryText = document.getElementById('filterSummaryText');
+      const noDataNotification = document.getElementById('noDataNotification');
+      
+      // Check if there's no data after filtering
+      if (filteredData.length === 0) {
+        // Only show notification if a quick filter button was used
+        if (quickFilterUsed) {
+          // Hide filter summary and show no data notification
+          summaryDiv.style.display = 'none';
+          noDataNotification.classList.add('show');
+        } else {
+          // Hide both notification and summary if no quick filter was used
+          summaryDiv.style.display = 'none';
+          noDataNotification.classList.remove('show');
+        }
+        return;
+      }
+      
+      // Hide no data notification if there's data
+      noDataNotification.classList.remove('show');
       
       if (filteredData.length === sourcesData.length) {
         summaryDiv.style.display = 'none';
@@ -882,6 +1057,12 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 
     // Export table to CSV (enhanced with filtering support)
     function exportTableToCSV() {
+      // Check if there's data to export
+      if (filteredData.length === 0) {
+        alert('No data to export. Please adjust your filters to include some data.');
+        return;
+      }
+      
       let csv = [];
       
       // Add header
@@ -933,6 +1114,12 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 
     // Export chart to PDF (enhanced with filtering support)
     async function exportChartToPDF() {
+      // Check if there's data to export
+      if (filteredData.length === 0) {
+        alert('No data to export. Please adjust your filters to include some data.');
+        return;
+      }
+      
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
         
