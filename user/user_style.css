@@ -543,7 +543,47 @@ label {
     color: var(--text-color);
 }
 
-input[type="file"],
+.file-input-container {
+    position: relative;
+    display: block;
+    width: auto;
+}
+
+.file-input-container input[type="file"] {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+    width: 0.1px;
+    height: 0.1px;
+}
+
+.file-input-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--primary-color);
+    color: var(--white);
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    text-align: center;
+    justify-content: center;
+    width: auto;
+    border: 2px solid transparent;
+}
+
+.file-input-button:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    border-color: var(--primary-color);
+}
+
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -928,45 +968,9 @@ select:focus {
 /* =====================================================
    FILE INPUT STYLING
    ===================================================== */
-.file-input-container {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-}
-
-.file-input-container input[type="file"] {
-    position: absolute;
-    left: -9999px;
-    opacity: 0;
-}
-
-.file-input-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background-color: var(--primary-color);
-    color: var(--white);
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    text-align: center;
-    justify-content: center;
-    width: 100%;
-}
-
-.file-input-button:hover {
-    background-color: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(76, 120, 208, 0.3);
-}
-
 .file-info {
     margin-top: 10px;
+		margin-bottom: 20px;
     padding: 10px;
     background-color: #f8f9fa;
     border-radius: 6px;
