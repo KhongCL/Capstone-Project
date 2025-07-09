@@ -297,6 +297,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="sign-in">
                 Already have an account? <a href="login.php">Sign In</a>
             </div>
+						<div class="sign-in" style="margin-top: 10px;">
+							<a href="index.php">Return to Home Page</a>
+						</div>
         </div>
         <div class="auth-image"></div>
     </div>

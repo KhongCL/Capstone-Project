@@ -299,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Already have an admin account? <a href="admin_login.php?key=<?php echo $admin_key; ?>">Sign In</a>
             </div>
             <div class="sign-in" style="margin-top: 10px;">
-                <a href="login.php">Go to User Login</a>
+                <a href="login.php">Go to User Login</a> | <a href="index.php">Return to Home Page</a>
             </div>
         </div>
         <div class="auth-image"></div>

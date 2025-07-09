@@ -799,7 +799,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
                                 </table>
                             </div>
                             <div class="preview-actions">
-                                <a href="download_sample.php" class="btn btn-success" style="background: #28a745; border-color: #28a745;">
+                                <a href="download_sample.php" class="btn btn-success">
                                     <i class="fas fa-download"></i> Download Sample CSV
                                 </a>
                                 <a href="overview.php" class="btn btn-primary">
