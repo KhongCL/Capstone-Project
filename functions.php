@@ -125,32 +125,28 @@ function handleCsvUpload($conn, $file) {
                     $errorCount = count($validationErrors);
                     
                     // DON'T delete the file - keep it in uploads directory for future comparisons
-                    // Clean up session data but keep validation errors for display
-                    unset($_SESSION['uploaded_csv']);
-                    unset($_SESSION['csv_metadata']);
-                    unset($_SESSION['validation_errors']); // Clear the errors after using them
-                    
-                    return [
-                        'type' => 'warning',
-                        'message' => "Data imported with $errorCount validation warnings. Some rows had errors but valid data was processed.",
-                        'validation_errors' => $validationErrors,
-                        'file_path' => $filePath // Return file path for comparison use
-                    ];
                 }
                 
                 // Normal success case (no warnings)
                 // DON'T delete the file - keep it in uploads directory for future comparisons
                 
-                // CRITICAL: Clear ALL session data for clean state
+                // CRITICAL: Clear ALL session data for clean state AND comparison data
                 unset($_SESSION['uploaded_csv']);
                 unset($_SESSION['csv_metadata']);
                 unset($_SESSION['uploaded_file_name']);
                 unset($_SESSION['uploaded_file_size']);
+                
+                // CRITICAL FIX: Clear comparison session data when doing regular upload
+                unset($_SESSION['compare_files']);
+                unset($_SESSION['compare_ready']);
+                unset($_SESSION['compare_error']);
+                unset($_SESSION['compare_file_1_upload_id']);
+                unset($_SESSION['compare_file_2_upload_id']);
+                error_log("CRITICAL: Cleared comparison session data for regular upload");
 
                 return [
                     'type' => 'success',
-                    'message' => 'CSV data successfully imported and processed.',
-                    'file_path' => $filePath // Return file path for comparison use
+                    'message' => 'CSV file successfully uploaded and processed.'
                 ];
             } else {
                 // CRITICAL: Return the actual error message from saveTransformedData
@@ -166,6 +162,13 @@ function handleCsvUpload($conn, $file) {
                 unset($_SESSION['using_sample_data']);
                 unset($_SESSION['sample_upload_id']);
                 
+                // CRITICAL FIX: Also clear comparison session data on failure
+                unset($_SESSION['compare_files']);
+                unset($_SESSION['compare_ready']);
+                unset($_SESSION['compare_error']);
+                unset($_SESSION['compare_file_1_upload_id']);
+                unset($_SESSION['compare_file_2_upload_id']);
+                
                 error_log("CRITICAL: Cleared session data due to upload failure");
                 
                 // Clean up file on error only
@@ -175,8 +178,7 @@ function handleCsvUpload($conn, $file) {
                 
                 return [
                     'type' => 'error',
-                    'message' => $saveResult['message'],
-                    'file_path' => file_exists($filePath) ? $filePath : null
+                    'message' => $saveResult['message']
                 ];
             }
         } else if ($result['status'] === 'needs_mapping') {
@@ -195,21 +197,30 @@ function handleCsvUpload($conn, $file) {
                 error_log("CRITICAL: Cleared sample data session for manual mapping");
             }
             
+            // CRITICAL FIX: Clear comparison session data for regular uploads that need mapping
+            unset($_SESSION['compare_files']);
+            unset($_SESSION['compare_ready']);
+            unset($_SESSION['compare_error']);
+            unset($_SESSION['compare_file_1_upload_id']);
+            unset($_SESSION['compare_file_2_upload_id']);
+            error_log("CRITICAL: Cleared comparison session data for regular upload needing mapping");
+            
             // Check if this is an AJAX request
             $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
             
-            // NEW: Check if this is a comparison context by checking the HTTP_REFERER
+            // IMPROVED: More precise comparison context detection
             $isComparison = false;
-            if (isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], 'compare.php') !== false) {
-                $isComparison = true;
-                error_log("Detected comparison context from HTTP_REFERER: " . $_SERVER['HTTP_REFERER']);
-            }
             
-            // Also check if we're being called from a comparison context via a flag
+            // Check explicit comparison context flags first (most reliable)
             if (isset($_POST['comparison_context']) || isset($_GET['comparison_context'])) {
                 $isComparison = true;
                 error_log("Detected comparison context from form parameter");
+            }
+            // Only check HTTP_REFERER if no explicit flag is set
+            else if (isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], 'compare.php') !== false) {
+                $isComparison = true;
+                error_log("Detected comparison context from HTTP_REFERER: " . $_SERVER['HTTP_REFERER']);
             }
             
             if ($isAjax) {
@@ -220,10 +231,8 @@ function handleCsvUpload($conn, $file) {
                     'file_path' => $filePath
                 ];
             } else {
-                // CRITICAL FIX: For comparison context, DON'T redirect immediately
-                // Instead, return the result and let compare.php handle the redirect
+                // CRITICAL FIX: For non-AJAX requests, always go to regular mapping unless explicitly in comparison
                 if ($isComparison) {
-                    error_log("Comparison context detected - returning needs_mapping result instead of redirecting");
                     return [
                         'type' => 'needs_mapping',
                         'message' => 'Format not automatically detected. Manual column mapping required.',
@@ -231,9 +240,8 @@ function handleCsvUpload($conn, $file) {
                         'file_path' => $filePath
                     ];
                 } else {
-                    $redirectPage = 'map_columns.php';
-                    error_log("Redirecting to: $redirectPage (isComparison: false)");
-                    header("Location: $redirectPage");
+                    // Regular upload - redirect to regular mapping page
+                    header('Location: map_columns.php');
                     exit;
                 }
             }
@@ -737,8 +745,7 @@ function saveTransformedData($conn, $transformedData) {
     if (empty($transformedData)) {
         error_log("ERROR: No transformed data received - likely validation errors");
         
-        // CRITICAL FIX: Only clear session data when upload fails completely (no valid data at all)
-        // Don't clear session for validation warnings where some data was processed
+        // CRITICAL FIX: Check if we have validation errors in session
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
@@ -749,13 +756,13 @@ function saveTransformedData($conn, $transformedData) {
             error_log("Found validation errors in session: " . print_r($validationErrors, true));
             
             // Format validation errors for display
-            $errorMessage = "Data validation errors found: " . implode('; ', $validationErrors) . ". Please correct these issues and upload again.";
+            $errorMessage = "Data validation errors found: " . implode('; ', $validationErrors) . ". Please correct these issues and try again.";
             
+            // DON'T clear validation errors here - let map_columns_compare.php handle them
             // Clear validation errors from session
-            unset($_SESSION['validation_errors']);
+            // unset($_SESSION['validation_errors']);
             
-            // IMPORTANT: Don't clear session data here - let the user see the errors
-            // Session data will only be cleared when a NEW successful upload happens
+            // IMPORTANT: Don't clear session data here - let the user see the errors and try again
             return ['type' => 'error', 'message' => $errorMessage];
         }
         

@@ -857,93 +857,39 @@ $active_page = "supported_formats";
                         <ol>
                             <li>
                                 <span class="step-number">1</span>
-                                <span>Sign in to your Google Analytics account</span>
+                                <span>Sign in to your Google Analytics account and navigate to the homepage</span>
                             </li>
                             <li>
                                 <span class="step-number">2</span>
-                                <span>Go to <strong>Reports</strong> → <strong>Life cycle</strong> → <strong>Acquisition</strong> → <strong>Traffic acquisition</strong></span>
+                                <span>Open the sidebar menu on the left and click on <strong>"Reports"</strong></span>
                             </li>
                             <li>
                                 <span class="step-number">3</span>
-                                <span>Set your desired date range using the date picker</span>
+                                <span>Under the <strong>"Reports snapshot"</strong> section, locate and expand the <strong>"Business objectives"</strong> dropdown</span>
                             </li>
                             <li>
                                 <span class="step-number">4</span>
-                                <span>Click the <strong>Share</strong> button (export icon) in the top right</span>
+                                <span>Within Business objectives, find and click on the <strong>"Generate leads"</strong> dropdown</span>
                             </li>
                             <li>
                                 <span class="step-number">5</span>
-                                <span>Select <strong>"Download file"</strong> → <strong>"Download CSV"</strong></span>
+                                <span>Select the specific page you want to analyze web traffic for from the available options</span>
                             </li>
                             <li>
                                 <span class="step-number">6</span>
-                                <span>Choose <strong>"Full report"</strong> to include all data</span>
+                                <span>At the top right of the selected page report, click the <strong>"Share this report"</strong> icon</span>
                             </li>
                             <li>
                                 <span class="step-number">7</span>
-                                <span>Click <strong>"Download"</strong> and save the file</span>
-                            </li>
-                        </ol>
-                    </div>
-                    
-                    <div class="platform-card">
-                        <h3>
-                            <span style="font-size: 1.2em;">📊</span>
-                            Universal Analytics (GA3)
-                        </h3>
-                        <ol>
-                            <li>
-                                <span class="step-number">1</span>
-                                <span>Access your Google Analytics account</span>
+                                <span>From the sharing options, select <strong>"Download file"</strong></span>
                             </li>
                             <li>
-                                <span class="step-number">2</span>
-                                <span>Navigate to <strong>Acquisition</strong> → <strong>All Traffic</strong> → <strong>Channels</strong></span>
+                                <span class="step-number">8</span>
+                                <span>Choose <strong>"Download CSV"</strong> format from the available file types</span>
                             </li>
                             <li>
-                                <span class="step-number">3</span>
-                                <span>Set your date range at the top right</span>
-                            </li>
-                            <li>
-                                <span class="step-number">4</span>
-                                <span>Click <strong>"Export"</strong> at the top of the report</span>
-                            </li>
-                            <li>
-                                <span class="step-number">5</span>
-                                <span>Select <strong>"CSV"</strong> from the dropdown menu</span>
-                            </li>
-                            <li>
-                                <span class="step-number">6</span>
-                                <span>The CSV file will be downloaded automatically</span>
-                            </li>
-                        </ol>
-                    </div>
-                    
-                    <div class="platform-card">
-                        <h3>
-                            <span style="font-size: 1.2em;">📈</span>
-                            Adobe Analytics
-                        </h3>
-                        <ol>
-                            <li>
-                                <span class="step-number">1</span>
-                                <span>Log into Adobe Analytics workspace</span>
-                            </li>
-                            <li>
-                                <span class="step-number">2</span>
-                                <span>Create or open a traffic acquisition report</span>
-                            </li>
-                            <li>
-                                <span class="step-number">3</span>
-                                <span>Include dimensions like Traffic Source, Medium, Sessions</span>
-                            </li>
-                            <li>
-                                <span class="step-number">4</span>
-                                <span>Right-click on the table and select <strong>"Download data as CSV"</strong></span>
-                            </li>
-                            <li>
-                                <span class="step-number">5</span>
-                                <span>Choose your preferred format and click <strong>"Download"</strong></span>
+                                <span class="step-number">9</span>
+                                <span>Save the downloaded CSV file to your computer - it's now ready for upload to TrafAnalyz!</span>
                             </li>
                         </ol>
                     </div>

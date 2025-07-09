@@ -73,38 +73,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         $file1_needs_mapping = ($upload_result1['type'] === 'needs_mapping');
         $file2_needs_mapping = ($upload_result2['type'] === 'needs_mapping');
         
-        // Update the session data with results - PRESERVE THE NAME
-        $compareFiles = $_SESSION['compare_files'];  // Get the structure we just created
+        // CRITICAL FIX: Check if session data still exists, if not, recreate it
+        if (!isset($_SESSION['compare_files'])) {
+            error_log("CRITICAL: Session data lost during upload processing - recreating");
+            $_SESSION['compare_files'] = [
+                1 => [
+                    'name' => $file1['name'], // ✅ Restore original filename
+                    'path' => null,
+                    'upload_id' => null,
+                    'needs_mapping' => false,
+                    'mapped' => false,
+                    'result' => null
+                ],
+                2 => [
+                    'name' => $file2['name'], // ✅ Restore original filename
+                    'path' => null,
+                    'upload_id' => null,
+                    'needs_mapping' => false,
+                    'mapped' => false,
+                    'result' => null
+                ]
+            ];
+            error_log("Recreated compare_files session structure with names: " . $file1['name'] . " and " . $file2['name']);
+        }
         
         // Handle File 1 - UPDATE existing structure but PRESERVE name
         if ($file1_valid || $file1_needs_mapping) {
-            $compareFiles[1]['path'] = $upload_result1['file_path'] ?? null;
-            $compareFiles[1]['upload_id'] = $upload_result1['upload_id'] ?? null;
-            $compareFiles[1]['needs_mapping'] = $file1_needs_mapping;
-            $compareFiles[1]['mapped'] = $file1_valid; // Already mapped if valid
-            $compareFiles[1]['result'] = $upload_result1;
-            // CRITICAL: Name is already preserved from initial setup above
-            error_log("File 1 processed - name preserved: " . $compareFiles[1]['name']);
+            $_SESSION['compare_files'][1]['path'] = $upload_result1['file_path'] ?? null;
+            $_SESSION['compare_files'][1]['upload_id'] = $upload_result1['upload_id'] ?? null;
+            $_SESSION['compare_files'][1]['needs_mapping'] = $file1_needs_mapping;
+            $_SESSION['compare_files'][1]['mapped'] = $file1_valid; // Already mapped if valid
+            $_SESSION['compare_files'][1]['result'] = $upload_result1;
+            // Name is already preserved from initial setup or recreation above
+            error_log("File 1 processed - name preserved: " . ($_SESSION['compare_files'][1]['name'] ?? 'NOT SET'));
         }
         
         // Handle File 2 - UPDATE existing structure but PRESERVE name
         if ($file2_valid || $file2_needs_mapping) {
-            $compareFiles[2]['path'] = $upload_result2['file_path'] ?? null;
-            $compareFiles[2]['upload_id'] = $upload_result2['upload_id'] ?? null;
-            $compareFiles[2]['needs_mapping'] = $file2_needs_mapping;
-            $compareFiles[2]['mapped'] = $file2_valid; // Already mapped if valid
-            $compareFiles[2]['result'] = $upload_result2;
-            // CRITICAL: Name is already preserved from initial setup above
-            error_log("File 2 processed - name preserved: " . $compareFiles[2]['name']);
+            $_SESSION['compare_files'][2]['path'] = $upload_result2['file_path'] ?? null;
+            $_SESSION['compare_files'][2]['upload_id'] = $upload_result2['upload_id'] ?? null;
+            $_SESSION['compare_files'][2]['needs_mapping'] = $file2_needs_mapping;
+            $_SESSION['compare_files'][2]['mapped'] = $file2_valid; // Already mapped if valid
+            $_SESSION['compare_files'][2]['result'] = $upload_result2;
+            // Name is already preserved from initial setup or recreation above
+            error_log("File 2 processed - name preserved: " . ($_SESSION['compare_files'][2]['name'] ?? 'NOT SET'));
         }
         
-        // Update session with complete information
-        $_SESSION['compare_files'] = $compareFiles;
+        error_log("Updated compare_files session with names preserved: File1=" . ($_SESSION['compare_files'][1]['name'] ?? 'NOT SET') . ", File2=" . ($_SESSION['compare_files'][2]['name'] ?? 'NOT SET'));
+        
+        // Force session write to ensure data persistence
+        session_write_close();
+        session_start();
+        error_log("Session data written and restarted before redirect logic");
+        
+        // Get a local copy for the redirect logic
+        $compareFiles = $_SESSION['compare_files'];
         error_log("Updated compare_files session with names preserved: File1=" . ($compareFiles[1]['name'] ?? 'NOT SET') . ", File2=" . ($compareFiles[2]['name'] ?? 'NOT SET'));
         error_log("Updated compare_files session with complete information: " . json_encode(array_keys($compareFiles)));
         
+        // CRITICAL FIX: Force session write BEFORE any redirect logic
         session_write_close();
         session_start();
+        
+        // CRITICAL FIX: Verify session data survived the restart
+        if (!isset($_SESSION['compare_files'])) {
+            error_log("CRITICAL ERROR: Session data lost after restart - recreating");
+            $_SESSION['compare_files'] = $compareFiles;
+        } else {
+            error_log("Session data verified after restart: " . json_encode($_SESSION['compare_files']));
+            // Use the verified session data
+            $compareFiles = $_SESSION['compare_files'];
+        }
+        
         error_log("Session data written and restarted before redirect logic");
         
         // Handle all 8 scenarios (4 original + 4 with mapping)
