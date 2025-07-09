@@ -229,35 +229,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             if (empty($transformedData)) {
                 error_log("ERROR: No data returned from transformation");
                 
-                // IMPROVED: Better error handling for validation errors
+                // CRITICAL FIX: Redirect to compare.php with validation errors instead of showing them on mapping page
                 if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
                     $validationErrors = $_SESSION['validation_errors'];
-                    error_log("Found validation errors: " . implode('; ', array_slice($validationErrors, 0, 5)));
+                    error_log("Found validation errors, redirecting to compare.php: " . implode('; ', array_slice($validationErrors, 0, 5)));
                     
-                    // FIXED: Count unique error types instead of showing repetitive errors
+                    // Store error information for comparison context
                     $uniqueErrors = array_unique($validationErrors);
-                    $errorCount = count($validationErrors);
-                    $uniqueCount = count($uniqueErrors);
+                    $errorMessage = count($uniqueErrors) > 10 ? 
+                        "File contains " . count($validationErrors) . " validation errors. Please fix the data issues and try again." :
+                        "Data validation errors found: " . implode('; ', $uniqueErrors) . ". Please correct these issues and try again.";
                     
-                    if ($uniqueCount < 3) {
-                        // Show all unique errors if we have fewer than 3
-                        $error_message = "Validation errors found: " . implode('; ', $uniqueErrors);
-                    } else {
-                        // Show first 2 unique errors + count
-                        $firstTwoErrors = array_slice($uniqueErrors, 0, 2);
-                        $error_message = "Validation errors found: " . implode('; ', $firstTwoErrors) . 
-                                        ($uniqueCount > 2 ? " and " . ($uniqueCount - 2) . " more error type(s)" : "");
+                    $_SESSION['compare_error'] = $errorMessage;
+                    $_SESSION['compare_validation_errors'] = $validationErrors;
+                    
+                    // Store file information for re-upload display
+                    $_SESSION['failed_compare_file_info'] = [
+                        'name' => $currentFile['name'] ?? 'Unknown file',
+                        'file_index' => $currentFileIndex,
+                        'mapping_attempted' => true,
+                        'error_count' => count($validationErrors),
+                        'unique_error_count' => count($uniqueErrors)
+                    ];
+                    
+                    // Clean up the uploaded file
+                    if (file_exists($currentFile['path'])) {
+                        unlink($currentFile['path']);
+                        error_log("Cleaned up failed comparison file: " . $currentFile['path']);
                     }
                     
-                    if ($errorCount > $uniqueCount) {
-                        $error_message .= " (Total: $errorCount issues found)";
-                    }
+                    // Clear comparison session data
+                    unset($_SESSION['compare_files']);
+                    unset($_SESSION["mapping_result_$currentFileIndex"]);
                     
-                    $error_message .= ". Please review your column mappings and try again.";
-                    
-                    // Don't clear session data here - let user try again
+                    error_log("Redirecting to compare.php with validation errors");
+                    header('Location: compare.php?mapping_failed=1');
+                    exit;
                 } else {
-                    $error_message = 'No valid data found after transformation. Please check your CSV file and column mappings.';
+                    // No validation errors but no data - general error
+                    $_SESSION['compare_error'] = 'No valid data found after processing. Please check your CSV file and try again.';
+                    
+                    // Clean up
+                    if (file_exists($currentFile['path'])) {
+                        unlink($currentFile['path']);
+                    }
+                    unset($_SESSION['compare_files']);
+                    
+                    header('Location: compare.php?upload_failed=1');
+                    exit;
                 }
             } else {
                 error_log("Sample transformed data: " . json_encode($transformedData[0] ?? []));

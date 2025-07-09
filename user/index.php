@@ -70,6 +70,31 @@ if (isset($_GET['upload_success']) && $_GET['upload_success'] == '1') {
     exit(); // Important: stop PHP execution here
 }
 
+// Handle failed mapping redirect
+if (isset($_GET['mapping_failed']) && $_GET['mapping_failed'] == '1') {
+    // Message will be in session from map_columns.php
+    error_log("Mapping failed redirect detected");
+}
+
+// Handle failed upload redirect  
+if (isset($_GET['upload_failed']) && $_GET['upload_failed'] == '1') {
+    // Message will be in session from map_columns.php
+    error_log("Upload failed redirect detected");
+}
+
+// Handle failed processing redirect
+if (isset($_GET['processing_failed']) && $_GET['processing_failed'] == '1') {
+    // Message will be in session from map_columns.php
+    error_log("Processing failed redirect detected");
+}
+
+// Check for upload message in session (from map_columns.php redirects)
+if (isset($_SESSION['upload_message'])) {
+    $uploadMessage = $_SESSION['upload_message'];
+    unset($_SESSION['upload_message']); // Clear it so it doesn't persist
+    error_log("Found upload message in session: " . json_encode($uploadMessage));
+}
+
 // Handle sample data loading
 if (isset($_GET['load_sample']) && $_GET['load_sample'] == '1') {
     error_log("Loading sample data requested");
@@ -852,68 +877,77 @@ error_log("=== END INDEX.PHP DEBUG ===");
                     }
                     ?>
                     
-                    <?php if ($uploadMessage['type'] === 'error' && 
-                            strpos($uploadMessage['message'], 'Data validation errors') !== false): ?>
-                        <?php
-                        // Enhanced error message parsing to extract suggestions
-                        $errorMessage = $uploadMessage['message'];
-                        $errorMessage = str_replace("Data validation errors found: ", "", $errorMessage);
-                        $errorMessage = preg_replace('/\. Please correct these issues and upload again\./', '', $errorMessage);
-                        
-                        // Split by semicolons and parse suggestions
-                        $errorList = explode(';', $errorMessage);
-                        ?>
-                        
+                    <?php if ($uploadMessage['type'] === 'error' && isset($uploadMessage['show_detailed_errors']) && $uploadMessage['show_detailed_errors']): ?>
+                        <!-- ENHANCED: Detailed validation errors display -->
                         <div class="error-container">
-                            <p class="error-summary">Found <?php echo count($errorList); ?> validation errors in your CSV file:</p>
-                            <ul class="error-list">
-                                <?php foreach($errorList as $error): ?>
-                                    <?php $error = trim($error); ?>
-                                    <?php if(!empty($error)): ?>
-                                        <?php
-                                        // Parse error and suggestions
-                                        $parts = explode(' Suggestions: ', $error);
-                                        $mainError = $parts[0];
-                                        $suggestions = isset($parts[1]) ? $parts[1] : '';
-                                        ?>
-                                        <li class="error-item">
-                                            <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
-                                            <?php if (!empty($suggestions)): ?>
-                                                <div class="error-suggestions">
-                                                    <strong>💡 Suggestions:</strong> 
-                                                    <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
-                                                </div>
-                                            <?php endif; ?>
-                                        </li>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            </ul>
-                        </div>
-                        
-                        <div class="validation-help">
-                            <h4>Common CSV Issues & Quick Fixes:</h4>
-                            <div class="validation-tips">
-                                <div class="tip-item">
-                                    <strong>🔢 Number Format Issues:</strong>
-                                    <ul>
-                                        <li>Remove letters from numbers: "123abc" → "123"</li>
-                                        <li>Fix decimal points: "12.34.56" → "12.34"</li>
-                                        <li>Remove special characters: "1,234" → "1234"</li>
+                            <h4><i class="fas fa-exclamation-triangle"></i> CSV File Validation Failed</h4>
+                            <p><strong>Your file couldn't be processed due to data validation errors.</strong></p>
+                            
+                            <?php if (isset($_SESSION['failed_file_info'])): ?>
+                                <?php $fileInfo = $_SESSION['failed_file_info']; ?>
+                                <div style="margin: 15px 0; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 5px;">
+                                    <strong>File:</strong> <?php echo htmlspecialchars($fileInfo['name']); ?> 
+                                    (<?php echo number_format($fileInfo['size']); ?> bytes)<br>
+                                    <strong>Mapping Status:</strong> Successfully mapped <?php echo $fileInfo['mapped_columns']; ?> of <?php echo $fileInfo['total_columns']; ?> columns<br>
+                                    <strong>Issue:</strong> Data validation failed during processing
+                                </div>
+                                <?php unset($_SESSION['failed_file_info']); ?>
+                            <?php endif; ?>
+                            
+                            <?php if (isset($uploadMessage['validation_errors'])): ?>
+                                <?php 
+                                $errors = $uploadMessage['validation_errors'];
+                                $uniqueErrors = array_unique($errors);
+                                $errorCount = count($errors);
+                                $uniqueCount = count($uniqueErrors);
+                                ?>
+                                
+                                <div style="margin: 15px 0;">
+                                    <p><strong>Found <?php echo $errorCount; ?> validation issues<?php echo $uniqueCount != $errorCount ? " ({$uniqueCount} unique types)" : ""; ?>:</strong></p>
+                                    
+                                    <ul class="error-list">
+                                        <?php foreach ($uniqueErrors as $error): ?>
+                                            <li class="error-item">
+                                                <?php echo htmlspecialchars($error); ?>
+                                            </li>
+                                        <?php endforeach; ?>
                                     </ul>
                                 </div>
-                                <div class="tip-item">
-                                    <strong>📝 Text Issues:</strong>
+                            <?php endif; ?>
+                            
+                            <div class="validation-help">
+                                <h4><i class="fas fa-lightbulb"></i> How to Fix These Issues</h4>
+                                <div class="validation-tips">
+                                    <h5>🔍 Common Data Issues:</h5>
                                     <ul>
-                                        <li>Remove extra quotes: ""text"" → "text"</li>
-                                        <li>Fix line breaks in cells</li>
-                                        <li>Remove trademark symbols: "Brand™" → "Brand"</li>
+                                        <li><strong>Invalid numbers:</strong> Remove text, symbols, or extra characters from numeric columns (e.g., "42+3" → "45", "12:45" → "765" seconds)</li>
+                                        <li><strong>Percentage format:</strong> Use decimal format (0.25) or percentage with % symbol (25%)</li>
+                                        <li><strong>Time format:</strong> Convert time to seconds or decimal hours (e.g., "2:30" → "150" seconds)</li>
+                                        <li><strong>Empty values:</strong> Fill in missing required data or use 0 for zero values</li>
+                                        <li><strong>Negative values:</strong> Ensure metrics like visits, events are positive numbers</li>
+                                        <li><strong>Scientific notation:</strong> Convert to regular numbers (e.g., "1.2e3" → "1200")</li>
+                                        <li><strong>Special characters:</strong> Remove currency symbols, commas from numbers (e.g., "$1,200" → "1200")</li>
+                                    </ul>
+                                    
+                                    <h5>✅ Quick Fixes:</h5>
+                                    <ul>
+                                        <li>Open your CSV in Excel/Google Sheets</li>
+                                        <li>Check columns with errors and fix the data format</li>
+                                        <li>Save the file and upload again</li>
+                                        <li>Use "Find & Replace" to fix common issues across multiple rows</li>
+                                    </ul>
+                                    
+                                    <h5>📋 Alternative Options:</h5>
+                                    <ul>
+                                        <li><strong>Try our sample data:</strong> Load sample data to explore the dashboard features</li>
+                                        <li><strong>Export from your analytics tool:</strong> Check if your source has a different export format</li>
+                                        <li><strong>Simplify your data:</strong> Remove problematic columns and re-upload with core metrics only</li>
                                     </ul>
                                 </div>
                             </div>
                         </div>
-                        
                     <?php else: ?>
-                        <!-- Display other types of messages -->
+                        <!-- Regular error message -->
                         <div class="message <?php echo $uploadMessage['type']; ?>">
                             <?php echo htmlspecialchars($uploadMessage['message']); ?>
                         </div>
