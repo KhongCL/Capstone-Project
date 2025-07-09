@@ -577,8 +577,10 @@ section:hover {
   display: inline-block;
   padding: 0.25rem 0.75rem;
   border-radius: 1rem;
-  font-weight: 500;
   font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   border: 1px solid;
 }
 
@@ -1910,5 +1912,352 @@ body {
 
   .btn {
     border: 2px solid currentColor;
+  }
+}
+
+/* =====================================================
+   EXPORT PAGES SPECIFIC STYLES - FIXED LAYOUT
+   ===================================================== */
+
+/* Target export pages by detecting specific elements */
+body:has(.non-print) {
+  background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 50%, #bae6fd 100%);
+  margin: 0;
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+/* Enhanced non-print section */
+.non-print {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(226, 232, 240, 0.6) !important;
+  border-radius: 1rem !important;
+  padding: 1.5rem !important;
+  margin-bottom: 2rem !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.non-print h2 {
+  color: var(--text-color) !important;
+  margin-top: 0 !important;
+  margin-bottom: 1rem !important;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.non-print h2::before {
+  content: "🖨️";
+  font-size: 1.25rem;
+}
+
+.non-print p {
+  color: var(--slate) !important;
+  margin-bottom: 1.5rem !important;
+}
+
+/* Enhanced export page buttons */
+.non-print .btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--primary-blue) !important;
+  color: white !important;
+  padding: 0.75rem 1.5rem !important;
+  border: none !important;
+  border-radius: 0.5rem !important;
+  font-size: 1rem !important;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none !important;
+  margin-right: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.non-print .btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.non-print .btn:hover::before {
+  left: 100%;
+}
+
+.non-print .btn[style*="background-color: #6c757d"] {
+  background: var(--slate) !important;
+}
+
+.non-print .btn[style*="background-color: #6c757d"]:hover {
+  background: var(--text-color) !important;
+  box-shadow: 0 10px 15px -3px rgba(100, 116, 139, 0.3);
+}
+
+/* Create main container for export content */
+body:has(.non-print) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Main export container - groups title and table */
+body:has(.non-print) > *:not(.non-print):not(script) {
+  max-width: 1200px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+/* Enhanced export page title - now part of main container */
+body:has(.non-print) h1 {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-blue) 100%) !important;
+  color: white !important;
+  padding: 2rem !important;
+  margin: 0 !important;
+  text-align: center !important;
+  font-size: 2.5rem !important;
+  font-weight: 700 !important;
+  position: relative;
+  overflow: hidden;
+}
+
+body:has(.non-print) h1::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* Position the header-info as a separate container between title and stats */
+body:has(.non-print) .header-info {
+  position: static !important;
+  background: rgba(224, 242, 254, 0.8) !important;
+  backdrop-filter: blur(10px);
+  padding: 1rem 1.5rem !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid rgba(14, 165, 233, 0.2) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+  font-size: 0.875rem !important;
+  color: var(--slate) !important;
+  text-align: center !important;
+  max-width: 1200px;
+  margin: 2rem auto !important;
+  z-index: 10 !important;
+}
+
+body:has(.non-print) .header-info p {
+  margin: 0.25rem 0 !important;
+  color: var(--slate) !important;
+  font-size: 0.875rem !important;
+}
+
+/* Remove the padding-right from stats h2 since header-info is no longer positioned there */
+.stats h2 {
+  color: var(--dark-blue) !important;
+  margin-top: 0 !important;
+  margin-bottom: 1.5rem !important;
+  font-size: 1.5rem !important;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Stats section - separate container with relative positioning for header-info */
+body:has(.non-print) .stats {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(226, 232, 240, 0.6) !important;
+  border-radius: 1rem !important;
+  padding: 2rem !important;
+  margin: 2rem auto !important;
+  max-width: 1200px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  position: relative !important;
+}
+
+.stats h2 {
+  color: var(--dark-blue) !important;
+  margin-top: 0 !important;
+  margin-bottom: 1.5rem !important;
+  font-size: 1.5rem !important;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0 !important;
+  padding-right: 0 !important;
+}
+
+.stats h2::before {
+  content: "📊";
+  font-size: 1.25rem;
+}
+
+.stat-item {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 0.75rem;
+  padding: 1rem !important;
+  margin: 0.75rem 0 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-item strong {
+  color: var(--slate);
+  font-weight: 600;
+}
+
+/* Enhanced export page h2 headers - User Accounts in main container with more padding */
+body:has(.non-print) h2:not(.stats h2):not(.non-print h2) {
+  color: var(--text-color) !important;
+  margin: 0 !important;
+  padding: 2rem 2rem 1.5rem 2rem !important;
+  font-size: 1.5rem !important;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 2px solid var(--light-blue);
+  background: rgba(248, 250, 252, 0.3);
+}
+
+body:has(.non-print) h2:not(.stats h2):not(.non-print h2)::before {
+  content: "👥";
+  font-size: 1.25rem;
+}
+
+/* Enhanced export page tables - now inside main container */
+body:has(.non-print) table {
+  width: calc(100% - 4rem) !important;
+  margin: 0 2rem 2rem 2rem !important;
+  border-collapse: collapse !important;
+  background: white !important;
+  border-radius: 0.75rem !important;
+  overflow: hidden !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+body:has(.non-print) th {
+  background: var(--dark-blue) !important;
+  color: white !important;
+  padding: 1rem !important;
+  text-align: left !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  border: none !important;
+}
+
+body:has(.non-print) td {
+  padding: 1rem !important;
+  border-bottom: 1px solid var(--gray-200) !important;
+  color: var(--text-color) !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+body:has(.non-print) tr:hover {
+  background: rgba(224, 242, 254, 0.3) !important;
+}
+
+body:has(.non-print) tr:last-child td {
+  border-bottom: none !important;
+}
+
+body:has(.non-print) tr:nth-child(even) {
+  background: rgba(248, 250, 252, 0.5) !important;
+}
+
+/* Enhanced export page badges */
+body:has(.non-print) .badge {
+  display: inline-block !important;
+  padding: 0.25rem 0.75rem !important;
+  border-radius: 1rem !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  border: 1px solid !important;
+}
+
+body:has(.non-print) .badge-active {
+  background: var(--success-light) !important;
+  color: var(--success) !important;
+  border-color: var(--success-border) !important;
+}
+
+body:has(.non-print) .badge-suspended {
+  background: var(--danger-light) !important;
+  color: var(--danger) !important;
+  border-color: var(--danger-border) !important;
+}
+
+/* Enhanced footer for export pages - separate container */
+body:has(.non-print) .footer {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(226, 232, 240, 0.6) !important;
+  border-radius: 1rem !important;
+  margin: 0 auto 2rem auto !important;
+  padding: 2rem !important;
+  max-width: 1200px;
+  font-size: 0.875rem !important;
+  font-style: italic !important;
+  text-align: center !important;
+  color: var(--slate) !important;
+}
+
+/* Print-specific overrides for export pages */
+@media print {
+  body:has(.non-print) {
+    background: white !important;
+    margin: 0 !important;
+    padding: 15px !important;
+  }
+
+  body:has(.non-print) > *:not(.non-print) {
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    backdrop-filter: none !important;
+    max-width: none !important;
+  }
+
+  body:has(.non-print) h1 {
+    background: var(--dark-blue) !important;
+    color: white !important;
+  }
+
+  body:has(.non-print) .header-info {
+    background: #f8f9fa !important;
+    border: 1px solid #ddd !important;
+    color: #333 !important;
+  }
+
+  body:has(.non-print) .stats {
+    background: white !important;
+    border: 1px solid #ddd !important;
   }
 }
