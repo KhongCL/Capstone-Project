@@ -63,7 +63,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         padding: 15px 20px;
         margin: 20px 0;
         border-radius: 8px;
-        color: #333;
+        color: var(--text-color);
         box-shadow: 0 4px 12px rgba(255, 154, 158, 0.3);
     }
 
@@ -78,7 +78,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     .notice-content i {
         font-size: 1.2em;
         margin-right: 10px;
-        color: #d63384;
+        color: var(--danger);
     }
 
     .notice-content span {
@@ -89,16 +89,16 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     .notice-content .btn {
         padding: 8px 16px;
         font-size: 0.9em;
-        border: 1px solid #d63384;
-        background: #d63384;
-        color: #fff;
+        border: 1px solid var(--danger);
+        background-color: var(--danger);
+        color: var(--white);
         text-decoration: none;
         border-radius: 4px;
         transition: all 0.3s ease;
     }
 
     .notice-content .btn:hover {
-        background: #b02a5b;
+        background-color: var(--danger-hover);
         transform: translateY(-1px);
     }
 
@@ -119,30 +119,19 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     .admin-notice .btn {
-        background: rgba(255, 255, 255, 0.2);
+        background-color: rgba(255, 255, 255, 0.2);
         border: 1px solid rgba(255, 255, 255, 0.5);
-        color: #fff;
+        color: var(--admin-text);
     }
 
     .admin-notice .btn:hover {
-        background: rgba(255, 255, 255, 0.3);
+        background-color: rgba(255, 255, 255, 0.3);
     }
 
     /* Filter Panel Styles */
-    .filter-panel {
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        padding: 20px;
-        margin: 20px 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .filter-panel h4 {
-        margin: 0 0 15px 0;
-        color: #495057;
-        font-size: 1.1em;
-    }
+		.filter-panel-section {
+			margin-bottom: 30px
+		}
 
     .filter-controls {
         display: flex;
@@ -159,13 +148,13 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 
     .filter-group label {
         font-weight: 500;
-        color: #495057;
+        color: var(--text-muted);
         font-size: 0.9em;
     }
 
     .filter-select, .filter-input {
         padding: 8px 12px;
-        border: 1px solid #ced4da;
+        border: 1px solid var(--border-medium);
         border-radius: 4px;
         font-size: 0.9em;
         min-width: 150px;
@@ -175,44 +164,44 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
+				margin-top: 10px;
     }
 
     .filter-btn {
-        padding: 6px 12px;
-        border: 1px solid #007bff;
-        background: #007bff;
-        color: white;
-        border-radius: 4px;
+        padding: 10px 20px;
+        border: none;
+    		background-color: var(--primary-color);
+    		color: var(--white);
+        border-radius: 8px;
         cursor: pointer;
-        font-size: 0.85em;
+        font-size: 0.9em;
         transition: all 0.3s ease;
     }
 
     .filter-btn:hover {
-        background: #0056b3;
+        background-color: var(--primary-dark);
         transform: translateY(-1px);
     }
 
     .filter-btn.secondary {
-        background: #6c757d;
-        border-color: #6c757d;
+        background-color: var(--dark-gray);
     }
 
     .filter-btn.secondary:hover {
-        background: #545b62;
+        background-color: var(--hover-gray);
     }
 
     .source-selection {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 10px;
-        margin-top: 15px;
+        margin-bottom: 10px;
         max-height: 200px;
         overflow-y: auto;
         padding: 10px;
-        border: 1px solid #dee2e6;
+        border: 1px solid var(--border-light);
         border-radius: 4px;
-        background: white;
+        background-color: var(--background-white);
     }
 
     .source-checkbox {
@@ -226,7 +215,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     .source-checkbox:hover {
-        background: #f8f9fa;
+        background-color: var(--background-light);
     }
 
     .source-checkbox input[type="checkbox"] {
@@ -244,14 +233,14 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     .filter-summary {
         margin-top: 10px;
         padding: 10px;
-        background: #e3f2fd;
+        background-color: var(--light-blue);
         border-radius: 4px;
         font-size: 0.9em;
-        color: #1565c0;
+        color: var(--text-primary);
     }
 
     .table-row-selected {
-        background-color: #e3f2fd !important;
+        background-color: var(--light-blue) !important;
     }
 
     .table-row-filtered {
@@ -281,7 +270,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     <?php 
     // UPDATED: Use appropriate header based on user role
     if ($isAdmin) {
-        echo '<header style="background: #343a40; color: #fff; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px;">
+        echo '<header style="background-color: #343a40; color: #fff; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px;">
                 <div style="display: flex; align-items: center; justify-content: center;">
                     <h1 style="margin: 0; font-size: 1.5em;"><i class="fas fa-share-alt"></i> Traffic Sources - Admin View</h1>
                 </div>
@@ -295,57 +284,57 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 			<section class="user-section">
       		<h2>Traffic Sources Dashboard</h2>
 
-      <!-- Filter Panel -->
-      <div class="filter-panel">
-        <h4>🔍 Filter Traffic Sources</h4>
-        
-        <div class="filter-controls">
-          <!-- Top Sources Filter -->
-          <div class="filter-group">
-            <label for="topSourcesFilter">Show Top Sources:</label>
-            <select id="topSourcesFilter" class="filter-select">
-              <option value="all">All Sources</option>
-              <option value="5">Top 5</option>
-              <option value="10">Top 10</option>
-              <option value="15">Top 15</option>
-              <option value="20">Top 20</option>
-            </select>
-          </div>
+      		<!-- Filter Panel -->
+      		<div class="filter-panel-section">
+      		  <h3><i class="fas fa-filter"></i> Filter Traffic Sources</h3>
 
-          <!-- Minimum Percentage Filter -->
-          <div class="filter-group">
-            <label for="minPercentageFilter">Min Percentage (%):</label>
-            <input type="number" id="minPercentageFilter" class="filter-input" min="0" max="100" step="0.1" placeholder="0.0">
-          </div>
+      		  <div class="filter-controls">
+      		    <!-- Top Sources Filter -->
+      		    <div class="filter-group">
+      		      <label for="topSourcesFilter">Show Top Sources:</label>
+      		      <select id="topSourcesFilter" class="filter-select">
+      		        <option value="all">All Sources</option>
+      		        <option value="5">Top 5</option>
+      		        <option value="10">Top 10</option>
+      		        <option value="15">Top 15</option>
+      		        <option value="20">Top 20</option>
+      		      </select>
+      		    </div>
 
-          <!-- Quick Filter Buttons -->
-          <div class="filter-buttons">
-            <button class="filter-btn" onclick="applyQuickFilter('major')">Major Sources (>5%)</button>
-            <button class="filter-btn" onclick="applyQuickFilter('moderate')">Moderate (1-5%)</button>
-            <button class="filter-btn" onclick="applyQuickFilter('minor')">Minor (<1%)</button>
-            <button class="filter-btn secondary" onclick="clearAllFilters()">Clear Filters</button>
-          </div>
-        </div>
+      		    <!-- Minimum Percentage Filter -->
+      		    <div class="filter-group">
+      		      <label for="minPercentageFilter">Min Percentage (%):</label>
+      		      <input type="number" id="minPercentageFilter" class="filter-input" min="0" max="100" step="0.1" 		placeholder="0.0">
+      		    </div>
+      		  </div>
 
-        <!-- Source Selection Area -->
-        <div style="margin-top: 15px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <label style="font-weight: 500; color: #495057;">Select Specific Sources:</label>
-            <div>
-              <button class="filter-btn" onclick="selectAllSources()">Select All</button>
-              <button class="filter-btn secondary" onclick="deselectAllSources()">Deselect All</button>
-            </div>
-          </div>
-          <div class="source-selection" id="sourceSelection">
-            <!-- Checkboxes will be populated by JavaScript -->
-          </div>
-        </div>
+						<!-- Quick Filter Buttons -->
+      		  <div class="filter-buttons">
+      		    <button class="filter-btn" onclick="applyQuickFilter('major')">Major Sources (>5%)</button>
+      		    <button class="filter-btn" onclick="applyQuickFilter('moderate')">Moderate (1-5%)</button>
+      		    <button class="filter-btn" onclick="applyQuickFilter('minor')">Minor (<1%)</button>
+      		    <button class="filter-btn secondary" onclick="clearAllFilters()">Clear Filters</button>
+      		  </div>
 
-        <!-- Filter Summary -->
-        <div class="filter-summary" id="filterSummary" style="display: none;">
-          <span id="filterSummaryText"></span>
-        </div>
-      </div>
+      		  <!-- Source Selection Area -->
+      		  <div style="margin-top: 15px;">
+      		    <div style="display: flex; justify-content: space-between; align-items: center;">
+      		      <label style="font-weight: 500; color: #495057;">Select Specific Sources:</label>
+      		    </div>
+      		    <div class="source-selection" id="sourceSelection">
+      		      <!-- Checkboxes will be populated by JavaScript -->
+      		    </div>
+							<div>
+      		        <button class="filter-btn" onclick="selectAllSources()">Select All</button>
+      		        <button class="filter-btn secondary" onclick="deselectAllSources()">Deselect All</button>
+      		    </div>
+      		  </div>
+
+      		  <!-- Filter Summary -->
+      		  <div class="filter-summary" id="filterSummary" style="display: none;">
+      		    <span id="filterSummaryText"></span>
+      		  </div>
+      		</div>
 
 
 
@@ -487,7 +476,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         if (!noDataMsg) {
           noDataMsg = document.createElement('div');
           noDataMsg.className = 'no-data-chart-message';
-          noDataMsg.style.cssText = 'text-align: center; padding: 40px; color: #666; font-size: 16px; background: #f8f9fa; border-radius: 8px; margin: 20px 0;';
+          noDataMsg.style.cssText = 'text-align: center; padding: 40px; color: #666; font-size: 16px; background-color: #f8f9fa; border-radius: 8px; margin: 20px 0;';
           noDataMsg.innerHTML = '<i class="fas fa-chart-pie" style="font-size: 48px; color: #ccc; display: block; margin-bottom: 15px;"></i><strong>No Data to Display</strong><br><small>Apply different filters to see chart data</small>';
           container.appendChild(noDataMsg);
         }
