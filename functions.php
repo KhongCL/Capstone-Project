@@ -87,7 +87,10 @@ function handleCsvUpload($conn, $file) {
         session_start();
     }
     $_SESSION['uploaded_file_name'] = $fileName;
+    $_SESSION['original_file_name'] = $originalName;
     $_SESSION['uploaded_file_size'] = $file['size']; // Store the actual file size
+
+    error_log("STORED FILE INFO: original_name=$originalName, hashed_name=$fileName, size={$file['size']}");
 
     try {
         // Process the CSV file
@@ -755,13 +758,18 @@ function saveTransformedData($conn, $transformedData) {
             $validationErrors = $_SESSION['validation_errors'];
             error_log("Found validation errors in session: " . print_r($validationErrors, true));
             
+            // NEW: Store file information for re-upload display  
+            $_SESSION['failed_file_info'] = [
+                'name' => $_SESSION['original_file_name'] ?? ($_SESSION['uploaded_file_name'] ?? 'unknown.csv'),
+                'size' => $_SESSION['uploaded_file_size'] ?? (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv']) ? filesize($_SESSION['uploaded_csv']) : 0),
+                'mapped_columns' => count($columnMapping ?? []),
+                'total_columns' => count($csvHeaders ?? [])
+            ];
+            
             // Format validation errors for display
             $errorMessage = "Data validation errors found: " . implode('; ', $validationErrors) . ". Please correct these issues and try again.";
             
             // DON'T clear validation errors here - let map_columns_compare.php handle them
-            // Clear validation errors from session
-            // unset($_SESSION['validation_errors']);
-            
             // IMPORTANT: Don't clear session data here - let the user see the errors and try again
             return ['type' => 'error', 'message' => $errorMessage];
         }

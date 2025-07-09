@@ -588,35 +588,14 @@ error_log("=== END INDEX.PHP DEBUG ===");
             color: #fff !important;
         }
 
-        /* ==================== RESPONSIVE STYLES ==================== */
-        @media (max-width: 768px) {
-            .status-content {
-                flex-direction: column;
-                text-align: center;
-                gap: 10px;
-            }
-            
-            .sample-actions {
-                justify-content: center;
-            }
-
-            .preview-actions {
-                grid-template-columns: 1fr;
-            }
-            
-            .preview-table-container {
-                max-height: 300px;
-            }
-        }
-
-        /* ==================== SCROLLABLE ERROR MESSAGE STYLES ==================== */
+        /* ==================== ERROR CONTAINER AND BASIC ERROR STYLES ==================== */
         .error-container {
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
             border-radius: 8px;
             padding: 20px;
             margin: 20px 0;
-            border-left: 4px solid var(--danger);
+            border-left: 4px solid #dc3545;
             max-height: 400px; /* Limit height */
             overflow-y: auto; /* Make scrollable */
         }
@@ -645,8 +624,73 @@ error_log("=== END INDEX.PHP DEBUG ===");
             margin-bottom: 0;
         }
 
+        /* ==================== ERROR MESSAGE AND SUGGESTIONS STYLING ==================== */
+        .error-message {
+            font-weight: 500;
+            color: #721c24;
+            margin-bottom: 8px;
+            display: block;
+            width: 100%;
+            line-height: 1.4;
+        }
+
+        /* FIXED: Enhanced suggestions styling with proper yellow highlighting for ALL sources */
+        .error-suggestions,
+        .error-item strong + span {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+            border: 1px solid #ffeaa7 !important;
+            border-radius: 6px !important;
+            padding: 12px !important;
+            margin-top: 10px !important;
+            font-size: 0.9em !important;
+            color: #856404 !important;
+            box-shadow: 0 2px 4px rgba(255, 234, 167, 0.3) !important;
+            border-left: 4px solid #ffc107 !important;
+            display: block !important;
+        }
+
+        /* FIXED: Target the specific pattern from map_columns.php suggestions */
+        .error-item br + strong {
+            margin-top: 10px;
+            display: block;
+            color: #b8860b !important;
+            font-weight: 600 !important;
+        }
+
+        /* FIXED: Style the text after "💡 Suggestions:" from map_columns.php */
+        .error-item strong:contains("💡 Suggestions:") + * {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+            border: 1px solid #ffeaa7 !important;
+            border-radius: 6px !important;
+            padding: 12px !important;
+            margin-top: 5px !important;
+            font-size: 0.9em !important;
+            color: #856404 !important;
+            box-shadow: 0 2px 4px rgba(255, 234, 167, 0.3) !important;
+            border-left: 4px solid #ffc107 !important;
+            display: block !important;
+        }
+
+        .error-suggestions strong {
+            color: #b8860b !important;
+            font-weight: 600 !important;
+        }
+
+        .suggestions-text {
+            color: #856404 !important;
+            font-weight: 500 !important;
+            display: inline !important;
+        }
+
+        /* Styling for upload_progress.js generated errors */
+        .error-suggestions .suggestions-text {
+            color: #856404 !important;
+            background: transparent !important;
+        }
+
+        /* ==================== VALIDATION HELP SECTION ==================== */
         .validation-help {
-            background: var(--light-gray);
+            background: #e8f5e8;
             border: 2px solid #68d391;
             border-radius: 12px;
             padding: 20px;
@@ -661,18 +705,218 @@ error_log("=== END INDEX.PHP DEBUG ===");
             padding-right: 10px; /* Add space for scrollbar */
         }
 
+        /* ==================== MAP_COLUMNS.PHP ERROR COMPATIBILITY ==================== */
+        
+        /* Style for validation errors list from map_columns.php */
+        .validation-errors-list {
+            list-style: none;
+            padding: 0;
+            margin: 15px 0;
+            max-height: 300px; /* Limit the list height */
+            overflow-y: auto; /* Make the list scrollable */
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 6px;
+            background-color: rgba(255,255,255,0.5);
+        }
+
+        .validation-errors-list .error-item {
+            background-color: #fff5f5;
+            border: 1px solid #fed7e2;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 3px solid #e53e3e;
+        }
+
+        .validation-errors-list .error-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Error footer styling */
+        .error-footer {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            font-weight: 600;
+            color: #721c24;
+            text-align: center;
+        }
+
+        /* ==================== ENHANCED ERROR HEADERS AND STRUCTURE ==================== */
+        
+        /* Enhanced error container for mapping validation failures */
+        .error-container h4 {
+            color: #721c24;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .error-container h4 i {
+            color: #dc3545;
+            font-size: 1.1em;
+        }
+
+        /* Enhanced error summary styling */
+        .error-summary {
+            font-weight: 600;
+            color: #721c24;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .error-summary i {
+            color: #dc3545;
+            font-size: 1.1em;
+        }
+
+        /* ==================== FILE INFO BOX STYLING - FIXED FOR MAP_COLUMNS.PHP ==================== */
+        
+        /* FIXED: Enhanced file info styling within error container AND standalone */
+        .error-container .file-info-box,
+        .file-info-box,
+        .error-container div[style*="margin: 15px 0"] {
+            margin: 15px 0 !important;
+            padding: 15px !important;
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.05) 0%, rgba(220, 53, 69, 0.1) 100%) !important;
+            border: 1px solid rgba(220, 53, 69, 0.2) !important;
+            border-radius: 8px !important;
+            font-size: 0.9em !important;
+            border-left: 4px solid #dc3545 !important;
+            color: #721c24 !important;
+        }
+
+        /* FIXED: Target the specific inline style from map_columns.php */
+        .error-container div[style*="background: rgba(0,0,0,0.05)"] {
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.05) 0%, rgba(220, 53, 69, 0.1) 100%) !important;
+            border: 1px solid rgba(220, 53, 69, 0.2) !important;
+            border-left: 4px solid #dc3545 !important;
+            color: #721c24 !important;
+        }
+
+        .error-container .file-info-box strong,
+        .file-info-box strong,
+        .error-container div[style*="margin: 15px 0"] strong {
+            color: #721c24 !important;
+            font-weight: 600 !important;
+        }
+
+        /* Individual file info lines */
+        .file-info-line {
+            margin: 8px 0;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .file-info-line:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .file-info-line strong {
+            display: inline-block;
+            min-width: 120px;
+            font-weight: 600;
+        }
+
+        /* ==================== VALIDATION HELP SECTION STYLING ==================== */
+        
+        /* Help section specific styling */
+        .validation-help h4 {
+            color: #2d6a4f;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .validation-help h4 i {
+            color: #28a745;
+            font-size: 1.1em;
+        }
+
+        .validation-help h5 {
+            color: #2d6a4f;
+            margin: 15px 0 10px 0;
+            font-size: 1em;
+            border-bottom: 1px solid rgba(45, 106, 79, 0.2);
+            padding-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .validation-help ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .validation-help li {
+            margin: 8px 0;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .validation-help li strong {
+            color: #2d6a4f;
+        }
+
+        /* ==================== UPLOAD PROGRESS.JS ERROR COMPATIBILITY ==================== */
+        
+        /* Ensure upload_progress.js generated elements use consistent styling */
+        .upload-section .error-container {
+            /* Same styling as above */
+        }
+
+        .upload-section .error-item .error-message {
+            /* Same styling as above */
+        }
+
+        .upload-section .error-item .error-suggestions {
+            /* Enhanced styling for suggestions from upload_progress.js */
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+            border: 1px solid #ffeaa7 !important;
+            border-radius: 6px !important;
+            padding: 12px !important;
+            margin-top: 10px !important;
+            font-size: 0.9em !important;
+            color: #856404 !important;
+            box-shadow: 0 2px 4px rgba(255, 234, 167, 0.3) !important;
+            border-left: 4px solid #ffc107 !important;
+        }
+
+        .upload-section .error-item .error-suggestions strong {
+            color: #b8860b !important;
+            font-weight: 600 !important;
+        }
+
+        .upload-section .error-item .error-suggestions .suggestions-text {
+            color: #856404 !important;
+            font-weight: 500 !important;
+        }
+
+        /* ==================== CUSTOM SCROLLBAR STYLES ==================== */
+        
         /* Custom scrollbar styles for better appearance */
         .error-container::-webkit-scrollbar,
         .error-list::-webkit-scrollbar,
         .validation-help::-webkit-scrollbar,
-        .validation-tips::-webkit-scrollbar {
+        .validation-tips::-webkit-scrollbar,
+        .validation-errors-list::-webkit-scrollbar {
             width: 8px;
         }
 
         .error-container::-webkit-scrollbar-track,
         .error-list::-webkit-scrollbar-track,
         .validation-help::-webkit-scrollbar-track,
-        .validation-tips::-webkit-scrollbar-track {
+        .validation-tips::-webkit-scrollbar-track,
+        .validation-errors-list::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 4px;
         }
@@ -680,7 +924,8 @@ error_log("=== END INDEX.PHP DEBUG ===");
         .error-container::-webkit-scrollbar-thumb,
         .error-list::-webkit-scrollbar-thumb,
         .validation-help::-webkit-scrollbar-thumb,
-        .validation-tips::-webkit-scrollbar-thumb {
+        .validation-tips::-webkit-scrollbar-thumb,
+        .validation-errors-list::-webkit-scrollbar-thumb {
             background: #c1c1c1;
             border-radius: 4px;
         }
@@ -688,18 +933,40 @@ error_log("=== END INDEX.PHP DEBUG ===");
         .error-container::-webkit-scrollbar-thumb:hover,
         .error-list::-webkit-scrollbar-thumb:hover,
         .validation-help::-webkit-scrollbar-thumb:hover,
-        .validation-tips::-webkit-scrollbar-thumb:hover {
+        .validation-tips::-webkit-scrollbar-thumb:hover,
+        .validation-errors-list::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
 
-        /* Responsive adjustments */
+        /* ==================== RESPONSIVE DESIGN ==================== */
+        
+        /* Responsive adjustments for sample data and error messages */
         @media (max-width: 768px) {
+            .status-content {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+            
+            .sample-actions {
+                justify-content: center;
+            }
+
+            .preview-actions {
+                grid-template-columns: 1fr;
+            }
+            
+            .preview-table-container {
+                max-height: 300px;
+            }
+
             .error-container {
                 max-height: 300px; /* Smaller on mobile */
                 padding: 15px;
             }
             
-            .error-list {
+            .error-list,
+            .validation-errors-list {
                 max-height: 200px; /* Smaller list on mobile */
             }
             
@@ -711,23 +978,55 @@ error_log("=== END INDEX.PHP DEBUG ===");
             .validation-tips {
                 max-height: 250px; /* Smaller tips on mobile */
             }
+
+            .error-container h4,
+            .validation-help h4 {
+                font-size: 1.1em;
+            }
+
+            .file-info-box {
+                padding: 12px;
+                font-size: 0.85em;
+            }
+
+            .file-info-line strong {
+                min-width: 100px;
+                display: block;
+                margin-bottom: 4px;
+            }
         }
 
         @media (max-width: 480px) {
             .error-container {
                 max-height: 250px; /* Even smaller on very small screens */
+                padding: 12px;
             }
             
-            .error-list {
+            .error-list,
+            .validation-errors-list {
                 max-height: 150px;
             }
             
             .validation-help {
                 max-height: 300px;
+                padding: 12px;
             }
             
             .validation-tips {
                 max-height: 200px;
+            }
+
+            .error-container h4,
+            .validation-help h4 {
+                font-size: 1em;
+                flex-direction: column;
+                text-align: center;
+                gap: 5px;
+            }
+
+            .file-info-box {
+                padding: 10px;
+                font-size: 0.8em;
             }
         }
     </style>
@@ -907,8 +1206,17 @@ error_log("=== END INDEX.PHP DEBUG ===");
                                     
                                     <ul class="error-list">
                                         <?php foreach ($uniqueErrors as $error): ?>
+                                            <?php
+                                            // Parse error message and suggestions
+                                            $parts = explode(' Suggestions: ', $error);
+                                            $errorMessage = $parts[0];
+                                            $suggestions = isset($parts[1]) ? $parts[1] : '';
+                                            ?>
                                             <li class="error-item">
-                                                <?php echo htmlspecialchars($error); ?>
+                                                <?php echo htmlspecialchars($errorMessage); ?>
+                                                <?php if (!empty($suggestions)): ?>
+                                                    <br><strong>💡 Suggestions:</strong> <?php echo htmlspecialchars($suggestions); ?>
+                                                <?php endif; ?>
                                             </li>
                                         <?php endforeach; ?>
                                     </ul>

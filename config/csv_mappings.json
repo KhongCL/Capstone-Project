@@ -129,5 +129,19 @@
             "Sessions": "integer",
             "Engagement Rate": "float"
         }
+    },
+    "trysupportedformat": {
+        "format_detection": [
+            "Sessions",
+            "Engagement Rate"
+        ],
+        "column_mappings": {
+            "Sessions": "engaged_sessions",
+            "Engagement Rate": "bounce_rate"
+        },
+        "data_types": {
+            "Sessions": "string",
+            "Engagement Rate": "float"
+        }
     }
 }

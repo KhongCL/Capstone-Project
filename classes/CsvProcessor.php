@@ -709,13 +709,35 @@ class CsvProcessor {
         
         $this->columnMap = $columnMapping;
 
+        // CRITICAL FIX: Only add config mappings ONCE and avoid duplicates
         if ($format && isset($this->mappings[$format]['column_mappings'])) {
             // Get all mappings from configuration
             foreach ($this->mappings[$format]['column_mappings'] as $sourceCol => $targetCol) {
-                $this->columnMap[$sourceCol] = $targetCol;
-                error_log("Added mapping from config: $sourceCol -> $targetCol");
+                // Only add if not already mapped to avoid duplicates
+                if (!isset($this->columnMap[$sourceCol])) {
+                    $this->columnMap[$sourceCol] = $targetCol;
+                    error_log("Added mapping from config: $sourceCol -> $targetCol");
+                } else {
+                    error_log("Skipping duplicate mapping from config: $sourceCol (already mapped)");
+                }
             }
         }
+
+        // CRITICAL FIX: Remove duplicate mappings that point to the same target field
+        $finalColumnMap = [];
+        $usedTargets = [];
+        
+        foreach ($this->columnMap as $sourceCol => $targetCol) {
+            if (!in_array($targetCol, $usedTargets)) {
+                $finalColumnMap[$sourceCol] = $targetCol;
+                $usedTargets[] = $targetCol;
+                error_log("Final mapping: $sourceCol -> $targetCol");
+            } else {
+                error_log("Skipping duplicate target mapping: $sourceCol -> $targetCol (target already used)");
+            }
+        }
+        
+        $this->columnMap = $finalColumnMap;
 
         if ($format) {
             $this->detectedFormat = $format;
@@ -728,18 +750,6 @@ class CsvProcessor {
             if ($ga4MatchCount >= 3) {
                 $this->detectedFormat = 'ga4_traffic_acquisition';
                 error_log("Inferred GA4 format from manual mappings");
-            }
-        }
-
-        // IMPORTANT: Use mappings from JSON config, not database
-        if ($this->detectedFormat && isset($this->mappings[$this->detectedFormat]['column_mappings'])) {
-            // Merge JSON mappings with provided mapping
-            $configMappings = $this->mappings[$this->detectedFormat]['column_mappings'];
-            foreach ($configMappings as $csvCol => $systemField) {
-                if (!isset($this->columnMap[$csvCol])) {
-                    $this->columnMap[$csvCol] = $systemField;
-                    error_log("Added mapping from config: $csvCol -> $systemField");
-                }
             }
         }
 
@@ -905,8 +915,19 @@ class CsvProcessor {
                             // Log the error with more context about which row had the issue
                             error_log("❌ Data validation error at row $rowNumber, column '$sourceCol': " . $e->getMessage());
                             
-                            // Create a more user-friendly error message with row information
-                            $errorWithRow = "Row " . $rowNumber . " ($sourceName): " . $e->getMessage();
+                            // CRITICAL FIX: Use the actual CSV column name in error message
+                            $originalErrorMessage = $e->getMessage();
+                            
+                            // Replace any reference to the source column with the actual CSV column name
+                            $correctedErrorMessage = str_replace("for column '$sourceCol'", "for column '$sourceCol'", $originalErrorMessage);
+                            
+                            // If the error message doesn't have the column reference, add it properly
+                            if (strpos($correctedErrorMessage, "for column") === false) {
+                                // Add the column reference if it's missing
+                                $correctedErrorMessage .= " for column '$sourceCol'";
+                            }
+                            
+                            $errorWithRow = "Row " . $rowNumber . " ($sourceName): " . $correctedErrorMessage;
                             $validationErrors[] = $errorWithRow;
                             
                             $rowHasError = true;
@@ -1183,15 +1204,13 @@ class CsvProcessor {
             session_start();
         }
         
-        $isManualMapping = isset($_SESSION['manual_mapping_mode']) && $_SESSION['manual_mapping_mode'] === true;
-        
         // Always get target field for validation rules that need it
         $targetField = $this->columnMap[$column] ?? null;
         
-        // CRITICAL FIX: For manual mapping, use more lenient validation
-        if ($isManualMapping || $this->detectedFormat === 'manual_mapping' || !$this->detectedFormat) {
-            error_log("Using manual mapping validation for: $column");
-            return $this->validateManualMapping($value, $column, $targetField);
+        // CRITICAL FIX: Always use proper GA4 validation instead of manual mapping validation
+        if ($this->detectedFormat === 'ga4_traffic_acquisition' || $this->detectedFormat === 'manual_mapping') {
+            error_log("Using GA4 validation for: $column -> $targetField");
+            return $this->validateGa4Field($value, $column, $targetField);
         }
 
         // Original value for error messages
@@ -1673,108 +1692,466 @@ class CsvProcessor {
         }
     }
 
-    private function validateManualMapping($value, $column, $systemColumn = null) {
-        error_log("Manual mapping validation for column '$column', system column: " . ($systemColumn ?? 'null'));
+    /**
+     * Enhanced GA4 field validation with suggestions
+     */
+    private function validateGa4Field($value, $column, $targetField) {
+        $originalValue = $value;
         
-        // Basic validation - check if value is not empty and reasonable
-        $trimmedValue = trim($value);
-        
-        if ($trimmedValue === '') {
-            error_log("❌ Manual validation error: Empty value in column '$column'");
-            throw new Exception("Empty value for column '$column' - This field requires a value");
+        // Check for empty values first
+        if (trim($value) === '') {
+            $suggestions = $this->suggestDataFix($value, 'empty', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Empty value for column '$column' - This field requires a value$suggestionText");
         }
         
-        // Determine expected data type based on system column mapping
-        $expectedType = $this->getExpectedDataType($systemColumn ?? $column);
-        
-        switch ($expectedType) {
-            case 'numeric':
-                // Check if it's a valid number (allow decimals, commas, percentages)
-                $cleanValue = preg_replace('/[,%$]/', '', $trimmedValue);
-                if (!is_numeric($cleanValue)) {
-                    error_log("❌ Manual validation error: Non-numeric value '$value' in numeric column '$column'");
-                    throw new Exception("Invalid numeric value '$value' for column '$column'");
-                }
-                // Return the cleaned numeric value
-                $numValue = floatval($cleanValue);
-                if ($numValue < 0) {
-                    throw new Exception("Negative value '$value' not allowed for column '$column'");
-                }
-                error_log("✅ Manual validation passed for column '$column' - returning: $numValue");
-                return $numValue;
+        // Validate based on target field type
+        switch ($targetField) {
+            case 'traffic_source':
+                return $this->validateTrafficSource($value, $column);
                 
-            case 'percentage':
-                // Check if it's a valid percentage or decimal
-                if (strpos($trimmedValue, '%') !== false) {
-                    $cleanValue = preg_replace('/[,%]/', '', $trimmedValue);
-                    if (!is_numeric($cleanValue)) {
-                        error_log("❌ Manual validation error: Invalid percentage '$value' in column '$column'");
-                        throw new Exception("Invalid percentage value '$value' for column '$column'");
-                    }
-                    $numValue = floatval($cleanValue);
-                    if ($numValue < 0 || $numValue > 100) {
-                        throw new Exception("Percentage value '$value' must be between 0-100% for column '$column'");
-                    }
-                    error_log("✅ Manual validation passed for column '$column' - returning: " . ($numValue / 100));
-                    return $numValue / 100; // Convert to decimal
-                } else {
-                    $cleanValue = preg_replace('/[,]/', '', $trimmedValue);
-                    if (!is_numeric($cleanValue)) {
-                        error_log("❌ Manual validation error: Invalid decimal percentage '$value' in column '$column'");
-                        throw new Exception("Invalid percentage value '$value' for column '$column'");
-                    }
-                    $numValue = floatval($cleanValue);
-                    if ($numValue < 0 || $numValue > 1) {
-                        throw new Exception("Decimal percentage value '$value' must be between 0-1 for column '$column'");
-                    }
-                    error_log("✅ Manual validation passed for column '$column' - returning: $numValue");
-                    return $numValue;
-                }
+            case 'visits':
+            case 'sessions':
+                return $this->validateIntegerField($value, $column, $targetField);
                 
-            case 'text':
-                // Text validation - just check for reasonable length and no malicious content
-                if (strlen($trimmedValue) > 255) {
-                    error_log("❌ Manual validation error: Text too long in column '$column'");
-                    throw new Exception("Text too long in column '$column' - maximum 255 characters");
-                }
-                // Check for potential malicious content
-                if (preg_match('/<script|javascript:|on\w+=/i', $trimmedValue)) {
-                    error_log("❌ Manual validation error: Potentially malicious content in column '$column'");
-                    throw new Exception("Invalid content in column '$column'");
-                }
-                error_log("✅ Manual validation passed for column '$column' - returning: '$trimmedValue'");
-                return $trimmedValue;
+            case 'engaged_sessions':
+                return $this->validateIntegerField($value, $column, $targetField);
+                
+            case 'bounce_rate':
+                return $this->validateEngagementRate($value, $column);
+                
+            case 'avg_session_duration':
+                return $this->validateSessionDuration($value, $column);
+                
+            case 'events_per_session':
+                return $this->validateEventsPerSession($value, $column);
+                
+            case 'event_count':
+                return $this->validateEventCount($value, $column);
+                
+            case 'key_events':
+                return $this->validateKeyEvents($value, $column);
+                
+            case 'session_key_event_rate':
+                return $this->validatePercentageField($value, $column);
+                
+            case 'total_revenue':
+                return $this->validateRevenueField($value, $column);
                 
             default:
-                error_log("✅ Manual validation passed for column '$column' (generic validation) - returning: '$trimmedValue'");
-                return $trimmedValue;
+                return $this->validateGenericField($value, $column);
         }
     }
 
-    private function getExpectedDataType($systemColumn) {
-        $numericColumns = [
-            'visits', 'sessions', 'engaged_sessions', 'users', 'pageviews',
-            'events_per_session', 'event_count', 'key_events', 'total_revenue',
-            'avg_session_duration', 'average_engagement_time_per_session'
-        ];
-        
-        $percentageColumns = [
-            'engagement_rate', 'bounce_rate', 'session_key_event_rate'
-        ];
-        
-        $textColumns = [
-            'traffic_source', 'page_title', 'page_path'
-        ];
-        
-        if (in_array($systemColumn, $numericColumns)) {
-            return 'numeric';
-        } elseif (in_array($systemColumn, $percentageColumns)) {
-            return 'percentage';
-        } elseif (in_array($systemColumn, $textColumns)) {
-            return 'text';
+    /**
+     * Validate traffic source field
+     */
+    private function validateTrafficSource($value, $column) {
+        // Check for trademark symbols
+        if (preg_match('/[\x{2122}\x{00AE}\x{00A9}™®©]/u', $value)) {
+            $suggestions = ["Try: '" . preg_replace('/[\x{2122}\x{00AE}\x{00A9}™®©]/u', '', $value) . "' (removed trademark symbols)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            
+            // Get the proper GA4 column name based on target field
+            $columnName = $this->getProperColumnName($column, 'traffic_source');
+            throw new Exception("Invalid traffic source value: '$value' for column '$columnName' - Contains trademark or special symbols$suggestionText");
         }
         
-        return 'generic';
+        return trim($value);
+    }
+
+    private function validateIntegerField($value, $column, $targetField) {
+        $originalValue = $value;
+        
+        // Get the proper column name
+        $columnName = $this->getProperColumnName($column, $targetField);
+        
+        // Check for mathematical expressions
+        if (preg_match('/^(\d+)\s*[\+\-\*\/]\s*(\d+)$/', $value, $matches)) {
+            $suggestions = ["Try: '{$matches[1]}'"];
+            
+            // Add calculated suggestion
+            $result = $this->evaluateSimpleExpression($value);
+            if ($result !== null) {
+                $suggestions[] = "Try: '$result' (calculated from $value)";
+            }
+            
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid integer value: '$value' for column '$columnName' - Please use only digits$suggestionText");
+        }
+        
+        // Check for scientific notation
+        if (preg_match('/^\d+(\.\d+)?e[+-]?\d+$/i', $value)) {
+            $suggestions = ["Try: '" . number_format((float)$value, 0) . "' (converted from scientific notation)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Scientific notation '$value' not allowed for column '$columnName' - Please use standard integer format$suggestionText");
+        }
+        
+        // Check for decimal values in integer fields
+        if (strpos($value, '.') !== false && $targetField === 'engaged_sessions') {
+            $suggestions = ["Try: '" . floor((float)$value) . "' (rounded down)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid integer value: '$value' for column '$columnName' - Cannot contain decimal points$suggestionText");
+        }
+        
+        // Check for Unicode digits
+        if (preg_match('/[^\x00-\x7F]/', $value)) {
+            $converted = $this->convertUnicodeDigits($value);
+            $suggestions = ["Try: '$converted' (converted from Unicode)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid integer value: '$value' for column '$columnName' - Contains Unicode characters$suggestionText");
+        }
+        
+        if (!is_numeric($value) || strpos($value, '.') !== false) {
+            $suggestions = $this->suggestDataFix($value, 'integer', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Invalid integer value: '$value' for column '$columnName' - Must be a whole number$suggestionText");
+        }
+        
+        return (int)$value;
+    }
+
+    // Add this helper method to get the proper column name
+    private function getProperColumnName($csvColumn, $targetField) {
+        // Map target fields to their proper GA4 names
+        $ga4ColumnNames = [
+            'traffic_source' => 'Session primary channel group (Default channel group)',
+            'visits' => 'Sessions',
+            'sessions' => 'Sessions', 
+            'users' => 'Users',
+            'unique_visitors' => 'Users',
+            'page_views' => 'Page views',
+            'pageviews' => 'Page views',
+            'engaged_sessions' => 'Engaged sessions',
+            'bounce_rate' => 'Engagement rate',
+            'avg_session_duration' => 'Average engagement time per session',
+            'events_per_session' => 'Events per session',
+            'event_count' => 'Event count',
+            'key_events' => 'Key events',
+            'session_key_event_rate' => 'Session key event rate',
+            'total_revenue' => 'Total revenue'
+        ];
+        
+        // Return the proper GA4 name if available, otherwise use the CSV column name
+        return $ga4ColumnNames[$targetField] ?? $csvColumn;
+    }
+
+    /**
+     * Validate engagement rate (bounce rate equivalent)
+     */
+    private function validateEngagementRate($value, $column) {
+        $columnName = $this->getProperColumnName($column, 'bounce_rate');
+        
+        // Handle percentage format
+        if (strpos($value, '%') !== false) {
+            $numericValue = str_replace('%', '', $value);
+            if (is_numeric($numericValue)) {
+                $suggestions = ["Try: '$numericValue'", "Try: '" . ($numericValue / 100) . "' (converted from percentage)"];
+                $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+                throw new Exception("Invalid float value: '$value' for column '$columnName' - Contains invalid characters$suggestionText");
+            }
+        }
+        
+        // Check for negative values
+        if (is_numeric($value) && (float)$value < 0) {
+            $suggestions = ["Try: '" . abs((float)$value) . "' (made positive)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Negative value '$value' not allowed for column '$columnName' - Must be zero or positive$suggestionText");
+        }
+        
+        if (!is_numeric($value)) {
+            $suggestions = $this->suggestDataFix($value, 'percentage', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Invalid float value: '$value' for column '$columnName' - Must be a decimal number$suggestionText");
+        }
+        
+        return (float)$value;
+    }
+
+    /**
+     * Validate session duration (time fields)
+     */
+    private function validateSessionDuration($value, $column) {
+        $columnName = $this->getProperColumnName($column, 'avg_session_duration');
+        
+        // Check for time formats
+        if (preg_match('/^(\d+):(\d+)(?::(\d+))?$/', $value, $matches)) {
+            $minutes = (int)$matches[1];
+            $seconds = (int)$matches[2];
+            $hours = isset($matches[3]) ? (int)$matches[3] : 0;
+            
+            // Check for invalid time values
+            if ($seconds >= 60 || ($hours > 0 && $minutes >= 60)) {
+                $suggestions = ["Try: '" . ($minutes * 60 + $seconds) . "' (converted from MM:SS to seconds)"];
+            } else {
+                $totalSeconds = $hours * 3600 + $minutes * 60 + $seconds;
+                $suggestions = ["Try: '$totalSeconds' (converted from time format to seconds)"];
+            }
+            
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid float value: '$value' for column '$columnName' - Contains invalid characters$suggestionText");
+        }
+        
+        // Check for time with units
+        if (preg_match('/^(\d+)m(\d+)s$/', $value, $matches)) {
+            $totalSeconds = (int)$matches[1] * 60 + (int)$matches[2];
+            $suggestions = ["Try: '$totalSeconds' (converted from minutes/seconds)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid float value: '$value' for column '$columnName' - Contains invalid characters$suggestionText");
+        }
+        
+        if (!is_numeric($value)) {
+            $suggestions = $this->suggestDataFix($value, 'time', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Invalid float value: '$value' for column '$columnName' - Must be a number$suggestionText");
+        }
+        
+        return (float)$value;
+    }
+
+    /**
+     * Validate events per session
+     */
+    private function validateEventsPerSession($value, $column) {
+        $columnName = $this->getProperColumnName($column, 'events_per_session');
+        
+        // Check for multiple decimal points
+        if (substr_count($value, '.') > 1) {
+            $suggestions = ["Try: '" . preg_replace('/\.+/', '.', $value) . "' (fixed decimal points)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid events per session value: '$value' for column '$columnName' - Contains multiple decimal points$suggestionText");
+        }
+        
+        // Check for special characters
+        if (preg_match('/[~#@$%^&*]/', $value)) {
+            $cleanValue = preg_replace('/[~#@$%^&*]/', '', $value);
+            $suggestions = ["Try: '$cleanValue'", "Try: '$cleanValue' (removed special characters)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid events per session value: '$value' for column '$columnName' - Contains special characters$suggestionText");
+        }
+        
+        // Check for unrealistically high values
+        if (is_numeric($value) && (float)$value > 50) {
+            $suggestions = ["Try: '" . min(50, (float)$value) . "' (capped at reasonable limit)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Unrealistically high value '$value' for column '$columnName' - Events per session should be reasonable (under 50)$suggestionText");
+        }
+        
+        // Check for negative values
+        if (is_numeric($value) && (float)$value < 0) {
+            $suggestions = ["Try: '" . abs((float)$value) . "' (made positive)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Negative value '$value' not allowed for column '$columnName' - Events per session must be zero or positive$suggestionText");
+        }
+        
+        if (!is_numeric($value)) {
+            $suggestions = $this->suggestDataFix($value, 'float', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Invalid float value: '$value' for column '$columnName' - Must be a number$suggestionText");
+        }
+        
+        return (float)$value;
+    }
+
+    /**
+     * Validate key events field
+     */
+    private function validateKeyEvents($value, $column) {
+        $columnName = $this->getProperColumnName($column, 'key_events');
+        
+        // Check for decimal values
+        if (strpos($value, '.') !== false) {
+            $suggestions = ["Try: '" . floor((float)$value) . "' (rounded down to whole number)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid key events value: '$value' for column '$columnName' - Must be a whole number$suggestionText");
+        }
+        
+        // Check for negative values
+        if (is_numeric($value) && (int)$value < 0) {
+            $suggestions = ["Try: '" . abs((int)$value) . "' (made positive)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid key events value: '$value' for column '$columnName' - Must be a whole number$suggestionText");
+        }
+        
+        // Check for unrealistically high values
+        if (is_numeric($value) && (int)$value > 500) {
+            $suggestions = ["Try: '" . min(500, (int)$value) . "' (capped at reasonable limit)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Unrealistically high value '$value' for column '$columnName' - Key events should be reasonable (under 500)$suggestionText");
+        }
+        
+        if (!is_numeric($value)) {
+            $suggestions = $this->suggestDataFix($value, 'integer', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Invalid integer value: '$value' for column '$columnName' - Must be a whole number$suggestionText");
+        }
+        
+        return (int)$value;
+    }
+
+    /**
+     * Validate percentage fields
+     */
+    private function validatePercentageField($value, $column) {
+        $columnName = $this->getProperColumnName($column, 'session_key_event_rate');
+        
+        // Handle percentage format
+        if (strpos($value, '%') !== false) {
+            $numericValue = str_replace('%', '', $value);
+            if (is_numeric($numericValue)) {
+                if ((float)$numericValue > 100) {
+                    $suggestions = ["Try: '{$numericValue}%' or '" . ($numericValue / 100) . "' (as decimal)"];
+                    $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+                    throw new Exception("Percentage value '$value' exceeds 100% for column '$columnName' - Must be between 0-100%$suggestionText");
+                }
+            }
+        }
+        
+        if (!is_numeric(str_replace('%', '', $value))) {
+            $suggestions = $this->suggestDataFix($value, 'percentage', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Invalid percentage value: '$value' for column '$columnName' - Must be a number$suggestionText");
+        }
+        
+        return (float)str_replace('%', '', $value) / (strpos($value, '%') !== false ? 100 : 1);
+    }
+
+    /**
+     * Validate revenue field
+     */
+    private function validateRevenueField($value, $column) {
+        $columnName = $this->getProperColumnName($column, 'total_revenue');
+        
+        // Handle currency symbols
+        if (preg_match('/[\$£€¥]/', $value)) {
+            $cleanValue = preg_replace('/[\$£€¥,]/', '', $value);
+            $suggestions = ["Try: '$cleanValue' (removed currency symbols)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid currency format: '$value' for column '$columnName' - Contains currency symbols$suggestionText");
+        }
+        
+        // Handle text mixed with numbers
+        if (preg_match('/[a-zA-Z]/', $value)) {
+            $cleanValue = preg_replace('/[a-zA-Z]/', '', $value);
+            $suggestions = ["Try: '$cleanValue' (removed letters)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid currency value: '$value' for column '$columnName' - Must be a number$suggestionText");
+        }
+        
+        if (!is_numeric($value)) {
+            $suggestions = $this->suggestDataFix($value, 'currency', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Invalid revenue value: '$value' for column '$columnName' - Must be a number$suggestionText");
+        }
+        
+        return (float)$value;
+    }
+
+    /**
+     * Validate event count field
+     */
+    private function validateEventCount($value, $column) {
+        $columnName = $this->getProperColumnName($column, 'event_count');
+        
+        // Check for empty value
+        if (trim($value) === '') {
+            $suggestions = $this->suggestDataFix($value, 'empty', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Empty value for column '$columnName' - Event count must have a value$suggestionText");
+        }
+        
+        // Check for decimal values
+        if (strpos($value, '.') !== false) {
+            $suggestions = ["Try: '" . floor((float)$value) . "' (rounded down to whole number)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid event count value: '$value' for column '$columnName' - Must be a whole number$suggestionText");
+        }
+        
+        // Check for negative values
+        if (is_numeric($value) && (int)$value < 0) {
+            $suggestions = ["Try: '" . abs((int)$value) . "' (made positive)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Negative value '$value' not allowed for column '$columnName' - Event count must be zero or positive$suggestionText");
+        }
+        
+        // Check for scientific notation
+        if (preg_match('/^\d+(\.\d+)?e[+-]?\d+$/i', $value)) {
+            $suggestions = ["Try: '" . number_format((float)$value, 0) . "' (converted from scientific notation)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Scientific notation '$value' not allowed for column '$columnName' - Please use standard integer format$suggestionText");
+        }
+        
+        // Check for unrealistically high values
+        if (is_numeric($value) && (int)$value > 10000) {
+            $suggestions = ["Try: '" . min(10000, (int)$value) . "' (capped at reasonable limit)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Unrealistically high value '$value' for column '$columnName' - Event count should be reasonable (under 10,000)$suggestionText");
+        }
+        
+        if (!is_numeric($value)) {
+            $suggestions = $this->suggestDataFix($value, 'integer', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Invalid event count value: '$value' for column '$columnName' - Must be a whole number$suggestionText");
+        }
+        
+        return (int)$value;
+    }
+
+    /**
+     * Validate generic field (fallback for unknown fields)
+     */
+    private function validateGenericField($value, $column) {
+        // FIXED: Get the target field from column mapping to use proper GA4 name
+        $targetField = $this->columnMap[$column] ?? null;
+        $columnName = $targetField ? $this->getProperColumnName($column, $targetField) : $column;
+        
+        // Check for empty values
+        if (trim($value) === '') {
+            $suggestions = $this->suggestDataFix($value, 'empty', $column);
+            $suggestionText = !empty($suggestions) ? ' Suggestions: ' . implode('; ', $suggestions) : '';
+            throw new Exception("Empty value for column '$columnName' - This field requires a value$suggestionText");
+        }
+        
+        // Check for excessive whitespace
+        if (trim($value) !== $value) {
+            $suggestions = ["Try: '" . trim($value) . "' (removed whitespace)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Invalid value format: '$value' for column '$columnName' - Contains leading or trailing whitespace$suggestionText");
+        }
+        
+        // Check for potential CSV structure issues
+        if (strpos($value, ',') !== false) {
+            throw new Exception("CSV parsing error detected: Value '$value' contains commas which breaks the CSV structure");
+        }
+        
+        // Basic validation for reasonable length
+        if (strlen($value) > 500) {
+            $suggestions = ["Try: '" . substr($value, 0, 500) . "...' (truncated to reasonable length)"];
+            $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+            throw new Exception("Value too long for column '$columnName' - Maximum 500 characters allowed$suggestionText");
+        }
+        
+        // Check for potentially malicious content
+        if (preg_match('/<script|javascript:|on\w+=/i', $value)) {
+            throw new Exception("Invalid content detected in column '$columnName' - Contains potentially harmful code");
+        }
+        
+        // If it looks like a number, validate it as such
+        if (is_numeric($value)) {
+            $numericValue = (float)$value;
+            
+            // Check for negative values in generic fields (usually not allowed)
+            if ($numericValue < 0) {
+                $suggestions = ["Try: '" . abs($numericValue) . "' (made positive)"];
+                $suggestionText = ' Suggestions: ' . implode('; ', $suggestions);
+                throw new Exception("Negative value '$value' detected for column '$columnName' - Consider using positive values$suggestionText");
+            }
+            
+            return $numericValue;
+        }
+        
+        // Return as text if all validations pass
+        return trim($value);
     }
 
     /**
