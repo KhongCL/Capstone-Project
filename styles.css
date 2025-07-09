@@ -437,7 +437,7 @@ select:focus {
 
 .auth-form {
     flex: 1;
-    padding: 60px;
+    padding: 50px;
     display: flex;
     flex-direction: column;
 }
@@ -567,7 +567,7 @@ select:focus {
 .sign-in {
     text-align: center;
     color: #666;
-    margin-top: 20px;
+    margin-top: 12px;
 }
 
 .sign-up a,

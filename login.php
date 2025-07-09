@@ -192,6 +192,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="sign-up">
                 Don't have an account? <a href="register.php">Create Account</a>
             </div>
+						<div class="sign-up" style="margin-top: 10px;">
+								<a href="index.php">Return to Home Page</a>
+            </div>
         </div>
         <div class="auth-image"></div>
     </div>
