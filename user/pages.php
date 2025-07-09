@@ -200,7 +200,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
       		  <div style="margin-top: 10px;">
       		    <button onclick="exportChartToPDF()" class="user-export-btn pdf">
       		      <span class="icon">📄</span>
-      		      <span class="text">Export Chart to PDF</span>
+      		      <span class="text">Export to PDF</span>
       		    </button>
       		  </div>
       		</div>

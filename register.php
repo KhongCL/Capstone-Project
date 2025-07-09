@@ -16,6 +16,12 @@ if (isset($_SESSION['user_id'])) {
 $errors = [];
 $success = false;
 
+// Initialize form variables
+$firstname = '';
+$lastname = '';
+$username = '';
+$email = '';
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $firstname = trim($_POST['firstname'] ?? '');
@@ -258,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" placeholder="Choose a username" 
+                    <input type="text" id="username" name="username" placeholder="Enter a username" 
                            value="<?php echo htmlspecialchars($username ?? ''); ?>" required>
                 </div>
 
