@@ -264,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" placeholder="Write a username" 
+                    <input type="text" id="username" name="username" placeholder="Enter a username" 
                            value="<?php echo htmlspecialchars($username ?? ''); ?>" required>
                 </div>
 
