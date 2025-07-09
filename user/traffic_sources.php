@@ -258,6 +258,8 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         display: none;
     }
 
+
+
     @media (max-width: 768px) {
         .filter-controls {
             flex-direction: column;
@@ -345,6 +347,8 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         </div>
       </div>
 
+
+
       		<!-- Sample Data Notice (from current) -->
       		<?php if ($sampleNotice['is_sample']): ?>
       		  <div class="<?php echo $isAdmin ? 'admin-notice' : 'sample-data-notice'; ?>">
@@ -372,7 +376,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       		  <div class="user-export-controls">
       		    <button onclick="exportChartToPDF()" class="user-export-btn pdf">
       		      <span class="icon">📄</span>
-      		      <span class="text">Export Chart to PDF</span>
+      		      <span class="text">Export to PDF</span>
       		    </button>
       		  </div>
 					</div>
@@ -383,15 +387,23 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       		    <table class="user-data-table" id="sourcesTable">
       		      <thead>
       		        <tr>
-      		          <th>Source</th>
+      		          <th>
+      		            <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllRows(this)">
+      		            Source
+      		          </th>
       		          <th>Visits</th>
       		          <th>Percentage</th>
       		        </tr>
       		      </thead>
       		      <tbody>
-      		        <?php foreach ($sourcesData as $source): ?>
-      		          <tr>
-      		            <td><?php echo htmlspecialchars($source['traffic_source']); ?></td>
+      		        <?php foreach ($sourcesData as $index => $source): ?>
+      		          <tr data-source-index="<?php echo $index; ?>" data-source-name="<?php echo htmlspecialchars($source['traffic_source']); ?>" 
+      		              data-visit-count="<?php echo $source['visit_count']; ?>" data-percentage="<?php echo $source['percentage']; ?>"
+      		              onclick="toggleRowSelection(this)" style="cursor: pointer;">
+      		            <td>
+      		              <input type="checkbox" class="row-checkbox" onclick="event.stopPropagation(); toggleRowSelection(this.closest('tr'))">
+      		              <?php echo htmlspecialchars($source['traffic_source']); ?>
+      		            </td>
       		            <td><?php echo number_format($source['visit_count']); ?></td>
       		            <td><?php echo $source['percentage']; ?>%</td>
       		          </tr>
@@ -450,6 +462,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       selectedSources: []
     };
 
+
     // Create chart context
     let currentChart = null;
     const ctx = document.getElementById('sourcesChart').getContext('2d');
@@ -461,6 +474,36 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       
       // Use filtered data for chart
       const chartData = getFilteredChartData();
+      
+      // Check if there's no data to display
+      if (chartData.labels.length === 0) {
+        // Hide canvas and show no data message
+        const canvas = document.getElementById('sourcesChart');
+        const container = document.getElementById('chartContainer');
+        canvas.style.display = 'none';
+        
+        // Create or show no data message
+        let noDataMsg = container.querySelector('.no-data-chart-message');
+        if (!noDataMsg) {
+          noDataMsg = document.createElement('div');
+          noDataMsg.className = 'no-data-chart-message';
+          noDataMsg.style.cssText = 'text-align: center; padding: 40px; color: #666; font-size: 16px; background: #f8f9fa; border-radius: 8px; margin: 20px 0;';
+          noDataMsg.innerHTML = '<i class="fas fa-chart-pie" style="font-size: 48px; color: #ccc; display: block; margin-bottom: 15px;"></i><strong>No Data to Display</strong><br><small>Apply different filters to see chart data</small>';
+          container.appendChild(noDataMsg);
+        }
+        noDataMsg.style.display = 'block';
+        return;
+      }
+      
+      // Show canvas and hide no data message if data exists
+      const canvas = document.getElementById('sourcesChart');
+      const container = document.getElementById('chartContainer');
+      canvas.style.display = 'block';
+      
+      const noDataMsg = container.querySelector('.no-data-chart-message');
+      if (noDataMsg) {
+        noDataMsg.style.display = 'none';
+      }
       
       // Chart configuration (enhanced from current with sample data support)
       const config = {
@@ -624,6 +667,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function applyQuickFilter(type) {
+      
       // Clear other filters first
       document.getElementById('topSourcesFilter').value = 'all';
       document.getElementById('minPercentageFilter').value = '';
@@ -654,10 +698,13 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
           break;
         case 'minor':
           // For minor sources, show only sources < 1%
+          console.log('Processing minor filter');
           const minorSources = sourcesData.filter(source => {
             const pct = parseFloat(source.percentage);
+            console.log(`Source: ${source.traffic_source}, Percentage: ${pct}, Is < 1%: ${pct < 1}`);
             return pct < 1;
           }).map(source => source.traffic_source);
+          console.log('Minor sources found:', minorSources);
           currentFilters.selectedSources = minorSources;
           updateSourceCheckboxes();
           break;
@@ -778,6 +825,12 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       const summaryDiv = document.getElementById('filterSummary');
       const summaryText = document.getElementById('filterSummaryText');
       
+      // Check if there's no data after filtering
+      if (filteredData.length === 0) {
+        summaryDiv.style.display = 'none';
+        return;
+      }
+      
       if (filteredData.length === sourcesData.length) {
         summaryDiv.style.display = 'none';
         return;
@@ -882,6 +935,12 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 
     // Export table to CSV (enhanced with filtering support)
     function exportTableToCSV() {
+      // Check if there's data to export
+      if (filteredData.length === 0) {
+        alert('No data to export. Please adjust your filters to include some data.');
+        return;
+      }
+      
       let csv = [];
       
       // Add header
@@ -933,6 +992,12 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 
     // Export chart to PDF (enhanced with filtering support)
     async function exportChartToPDF() {
+      // Check if there's data to export
+      if (filteredData.length === 0) {
+        alert('No data to export. Please adjust your filters to include some data.');
+        return;
+      }
+      
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
         

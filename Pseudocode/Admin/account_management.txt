@@ -1,16 +1,3 @@
-Summary Table:
-
-Feature	Files Involved
-Register/Login- admin_register.php, admin_login.php, admin_auth.php
-
-View Users- admin_users.php, user_management.php, user_management.js, api_users.php
-
-Suspend/Restore/Delete Users- admin_users.php, user_management.php, user_management.js, api_users.php, functions.php
-
-Supporting- admin_header.php, admin_footer.php, config.php
-
-
-
 //admin_login.php
 START
     START session
@@ -281,3 +268,432 @@ DEFINE FUNCTION deleteUser WITH PARAMETERS conn, userId
     END TRY
 END FUNCTION
 
+
+
+
+//admin_user.php
+START
+
+    IMPORT authentication, config, and functions
+
+    INITIALIZE message as empty string
+    INITIALIZE messageType as empty string
+
+    IF the request method is POST THEN
+        IF 'action' and 'user_id' are set in POST data THEN
+            SET userId to integer value of 'user_id'
+            SWITCH on 'action'
+                CASE 'suspend':
+                    IF updateUserStatus succeeds THEN
+                        SET message to "User account has been suspended."
+                        SET messageType to "success"
+                    ELSE
+                        SET message to "Failed to suspend user account."
+                        SET messageType to "error"
+                    ENDIF
+                CASE 'restore':
+                    IF updateUserStatus succeeds THEN
+                        SET message to "User account has been restored."
+                        SET messageType to "success"
+                    ELSE
+                        SET message to "Failed to restore user account."
+                        SET messageType to "error"
+                    ENDIF
+                CASE 'delete':
+                    IF deleteUser succeeds THEN
+                        SET message to "User account has been deleted."
+                        SET messageType to "success"
+                    ELSE
+                        SET message to "Failed to delete user account."
+                        SET messageType to "error"
+                    ENDIF
+            END SWITCH
+        ENDIF
+    ENDIF
+
+    // Debug: Count users in database
+    EXECUTE SQL to count users in 'user' table
+    STORE result in debugCount
+
+    // Retrieve all users
+    INITIALIZE users as empty list
+    EXECUTE SQL to select user details from 'user' table
+    FOR each row in result
+        ADD row to users list
+    END FOR
+
+    // Render HTML
+    DISPLAY admin header
+
+    DISPLAY "User Management" title
+
+    IF message is not empty THEN
+        DISPLAY message with messageType
+    ENDIF
+
+    DISPLAY debug info: database user count and PHP array user count
+
+    IF users list is empty THEN
+        DISPLAY "No users found in the database."
+    ELSE
+        DISPLAY table of users with columns:
+            ID, Username, Email, Role, Status, Created, Actions
+
+        FOR each user in users
+            DISPLAY user details in table row
+            DISPLAY actions:
+                IF user is Active THEN
+                    DISPLAY Suspend button
+                ELSE
+                    DISPLAY Restore button
+                ENDIF
+                DISPLAY Delete button
+        END FOR
+    ENDIF
+
+    DISPLAY admin footer
+
+END
+
+
+
+
+//user_management.php
+START
+
+    IMPORT authentication_module
+    IMPORT config_module
+    IMPORT functions_module
+
+    SET pageTitle TO "User Management"
+
+    DISPLAY HTML HEADER WITH pageTitle AND STYLES
+
+    DISPLAY NAVIGATION MENU WITH LINKS:
+        - Home
+        - Overview
+        - User Management (active)
+        - CSV Mappings
+
+    DISPLAY MAIN SECTION:
+        DISPLAY "User Management" TITLE
+
+        DISPLAY NOTIFICATION AREA (hidden by default)
+
+        DISPLAY SEARCH CONTROLS:
+            - Text input for searching users by name, email, or username
+            - Search button
+
+        DISPLAY FILTER CONTROLS:
+            - All Users
+            - Active Users
+            - Suspended Users
+            - Admins
+            - End Users
+
+        DISPLAY USER MANAGEMENT CONTAINER:
+            - Show "Loading users..." by default
+
+    DISPLAY FOOTER WITH COPYRIGHT
+
+    LOAD JavaScript MODULE "user-management.js"
+
+    ON DOCUMENT READY:
+        CALL UserManagement.initUserManagement WITH 'userManagementContainer'
+
+        DEFINE showNotification(message, type):
+            DISPLAY notification with message and style based on type (success/error)
+            AUTO-HIDE after 5 seconds
+
+        OVERRIDE UserManagement.suspendUser:
+            CALL original suspendUser
+            IF success THEN
+                CALL showNotification("User has been suspended.", "success")
+            ELSE
+                CALL showNotification("Failed to suspend user: " + error_message, "error")
+
+        OVERRIDE UserManagement.restoreUser:
+            CALL original restoreUser
+            IF success THEN
+                CALL showNotification("User has been restored.", "success")
+            ELSE
+                CALL showNotification("Failed to restore user: " + error_message, "error")
+
+        OVERRIDE UserManagement.deleteUser:
+            CALL original deleteUser
+            IF success THEN
+                CALL showNotification("User has been deleted.", "success")
+            ELSE
+                CALL showNotification("Failed to delete user: " + error_message, "error")
+
+        FOR EACH filter button IN filter-controls:
+            ON CLICK:
+                SET clicked button as active
+                FILTER user rows in userManagementContainer based on:
+                    - All: show all
+                    - Active: show only users with status "Active"
+                    - Suspended: show only users with status "Suspended"
+                    - Admin: show only users with role "Admin"
+                    - End-User: show only users with role "End-User"
+
+        ON searchButton CLICK OR userSearch ENTER KEY:
+            GET search term
+            FOR EACH user row:
+                IF username, full name, or email CONTAINS search term:
+                    SHOW row
+                ELSE
+                    HIDE row
+
+END
+
+
+
+
+//user_management.js
+START
+
+    DEFINE OBJECT UserManagement
+
+        DEFINE FUNCTION suspendUser WITH PARAMETERS userId, callback
+            CALL performUserAction WITH 'suspend', userId, callback
+        END FUNCTION
+
+        DEFINE FUNCTION restoreUser WITH PARAMETERS userId, callback
+            CALL performUserAction WITH 'restore', userId, callback
+        END FUNCTION
+
+        DEFINE FUNCTION deleteUser WITH PARAMETERS userId, callback
+            IF user confirms deletion
+                CALL performUserAction WITH 'delete', userId, callback
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION getAllUsers WITH PARAMETER callback
+            CALL performUserAction WITH 'get_users', null, callback
+        END FUNCTION
+
+        DEFINE FUNCTION performUserAction WITH PARAMETERS action, userId, callback
+            CREATE data dictionary with 'action'
+            IF userId is not null
+                ADD 'user_id' to data
+            END IF
+
+            SEND POST request to 'api_users.php' with data
+            IF request is successful
+                IF callback is provided
+                    CALL callback WITH response data
+                END IF
+            ELSE
+                OUTPUT error to console
+                IF callback is provided
+                    CALL callback WITH error message
+                END IF
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION initUserManagement WITH PARAMETER containerId
+            GET container element by containerId
+            IF container does not exist
+                RETURN
+            END IF
+
+            CALL getAllUsers WITH callback
+                IF response is successful AND contains data
+                    CALL renderUserTable WITH container, response data
+                ELSE
+                    DISPLAY error message in container
+                END IF
+            END CALLBACK
+        END FUNCTION
+
+        DEFINE FUNCTION renderUserTable WITH PARAMETERS container, users
+            IF users list is empty
+                DISPLAY "No users found" in container
+                RETURN
+            END IF
+
+            CREATE HTML table with columns: ID, Username, Full Name, Email, Role, Status, Actions
+
+            FOR EACH user IN users
+                ADD row to table with user details
+                IF user is Active
+                    ADD "Suspend" button
+                ELSE
+                    ADD "Restore" button
+                END IF
+                ADD "Delete" button
+            END FOR
+
+            SET container's HTML to the table
+
+            FOR EACH "Suspend" button
+                ON click, CALL suspendUser WITH userId, callback to reload table or show error
+            END FOR
+
+            FOR EACH "Restore" button
+                ON click, CALL restoreUser WITH userId, callback to reload table or show error
+            END FOR
+
+            FOR EACH "Delete" button
+                ON click, CALL deleteUser WITH userId, callback to reload table or show error
+            END FOR
+        END FUNCTION
+
+    END OBJECT
+
+END
+
+
+
+
+
+//api_users.php
+START
+
+    IMPORT admin authentication
+    IMPORT config
+    IMPORT functions
+
+    SET response to a dictionary with keys: success (false), message ("No action specified"), data (null)
+
+    IF 'action' and 'user_id' are present in the request
+        SET userId to integer value of 'user_id' from request
+
+        SWITCH on 'action' from request
+            CASE 'suspend':
+                IF updateUserStatus with userId and 'Suspended' returns true
+                    SET response to success, message "User account has been suspended", data with userId and status 'Suspended'
+                ELSE
+                    SET response to failure, message "Failed to suspend user account"
+                ENDIF
+                BREAK
+
+            CASE 'restore':
+                IF updateUserStatus with userId and 'Active' returns true
+                    SET response to success, message "User account has been restored", data with userId and status 'Active'
+                ELSE
+                    SET response to failure, message "Failed to restore user account"
+                ENDIF
+                BREAK
+
+            CASE 'delete':
+                IF deleteUser with userId returns true
+                    SET response to success, message "User account has been deleted", data with userId and deleted true
+                ELSE
+                    SET response to failure, message "Failed to delete user account"
+                ENDIF
+                BREAK
+
+            CASE 'get_users':
+                SET users to result of getAllUsers
+                SET response to success, message "Users retrieved successfully", data users
+                BREAK
+
+            DEFAULT:
+                SET response to failure, message "Invalid action specified"
+        ENDSWITCH
+
+    ELSE
+        SET response to failure, message "Missing required parameters"
+    ENDIF
+
+    OUTPUT response as JSON
+
+END
+
+
+
+
+//admin_users.php
+START
+
+    IMPORT admin authentication
+    IMPORT config
+    IMPORT functions
+
+    SET message to empty string
+    SET messageType to empty string
+
+    IF the request method is POST
+        IF 'action' and 'user_id' are present in POST data
+            SET userId to integer value of 'user_id'
+            SWITCH on 'action'
+                CASE 'suspend':
+                    IF updateUserStatus with userId and 'Suspended' returns true
+                        SET message to "User account has been suspended."
+                        SET messageType to "success"
+                    ELSE
+                        SET message to "Failed to suspend user account."
+                        SET messageType to "error"
+                    ENDIF
+                    BREAK
+
+                CASE 'restore':
+                    IF updateUserStatus with userId and 'Active' returns true
+                        SET message to "User account has been restored."
+                        SET messageType to "success"
+                    ELSE
+                        SET message to "Failed to restore user account."
+                        SET messageType to "error"
+                    ENDIF
+                    BREAK
+
+                CASE 'delete':
+                    IF deleteUser with userId returns true
+                        SET message to "User account has been deleted."
+                        SET messageType to "success"
+                    ELSE
+                        SET message to "Failed to delete user account."
+                        SET messageType to "error"
+                    ENDIF
+                    BREAK
+            ENDSWITCH
+        ENDIF
+    ENDIF
+
+    // Debug: Count users in database
+    EXECUTE SQL "SELECT COUNT(*) as user_count FROM user"
+    STORE result in debugCount
+
+    // Get all users
+    INITIALIZE users as empty list
+    EXECUTE SQL "SELECT UserID, Username, Email, Role, AccountStatus, CreatedAt FROM user ORDER BY UserID"
+    FOR each row in result
+        ADD row to users
+    ENDFOR
+
+    // Render HTML page
+    DISPLAY page header and navigation
+
+    DISPLAY "User Management" title
+
+    IF message is not empty
+        DISPLAY message with messageType
+    ENDIF
+
+    DISPLAY debug info: user count from database and PHP array
+
+    IF users list is empty
+        DISPLAY "No users found in the database."
+    ELSE
+        DISPLAY table of users:
+            FOR each user
+                DISPLAY user info (ID, Username, Email, Role, Status, Created)
+                DISPLAY actions:
+                    IF user status is Active
+                        DISPLAY Suspend button (POST form)
+                    ELSE
+                        DISPLAY Restore button (POST form)
+                    ENDIF
+                    DISPLAY Delete button (POST form)
+            ENDFOR
+    ENDIF
+
+    DISPLAY page footer
+
+END
+
+
+
+
+//

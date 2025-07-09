@@ -41,10 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         unset($_SESSION['compare_ready']);
         unset($_SESSION['compare_error']);
         
-        // CRITICAL FIX: Set up basic comparison session structure BEFORE processing files
+        // CRITICAL FIX: Set up complete comparison session structure BEFORE processing files
+        // Store original filenames BEFORE processing
         $_SESSION['compare_files'] = [
             1 => [
-                'name' => $file1['name'],
+                'name' => $file1['name'], // ✅ Store original filename FIRST
                 'path' => null,  // Will be set after upload
                 'upload_id' => null,  // Will be set after upload
                 'needs_mapping' => false,  // Will be updated based on results
@@ -52,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
                 'result' => null  // Will be set after upload
             ],
             2 => [
-                'name' => $file2['name'],
+                'name' => $file2['name'], // ✅ Store original filename FIRST
                 'path' => null,  // Will be set after upload
                 'upload_id' => null,  // Will be set after upload
                 'needs_mapping' => false,  // Will be updated based on results
@@ -60,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
                 'result' => null  // Will be set after upload
             ]
         ];
-        error_log("Set initial compare_files session structure");
+        error_log("Set complete compare_files session structure with names: " . $file1['name'] . " and " . $file2['name']);
         
         // Process both files through handleCsvUpload - they will be saved with unique hash names
         $upload_result1 = handleCsvUploadForComparison($conn, $file1);
@@ -72,29 +73,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         $file1_needs_mapping = ($upload_result1['type'] === 'needs_mapping');
         $file2_needs_mapping = ($upload_result2['type'] === 'needs_mapping');
         
-        // Update the session data with results
+        // Update the session data with results - PRESERVE THE NAME
         $compareFiles = $_SESSION['compare_files'];  // Get the structure we just created
         
-        // Handle File 1 - UPDATE existing structure
+        // Handle File 1 - UPDATE existing structure but PRESERVE name
         if ($file1_valid || $file1_needs_mapping) {
             $compareFiles[1]['path'] = $upload_result1['file_path'] ?? null;
             $compareFiles[1]['upload_id'] = $upload_result1['upload_id'] ?? null;
             $compareFiles[1]['needs_mapping'] = $file1_needs_mapping;
             $compareFiles[1]['mapped'] = $file1_valid; // Already mapped if valid
             $compareFiles[1]['result'] = $upload_result1;
+            // CRITICAL: Name is already preserved from initial setup above
+            error_log("File 1 processed - name preserved: " . $compareFiles[1]['name']);
         }
         
-        // Handle File 2 - UPDATE existing structure
+        // Handle File 2 - UPDATE existing structure but PRESERVE name
         if ($file2_valid || $file2_needs_mapping) {
             $compareFiles[2]['path'] = $upload_result2['file_path'] ?? null;
             $compareFiles[2]['upload_id'] = $upload_result2['upload_id'] ?? null;
             $compareFiles[2]['needs_mapping'] = $file2_needs_mapping;
             $compareFiles[2]['mapped'] = $file2_valid; // Already mapped if valid
             $compareFiles[2]['result'] = $upload_result2;
+            // CRITICAL: Name is already preserved from initial setup above
+            error_log("File 2 processed - name preserved: " . $compareFiles[2]['name']);
         }
         
         // Update session with complete information
         $_SESSION['compare_files'] = $compareFiles;
+        error_log("Updated compare_files session with names preserved: File1=" . ($compareFiles[1]['name'] ?? 'NOT SET') . ", File2=" . ($compareFiles[2]['name'] ?? 'NOT SET'));
         error_log("Updated compare_files session with complete information: " . json_encode(array_keys($compareFiles)));
         
         session_write_close();
@@ -183,6 +189,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
 if (isset($_SESSION['compare_ready']) && $_SESSION['compare_ready'] && isset($_SESSION['compare_files'])) {
     $compareFiles = $_SESSION['compare_files'];
     
+    // CRITICAL FIX: Ensure file names are available for display
+    foreach ([1, 2] as $fileIndex) {
+        if (isset($compareFiles[$fileIndex]['upload_id']) && 
+            (!isset($compareFiles[$fileIndex]['name']) || $compareFiles[$fileIndex]['name'] === 'Unknown file')) {
+            
+            // Try to get filename from database
+            $uploadId = $compareFiles[$fileIndex]['upload_id'];
+            $stmt = $conn->prepare("SELECT FileName FROM csv_upload WHERE UploadID = ?");
+            $stmt->bind_param("i", $uploadId);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($row = $result->fetch_assoc()) {
+                $dbFileName = $row['FileName'];
+                // Remove hash prefix if present
+                $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $dbFileName);
+                $_SESSION['compare_files'][$fileIndex]['name'] = $cleanName;
+                error_log("RECOVERED: File $fileIndex name from database: $cleanName");
+            }
+        }
+    }
+    
     // Both files should now be mapped and have upload IDs
     if (isset($compareFiles[1]['upload_id']) && isset($compareFiles[2]['upload_id'])) {
         try {
@@ -204,7 +232,8 @@ if (isset($_SESSION['compare_ready']) && $_SESSION['compare_ready'] && isset($_S
     
     // Clear the comparison session data
     unset($_SESSION['compare_ready']);
-    unset($_SESSION['compare_files']);
+    // Don't unset compare_files yet - we need the names for display
+    // unset($_SESSION['compare_files']);
 }
 
 // Check for comparison error from mapping
@@ -466,19 +495,19 @@ function compareCSVFiles($file1_path, $file2_path) {
 
 function findMetricColumn($headers, $metric) {
     $metric_variations = [
-        'sessions' => ['Sessions', 'sessions', 'session', 'total_sessions', 'User Sessions', 'visits'],
-        'engaged_sessions' => ['Engaged sessions', 'engaged_sessions', 'engaged sessions', 'engagedsessions', 'Engaged Sessions'],
+        'sessions' => ['Sessions', 'sessions', 'session', 'total_sessions', 'User Sessions', 'visits', 'Visits'],
+        'engaged_sessions' => ['Engaged sessions', 'engaged_sessions', 'engaged sessions', 'engagedsessions', 'Engaged Sessions', 'Active Sessions'],
         'engagement_rate' => ['Engagement rate', 'engagement_rate', 'engagement rate', 'engagementrate'],
-        'average_engagement_time_per_session' => ['Average engagement time per session', 'average_engagement_time_per_session', 'avg_engagement_time', 'engagement_time', 'Average engagement time', 'Avg Session Time'],
-        'events_per_session' => ['Events per session', 'events_per_session', 'events per session', 'eventspersession', 'Events Per Session'],
-        'event_count' => ['Event count', 'event_count', 'events', 'total_events', 'Events', 'Total Events'],
-        'key_events' => ['Key events', 'key_events', 'key events', 'keyevents', 'Conversions', 'conversions'],
-        'session_key_event_rate' => ['Session key event rate', 'session_key_event_rate', 'key_event_rate', 'conversion_rate', 'Session conversion rate', 'Conversion Rate'],
-        'total_revenue' => ['Total revenue', 'total_revenue', 'revenue', 'total revenue', 'Revenue', 'Purchase revenue'],
+        'average_engagement_time_per_session' => ['Average engagement time per session', 'average_engagement_time_per_session', 'avg_engagement_time', 'engagement_time', 'Average engagement time', 'Avg Session Time', 'Session Length'],
+        'events_per_session' => ['Events per session', 'events_per_session', 'events per session', 'eventspersession', 'Events Per Session', 'Events/Session'],
+        'event_count' => ['Event count', 'event_count', 'events', 'total_events', 'Events', 'Total Events', 'Event Total'],
+        'key_events' => ['Key events', 'key_events', 'key events', 'keyevents', 'Conversions', 'conversions', 'Goals'],
+        'session_key_event_rate' => ['Session key event rate', 'session_key_event_rate', 'key_event_rate', 'conversion_rate', 'Session conversion rate', 'Conversion Rate', 'Goal Rate'],
+        'total_revenue' => ['Total revenue', 'total_revenue', 'revenue', 'total revenue', 'Revenue', 'Purchase revenue', 'Sales Revenue'],
         'total_page_views' => ['total_page_views', 'page_views', 'pageviews', 'Views', 'Page views', 'Pageviews'],
         'unique_visitors' => ['unique_visitors', 'unique visitors', 'users', 'Users', 'Total users', 'Active users'],
         'average_session_duration' => ['average_session_duration', 'avg_session_duration', 'session_duration', 'Average session duration', 'Session duration', 'Avg Session Time'],
-        'bounce_rate' => ['bounce_rate', 'bounce rate', 'bouncerate', 'Bounce rate', 'Bounce Rate'],
+        'bounce_rate' => ['bounce_rate', 'bounce rate', 'bouncerate', 'Bounce rate', 'Bounce Rate', 'Exit Rate'],
         'traffic_source' => ['Traffic Source', 'traffic_source', 'Session primary channel group (Default channel group)', 'Channel', 'Source']
     ];
 
@@ -493,7 +522,7 @@ function findMetricColumn($headers, $metric) {
         }
     }
     
-    // FIXED: Only try conversion if direct match failed AND to prevent infinite recursion
+    // FIXED: Enhanced conversion logic for bounce rate vs engagement rate
     if ($metric === 'bounce_rate') {
         // Look for engagement rate variations directly (no recursive call)
         $engagement_variations = $metric_variations['engagement_rate'] ?? [];
@@ -2309,15 +2338,20 @@ function calculateStats($values) {
                 <!-- Debug Information -->
                 <div class="compare-alert compare-alert-info">
                     <h4><i class="fas fa-bug"></i> Debug Information</h4>
+                    <p><strong>File Names:</strong><br>
+                    <small>Period 1: <?php echo isset($_SESSION['compare_files'][1]['name']) ? htmlspecialchars($_SESSION['compare_files'][1]['name']) : 'Unknown'; ?> | 
+                    Period 2: <?php echo isset($_SESSION['compare_files'][2]['name']) ? htmlspecialchars($_SESSION['compare_files'][2]['name']) : 'Unknown'; ?></small></p>
+                    
                     <p><strong>Available CSV Headers:</strong><br>
-                    <small><?php echo implode(' | ', $comparison_results['headers']['common_headers']); ?></small></p>
+                    <small>Period 1: <?php echo implode(' | ', $comparison_results['headers']['file1_headers'] ?? []); ?></small><br>
+                    <small>Period 2: <?php echo implode(' | ', $comparison_results['headers']['file2_headers'] ?? []); ?></small></p>
 
                     <p><strong>Analytics Metrics Detection Results:</strong><br>
                     <?php 
                     $all_metrics = ['sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
-                                   'events_per_session', 'event_count', 'key_events', 'session_key_event_rate',
-                                   'total_revenue', 'total_page_views', 'unique_visitors', 'average_session_duration',
-                                   'bounce_rate'];
+                                'events_per_session', 'event_count', 'key_events', 'session_key_event_rate',
+                                'total_revenue', 'total_page_views', 'unique_visitors', 'average_session_duration',
+                                'bounce_rate', 'traffic_source'];
 
                     foreach ($all_metrics as $metric) {
                         $found = isset($comparison_results['analytics_metrics'][$metric]);
@@ -2325,7 +2359,7 @@ function calculateStats($values) {
                         $status = $found ? '✓ Found' : '✗ Not Found';
                         echo '<small style="color: ' . $color . ';">' . $metric . ': ' . $status;
                         if ($found) {
-                            echo ' → ' . $comparison_results['analytics_metrics'][$metric]['column_name'];
+                            echo ' → ' . htmlspecialchars($comparison_results['analytics_metrics'][$metric]['column_name']);
                         }
                         echo '</small><br>';
                     }
