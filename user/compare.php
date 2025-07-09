@@ -179,6 +179,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
     }
 }
 
+// Handle failed mapping redirect with validation errors
+if (isset($_GET['mapping_failed']) && $_GET['mapping_failed'] == '1') {
+    error_log("Mapping failed redirect detected in compare.php");
+    
+    // Check if we have validation errors from mapping
+    if (isset($_SESSION['compare_validation_errors']) && !empty($_SESSION['compare_validation_errors'])) {
+        $validationErrors = $_SESSION['compare_validation_errors'];
+        $fileInfo = $_SESSION['failed_compare_file_info'] ?? null;
+        
+        // Create detailed error message for comparison context
+        $uniqueErrors = array_unique($validationErrors);
+        $errorCount = count($validationErrors);
+        $uniqueCount = count($uniqueErrors);
+        
+        if ($uniqueCount > 15) {
+            // Too many errors - show summary
+            $sampleErrors = array_slice($uniqueErrors, 0, 5);
+            $errorMessage = "File " . ($fileInfo['file_index'] ?? 'X') . " contains " . $errorCount . " validation errors across multiple rows. " .
+                           "Sample errors: " . implode('; ', $sampleErrors) . "... " .
+                           "Please fix the data issues in your CSV file and upload again.";
+        } else {
+            $errorMessage = "File " . ($fileInfo['file_index'] ?? 'X') . " validation errors: " . implode('; ', $uniqueErrors) . 
+                           ". Please correct these issues and upload again.";
+        }
+        
+        $error_message = $errorMessage;
+        $show_detailed_errors = true;
+        $compare_validation_errors = $validationErrors;
+        
+        // Clear the session variables
+        unset($_SESSION['compare_validation_errors']);
+        unset($_SESSION['failed_compare_file_info']);
+    }
+}
+
 // Check if we're returning from mapping and ready to compare
 if (isset($_SESSION['compare_ready']) && $_SESSION['compare_ready'] && isset($_SESSION['compare_files'])) {
     $compareFiles = $_SESSION['compare_files'];
@@ -1811,7 +1846,7 @@ function calculateStats($values) {
         <?php include 'user_header.php'; ?>
 
         <main>
-						<section class="user-section">
+			<section class="user-section">
             		<h2>Analytics CSV Comparison</h2>
             		<p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
 
@@ -1819,169 +1854,278 @@ function calculateStats($values) {
             <div class="compare-user-upload-form">
                 <h3><i class="fas fa-upload"></i> Upload Analytics CSV Files</h3>
                 
-                <?php if ($error_message): ?>
-                    <?php 
-                    // Check if this is a validation error with suggestions OR a data validation error
-                    if (strpos($error_message, 'Data validation errors') !== false || 
-                        strpos($error_message, 'No valid data to save') !== false ||
-                        strpos($error_message, 'CSV parsing error') !== false ||
-                        strpos($error_message, 'trademark symbols') !== false ||
-                        strpos($error_message, 'scientific notation') !== false ||
-                        strpos($error_message, 'non-numeric characters') !== false ||
-                        strpos($error_message, 'Empty value') !== false ||
-                        strpos($error_message, 'whitespace') !== false): ?>
-                        <?php
-                        // Enhanced error message parsing to extract suggestions
-                        $errorMessage = $error_message;
-                        $errorMessage = str_replace("Error processing files: ", "", $errorMessage);
-
-                        error_log("=== COMPARE.PHP ERROR PARSING DEBUG ===");
-                        error_log("Original error message: " . $error_message);
-                        error_log("Cleaned error message: " . $errorMessage);
-
-                        // Determine the scenario and display appropriate prefix
-                        $errorPrefix = "";
-                        $allErrorList = [];
-                        $file1ErrorCount = 0;
-                        $file2ErrorCount = 0;
-
-                        // Check for specific file failure patterns
-                        if (strpos($errorMessage, 'File 1 uploaded successfully, but File 2 failed: ') !== false) {
-                            $errorPrefix = "✅ File 1 uploaded successfully, but ❌ File 2 failed";
-                            $cleanErrorForFile2 = str_replace('File 1 uploaded successfully, but File 2 failed: ', '', $errorMessage);
-                            $cleanErrorForFile2 = str_replace("Data validation errors found: ", "", $cleanErrorForFile2);
-                            $cleanErrorForFile2 = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanErrorForFile2);
+                <?php if (!empty($error_message)): ?>
+                    <?php if (isset($show_detailed_errors) && $show_detailed_errors && isset($compare_validation_errors)): ?>
+                        <!-- Enhanced validation errors display for comparison -->
+                        <div class="user-alert user-alert-danger">
+                            <h4><i class="fas fa-exclamation-triangle"></i> File Validation Failed</h4>
+                            <p><strong>One of your comparison files couldn't be processed due to data validation errors.</strong></p>
                             
-                            error_log("File 2 failed scenario - extracting File 2 errors");
-                            error_log("Clean error for File 2: " . $cleanErrorForFile2);
+                            <?php if (isset($_SESSION['failed_compare_file_info'])): ?>
+                                <?php $fileInfo = $_SESSION['failed_compare_file_info']; ?>
+                                <div style="margin: 15px 0; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 5px;">
+                                    <strong>File:</strong> <?php echo htmlspecialchars($fileInfo['name']); ?> (File <?php echo $fileInfo['file_index']; ?>)<br>
+                                    <strong>Mapping Status:</strong> Column mapping was successful<br>
+                                    <strong>Issue:</strong> Data validation failed during processing (<?php echo $fileInfo['error_count']; ?> errors, <?php echo $fileInfo['unique_error_count']; ?> unique types)
+                                </div>
+                            <?php endif; ?>
                             
-                            // FIXED ERROR PARSING - Replace the existing parsing with this robust approach
-                            if (strpos($cleanErrorForFile2, 'No valid data to save') !== false) {
-                                $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
-                                $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
-                                $file2ErrorCount = 2;
-                            } else {
-                                // Use the robust error splitting approach
-                                if (strpos($cleanErrorForFile2, '; Row') !== false) {
-                                    // Split by '; Row' and handle properly
-                                    $parts = explode('; Row ', $cleanErrorForFile2);
+                            <?php 
+                            $errors = $compare_validation_errors;
+                            $uniqueErrors = array_unique($errors);
+                            $errorCount = count($errors);
+                            $uniqueCount = count($uniqueErrors);
+                            ?>
+                            
+                            <div style="margin: 15px 0;">
+                                <p><strong>Found <?php echo $errorCount; ?> validation issues<?php echo $uniqueCount != $errorCount ? " ({$uniqueCount} unique types)" : ""; ?>:</strong></p>
+                                
+                                <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f9f9f9;">
+                                    <?php 
+                                    $displayErrors = $uniqueCount > 10 ? array_slice($uniqueErrors, 0, 10) : $uniqueErrors;
+                                    foreach ($displayErrors as $error): 
+                                    ?>
+                                        <div style="margin-bottom: 8px; padding: 5px; background: #fff; border-left: 3px solid #dc3545; border-radius: 3px;">
+                                            <?php echo htmlspecialchars($error); ?>
+                                        </div>
+                                    <?php endforeach; ?>
                                     
-                                    // First part contains the initial "Row X: ..." 
-                                    if (!empty(trim($parts[0]))) {
-                                        $allErrorList[] = trim($parts[0]);
-                                        $file2ErrorCount++;
-                                    }
-                                    
-                                    // Subsequent parts need "Row " prepended
-                                    for ($i = 1; $i < count($parts); $i++) {
-                                        $part = trim($parts[$i]);
-                                        if (!empty($part)) {
-                                            $allErrorList[] = 'Row ' . $part;
+                                    <?php if ($uniqueCount > 10): ?>
+                                        <div style="font-style: italic; color: #666; text-align: center; margin-top: 10px;">
+                                            ... and <?php echo ($uniqueCount - 10); ?> more error types
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            
+                            <div style="background: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 5px; padding: 15px; margin-top: 15px;">
+                                <h5><i class="fas fa-lightbulb"></i> Quick Fix Guide:</h5>
+                                <ul style="margin: 10px 0; padding-left: 20px;">
+                                    <li><strong>Numbers:</strong> Remove text, symbols from numeric columns (e.g., "1,200" → "1200")</li>
+                                    <li><strong>Percentages:</strong> Use decimal format (0.25) or with % symbol (25%)</li>
+                                    <li><strong>Empty values:</strong> Fill in missing data or use 0 for zero values</li>
+                                    <li><strong>Special characters:</strong> Remove currency symbols, commas from numbers</li>
+                                </ul>
+                                <p><strong>💡 Tip:</strong> Open your CSV in Excel/Google Sheets, fix the issues, save and upload again.</p>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <!-- Check if this is a validation error with suggestions OR a data validation error -->
+                        <?php if (strpos($error_message, 'Data validation errors') !== false || 
+                                strpos($error_message, 'No valid data to save') !== false ||
+                                strpos($error_message, 'CSV parsing error') !== false ||
+                                strpos($error_message, 'trademark symbols') !== false ||
+                                strpos($error_message, 'scientific notation') !== false ||
+                                strpos($error_message, 'non-numeric characters') !== false ||
+                                strpos($error_message, 'Empty value') !== false ||
+                                strpos($error_message, 'whitespace') !== false): ?>
+                            
+                            <?php
+                            // Enhanced error message parsing to extract suggestions (same as existing logic)
+                            $errorMessage = $error_message;
+                            $errorMessage = str_replace("Error processing files: ", "", $errorMessage);
+
+                            error_log("=== COMPARE.PHP ERROR PARSING DEBUG ===");
+                            error_log("Original error message: " . $error_message);
+                            error_log("Cleaned error message: " . $errorMessage);
+
+                            // Determine the scenario and display appropriate prefix
+                            $errorPrefix = "";
+                            $allErrorList = [];
+                            $file1ErrorCount = 0;
+                            $file2ErrorCount = 0;
+
+                            // Check for specific file failure patterns
+                            if (strpos($errorMessage, 'File 1 uploaded successfully, but File 2 failed: ') !== false) {
+                                $errorPrefix = "✅ File 1 uploaded successfully, but ❌ File 2 failed";
+                                $cleanErrorForFile2 = str_replace('File 1 uploaded successfully, but File 2 failed: ', '', $errorMessage);
+                                $cleanErrorForFile2 = str_replace("Data validation errors found: ", "", $cleanErrorForFile2);
+                                $cleanErrorForFile2 = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanErrorForFile2);
+                                
+                                error_log("File 2 failed scenario - extracting File 2 errors");
+                                error_log("Clean error for File 2: " . $cleanErrorForFile2);
+                                
+                                // FIXED ERROR PARSING - Replace the existing parsing with this robust approach
+                                if (strpos($cleanErrorForFile2, 'No valid data to save') !== false) {
+                                    $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
+                                    $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
+                                    $file2ErrorCount = 2;
+                                } else {
+                                    // Use the robust error splitting approach
+                                    if (strpos($cleanErrorForFile2, '; Row') !== false) {
+                                        // Split by '; Row' and handle properly
+                                        $parts = explode('; Row ', $cleanErrorForFile2);
+                                        
+                                        // First part contains the initial "Row X: ..." 
+                                        if (!empty(trim($parts[0]))) {
+                                            $allErrorList[] = trim($parts[0]);
+                                            $file2ErrorCount++;
+                                        }
+                                        
+                                        // Subsequent parts need "Row " prepended
+                                        for ($i = 1; $i < count($parts); $i++) {
+                                            $part = trim($parts[$i]);
+                                            if (!empty($part)) {
+                                                $allErrorList[] = 'Row ' . $part;
+                                                $file2ErrorCount++;
+                                            }
+                                        }
+                                    } else {
+                                        // Single error case
+                                        if (!empty(trim($cleanErrorForFile2))) {
+                                            $allErrorList[] = trim($cleanErrorForFile2);
                                             $file2ErrorCount++;
                                         }
                                     }
-                                } else {
-                                    // Single error case
-                                    if (!empty(trim($cleanErrorForFile2))) {
-                                        $allErrorList[] = trim($cleanErrorForFile2);
-                                        $file2ErrorCount++;
-                                    }
+                                    
+                                    // Remove any empty entries and reindex
+                                    $allErrorList = array_filter($allErrorList, function($item) {
+                                        return !empty(trim($item));
+                                    });
+                                    $allErrorList = array_values($allErrorList);
+                                    $file2ErrorCount = count($allErrorList); // Correct count based on actual items
                                 }
                                 
-                                // Remove any empty entries and reindex
-                                $allErrorList = array_filter($allErrorList, function($item) {
-                                    return !empty(trim($item));
-                                });
-                                $allErrorList = array_values($allErrorList);
-                                $file2ErrorCount = count($allErrorList); // Correct count based on actual items
-                            }
-                            
-                        } elseif (strpos($errorMessage, 'File 2 uploaded successfully, but File 1 failed: ') !== false) {
-                            $errorPrefix = "❌ File 1 failed, but ✅ File 2 uploaded successfully";
-                            $cleanErrorForFile1 = str_replace('File 2 uploaded successfully, but File 1 failed: ', '', $errorMessage);
-                            $cleanErrorForFile1 = str_replace("Data validation errors found: ", "", $cleanErrorForFile1);
-                            $cleanErrorForFile1 = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanErrorForFile1);
-                            
-                            error_log("File 1 failed scenario - extracting File 1 errors");
-                            error_log("Clean error for File 1: " . $cleanErrorForFile1);
-                            
-                            // FIXED ERROR PARSING - Use the same robust approach
-                            if (strpos($cleanErrorForFile1, 'No valid data to save') !== false) {
-                                $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
-                                $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
-                                $file1ErrorCount = 2;
-                            } else {
-                                // Use the robust error splitting approach
-                                if (strpos($cleanErrorForFile1, '; Row') !== false) {
-                                    // Split by '; Row' and handle properly
-                                    $parts = explode('; Row ', $cleanErrorForFile1);
-                                    
-                                    // First part contains the initial "Row X: ..." 
-                                    if (!empty(trim($parts[0]))) {
-                                        $allErrorList[] = trim($parts[0]);
-                                        $file1ErrorCount++;
-                                    }
-                                    
-                                    // Subsequent parts need "Row " prepended
-                                    for ($i = 1; $i < count($parts); $i++) {
-                                        $part = trim($parts[$i]);
-                                        if (!empty($part)) {
-                                            $allErrorList[] = 'Row ' . $part;
+                            } elseif (strpos($errorMessage, 'File 2 uploaded successfully, but File 1 failed: ') !== false) {
+                                $errorPrefix = "❌ File 1 failed, but ✅ File 2 uploaded successfully";
+                                $cleanErrorForFile1 = str_replace('File 2 uploaded successfully, but File 1 failed: ', '', $errorMessage);
+                                $cleanErrorForFile1 = str_replace("Data validation errors found: ", "", $cleanErrorForFile1);
+                                $cleanErrorForFile1 = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanErrorForFile1);
+                                
+                                error_log("File 1 failed scenario - extracting File 1 errors");
+                                error_log("Clean error for File 1: " . $cleanErrorForFile1);
+                                
+                                // FIXED ERROR PARSING - Use the same robust approach
+                                if (strpos($cleanErrorForFile1, 'No valid data to save') !== false) {
+                                    $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
+                                    $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
+                                    $file1ErrorCount = 2;
+                                } else {
+                                    // Use the robust error splitting approach
+                                    if (strpos($cleanErrorForFile1, '; Row') !== false) {
+                                        // Split by '; Row' and handle properly
+                                        $parts = explode('; Row ', $cleanErrorForFile1);
+                                        
+                                        // First part contains the initial "Row X: ..." 
+                                        if (!empty(trim($parts[0]))) {
+                                            $allErrorList[] = trim($parts[0]);
+                                            $file1ErrorCount++;
+                                        }
+                                        
+                                        // Subsequent parts need "Row " prepended
+                                        for ($i = 1; $i < count($parts); $i++) {
+                                            $part = trim($parts[$i]);
+                                            if (!empty($part)) {
+                                                $allErrorList[] = 'Row ' . $part;
+                                                $file1ErrorCount++;
+                                            }
+                                        }
+                                    } else {
+                                        // Single error case
+                                        if (!empty(trim($cleanErrorForFile1))) {
+                                            $allErrorList[] = trim($cleanErrorForFile1);
                                             $file1ErrorCount++;
                                         }
                                     }
-                                } else {
-                                    // Single error case
-                                    if (!empty(trim($cleanErrorForFile1))) {
-                                        $allErrorList[] = trim($cleanErrorForFile1);
-                                        $file1ErrorCount++;
+                                    
+                                    // Remove any empty entries and reindex
+                                    $allErrorList = array_filter($allErrorList, function($item) {
+                                        return !empty(trim($item));
+                                    });
+                                    $allErrorList = array_values($allErrorList);
+                                    $file1ErrorCount = count($allErrorList); // Correct count based on actual items
+                                }
+                                
+                            } elseif (strpos($errorMessage, ' | ') !== false) {
+                                // Both files invalid - parse separately
+                                $errorPrefix = "❌ Both files failed validation";
+                                $fileParts = explode(' | ', $errorMessage);
+                                
+                                error_log("Both files failed - parsing " . count($fileParts) . " file parts");
+                                
+                                foreach ($fileParts as $index => $part) {
+                                    $fileNumber = $index + 1;
+                                    $cleanError = $part;
+                                    
+                                    // Clean the error message
+                                    if (strpos($part, 'File 1: ') !== false) {
+                                        $cleanError = str_replace('File 1: ', '', $part);
+                                        $fileNumber = 1;
+                                    } elseif (strpos($part, 'File 2: ') !== false) {
+                                        $cleanError = str_replace('File 2: ', '', $part);
+                                        $fileNumber = 2;
+                                    }
+                                    
+                                    $cleanError = str_replace("Data validation errors found: ", "", $cleanError);
+                                    $cleanError = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanError);
+                                    
+                                    error_log("Processing File $fileNumber errors: " . $cleanError);
+                                    
+                                    // Add file separator
+                                    $allErrorList[] = "--- File $fileNumber Errors ---";
+                                    
+                                    if (strpos($cleanError, 'No valid data to save') !== false) {
+                                        $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
+                                        $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
+                                        if ($fileNumber === 1) {
+                                            $file1ErrorCount = 2;
+                                        } else {
+                                            $file2ErrorCount = 2;
+                                        }
+                                    } else {
+                                        // FIXED ERROR PARSING - Use the robust approach
+                                        if (strpos($cleanError, '; Row') !== false) {
+                                            // Split by '; Row' and handle properly
+                                            $parts = explode('; Row ', $cleanError);
+                                            
+                                            // First part contains the initial "Row X: ..." 
+                                            if (!empty(trim($parts[0]))) {
+                                                $allErrorList[] = trim($parts[0]);
+                                                if ($fileNumber === 1) {
+                                                    $file1ErrorCount++;
+                                                } else {
+                                                    $file2ErrorCount++;
+                                                }
+                                            }
+                                            
+                                            // Subsequent parts need "Row " prepended
+                                            for ($i = 1; $i < count($parts); $i++) {
+                                                $part = trim($parts[$i]);
+                                                if (!empty($part)) {
+                                                    $allErrorList[] = 'Row ' . $part;
+                                                    if ($fileNumber === 1) {
+                                                        $file1ErrorCount++;
+                                                    } else {
+                                                        $file2ErrorCount++;
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            // Single error case
+                                            if (!empty(trim($cleanError))) {
+                                                $allErrorList[] = trim($cleanError);
+                                                if ($fileNumber === 1) {
+                                                    $file1ErrorCount++;
+                                                } else {
+                                                    $file2ErrorCount++;
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                                 
-                                // Remove any empty entries and reindex
-                                $allErrorList = array_filter($allErrorList, function($item) {
-                                    return !empty(trim($item));
-                                });
-                                $allErrorList = array_values($allErrorList);
-                                $file1ErrorCount = count($allErrorList); // Correct count based on actual items
-                            }
-                            
-                        } elseif (strpos($errorMessage, ' | ') !== false) {
-                            // Both files invalid - parse separately
-                            $errorPrefix = "❌ Both files failed validation";
-                            $fileParts = explode(' | ', $errorMessage);
-                            
-                            error_log("Both files failed - parsing " . count($fileParts) . " file parts");
-                            
-                            foreach ($fileParts as $index => $part) {
-                                $fileNumber = $index + 1;
-                                $cleanError = $part;
-                                
-                                // Clean the error message
-                                if (strpos($part, 'File 1: ') !== false) {
-                                    $cleanError = str_replace('File 1: ', '', $part);
-                                    $fileNumber = 1;
-                                } elseif (strpos($part, 'File 2: ') !== false) {
-                                    $cleanError = str_replace('File 2: ', '', $part);
-                                    $fileNumber = 2;
-                                }
-                                
+                            } else {
+                                // Single file error or generic error - should not happen in compare scenario
+                                $cleanError = $errorMessage;
                                 $cleanError = str_replace("Data validation errors found: ", "", $cleanError);
                                 $cleanError = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanError);
                                 
-                                error_log("Processing File $fileNumber errors: " . $cleanError);
-                                
-                                // Add file separator
-                                $allErrorList[] = "--- File $fileNumber Errors ---";
+                                error_log("Single file/generic error scenario: " . $cleanError);
                                 
                                 if (strpos($cleanError, 'No valid data to save') !== false) {
                                     $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
                                     $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
-                                    if ($fileNumber === 1) {
-                                        $file1ErrorCount = 2;
-                                    } else {
-                                        $file2ErrorCount = 2;
-                                    }
+                                    $file1ErrorCount = 2; // Assume it's file 1 if not specified
                                 } else {
                                     // FIXED ERROR PARSING - Use the robust approach
                                     if (strpos($cleanError, '; Row') !== false) {
@@ -1991,11 +2135,7 @@ function calculateStats($values) {
                                         // First part contains the initial "Row X: ..." 
                                         if (!empty(trim($parts[0]))) {
                                             $allErrorList[] = trim($parts[0]);
-                                            if ($fileNumber === 1) {
-                                                $file1ErrorCount++;
-                                            } else {
-                                                $file2ErrorCount++;
-                                            }
+                                            $file1ErrorCount++;
                                         }
                                         
                                         // Subsequent parts need "Row " prepended
@@ -2003,213 +2143,155 @@ function calculateStats($values) {
                                             $part = trim($parts[$i]);
                                             if (!empty($part)) {
                                                 $allErrorList[] = 'Row ' . $part;
-                                                if ($fileNumber === 1) {
-                                                    $file1ErrorCount++;
-                                                } else {
-                                                    $file2ErrorCount++;
-                                                }
+                                                $file1ErrorCount++;
                                             }
                                         }
                                     } else {
                                         // Single error case
                                         if (!empty(trim($cleanError))) {
                                             $allErrorList[] = trim($cleanError);
-                                            if ($fileNumber === 1) {
-                                                $file1ErrorCount++;
-                                            } else {
-                                                $file2ErrorCount++;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                        } else {
-                            // Single file error or generic error - should not happen in compare scenario
-                            $cleanError = $errorMessage;
-                            $cleanError = str_replace("Data validation errors found: ", "", $cleanError);
-                            $cleanError = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanError);
-                            
-                            error_log("Single file/generic error scenario: " . $cleanError);
-                            
-                            if (strpos($cleanError, 'No valid data to save') !== false) {
-                                $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
-                                $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
-                                $file1ErrorCount = 2; // Assume it's file 1 if not specified
-                            } else {
-                                // FIXED ERROR PARSING - Use the robust approach
-                                if (strpos($cleanError, '; Row') !== false) {
-                                    // Split by '; Row' and handle properly
-                                    $parts = explode('; Row ', $cleanError);
-                                    
-                                    // First part contains the initial "Row X: ..." 
-                                    if (!empty(trim($parts[0]))) {
-                                        $allErrorList[] = trim($parts[0]);
-                                        $file1ErrorCount++;
-                                    }
-                                    
-                                    // Subsequent parts need "Row " prepended
-                                    for ($i = 1; $i < count($parts); $i++) {
-                                        $part = trim($parts[$i]);
-                                        if (!empty($part)) {
-                                            $allErrorList[] = 'Row ' . $part;
                                             $file1ErrorCount++;
                                         }
                                     }
-                                } else {
-                                    // Single error case
-                                    if (!empty(trim($cleanError))) {
-                                        $allErrorList[] = trim($cleanError);
-                                        $file1ErrorCount++;
-                                    }
+                                    
+                                    // Remove any empty entries and reindex
+                                    $allErrorList = array_filter($allErrorList, function($item) {
+                                        return !empty(trim($item));
+                                    });
+                                    $allErrorList = array_values($allErrorList);
+                                    $file1ErrorCount = count(array_filter($allErrorList, function($item) {
+                                        return strpos($item, '--- File') === false; // Don't count file separators
+                                    }));
                                 }
-                                
-                                // Remove any empty entries and reindex
-                                $allErrorList = array_filter($allErrorList, function($item) {
-                                    return !empty(trim($item));
-                                });
-                                $allErrorList = array_values($allErrorList);
-                                $file1ErrorCount = count(array_filter($allErrorList, function($item) {
-                                    return strpos($item, '--- File') === false; // Don't count file separators
-                                }));
                             }
-                        }
 
-                        // Calculate totals and log debug info
-                        $totalErrors = count($allErrorList);
-                        // Don't count file separators in total
-                        $separatorCount = 0;
-                        foreach ($allErrorList as $error) {
-                            if (strpos($error, '--- File') !== false) {
-                                $separatorCount++;
+                            // Calculate totals and log debug info
+                            $totalErrors = count($allErrorList);
+                            // Don't count file separators in total
+                            $separatorCount = 0;
+                            foreach ($allErrorList as $error) {
+                                if (strpos($error, '--- File') !== false) {
+                                    $separatorCount++;
+                                }
                             }
-                        }
-                        $actualErrorCount = $totalErrors - $separatorCount;
+                            $actualErrorCount = $totalErrors - $separatorCount;
+                            ?>
 
-                        error_log("=== ERROR COUNT DEBUG ===");
-                        error_log("Total items in allErrorList: " . $totalErrors);
-                        error_log("File separator count: " . $separatorCount);
-                        error_log("Actual error count (excluding separators): " . $actualErrorCount);
-                        error_log("File 1 error count: " . $file1ErrorCount);
-                        error_log("File 2 error count: " . $file2ErrorCount);
-                        error_log("Expected total: " . ($file1ErrorCount + $file2ErrorCount));
-                        error_log("=== END ERROR COUNT DEBUG ===");
-                        ?>
-
-                        <div class="user-alert user-alert-danger">
-                            <div class="error-container">
-                                <?php if (!empty($errorPrefix)): ?>
-                                    <p class="error-summary"><?php echo $errorPrefix; ?></p>
-                                    <?php if ($file1ErrorCount > 0 && $file2ErrorCount > 0): ?>
-                                        <p class="error-summary">File 1: <?php echo $file1ErrorCount; ?> errors | File 2: <?php echo $file2ErrorCount; ?> errors | Total: <?php echo $actualErrorCount; ?> validation errors</p>
-                                    <?php elseif ($file1ErrorCount > 0): ?>
-                                        <p class="error-summary">Found <?php echo $file1ErrorCount; ?> validation errors in File 1:</p>
-                                    <?php elseif ($file2ErrorCount > 0): ?>
-                                        <p class="error-summary">Found <?php echo $file2ErrorCount; ?> validation errors in File 2:</p>
-                                    <?php else: ?>
-                                        <p class="error-summary">Found <?php echo $actualErrorCount; ?> validation errors in your CSV file(s):</p>
-                                    <?php endif; ?>
-                                <?php else: ?>
-                                    <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> Found <?php echo $actualErrorCount; ?> validation errors in your CSV file(s):</p>
-                                <?php endif; ?>
-                                
-                                <ul class="error-list">
-                                    <?php foreach($allErrorList as $error): ?>
-                                        <?php $error = trim($error); ?>
-                                        <?php if(!empty($error)): ?>
-                                            <?php
-                                            // Check if this is a file separator
-                                            if (strpos($error, '--- File') !== false) {
-                                                ?>
-                                                <li class="error-item" style="background: #e9ecef !important; border-left: 3px solid #6c757d !important; font-weight: bold; text-align: center;">
-                                                    <div class="error-message" style="color: #495057 !important;"><?php echo htmlspecialchars($error); ?></div>
-                                                </li>
-                                                <?php
-                                            } else {
-                                                // Parse error and suggestions - same as index.php
-                                                $parts = explode(' Suggestions: ', $error);
-                                                $mainError = $parts[0];
-                                                $suggestions = isset($parts[1]) ? $parts[1] : '';
-                                                ?>
-                                                <li class="error-item">
-                                                    <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
-                                                    <?php if (!empty($suggestions)): ?>
-                                                        <div class="error-suggestions">
-                                                            <strong>💡 Suggestions:</strong> 
-                                                            <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
-                                                        </div>
-                                                    <?php endif; ?>
-                                                </li>
-                                                <?php
-                                            }
-                                            ?>
+                            <div class="user-alert user-alert-danger">
+                                <div class="error-container">
+                                    <?php if (!empty($errorPrefix)): ?>
+                                        <p class="error-summary"><?php echo $errorPrefix; ?></p>
+                                        <?php if ($file1ErrorCount > 0 && $file2ErrorCount > 0): ?>
+                                            <p class="error-summary">File 1: <?php echo $file1ErrorCount; ?> errors | File 2: <?php echo $file2ErrorCount; ?> errors | Total: <?php echo $actualErrorCount; ?> validation errors</p>
+                                        <?php elseif ($file1ErrorCount > 0): ?>
+                                            <p class="error-summary">Found <?php echo $file1ErrorCount; ?> validation errors in File 1:</p>
+                                        <?php elseif ($file2ErrorCount > 0): ?>
+                                            <p class="error-summary">Found <?php echo $file2ErrorCount; ?> validation errors in File 2:</p>
+                                        <?php else: ?>
+                                            <p class="error-summary">Found <?php echo $actualErrorCount; ?> validation errors in your CSV file(s):</p>
                                         <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-                                                                
-                            <div class="validation-help">
-                                <h4>Quick Fix Guide:</h4>
-                                <div class="fix-guide">
-                                    <div class="fix-item">
-                                        <strong>📁 File Format Issues:</strong>
-                                        <ul>
-                                            <li>Ensure CSV has proper headers</li>
-                                            <li>Check for GA4 metadata lines starting with #</li>
-                                            <li>Verify file isn't corrupted or empty</li>
-                                            <li>Make sure data rows aren't all empty</li>
-                                        </ul>
-                                    </div>
-                                    <div class="fix-item">
-                                        <strong>🔢 Integer Issues:</strong>
-                                        <ul>
-                                            <li>Remove letters: "15a" → "15"</li>
-                                            <li>Evaluate expressions: "42+3" → "45"</li>
-                                            <li>Convert Unicode: "５０" → "50"</li>
-                                        </ul>
-                                    </div>
-                                    <div class="fix-item">
-                                        <strong>📊 Float/Decimal Issues:</strong>
-                                        <ul>
-                                            <li>Fix multiple decimals: "8..5" → "8.5"</li>
-                                            <li>Convert scientific: "1.2e3" → "1200"</li>
-                                            <li>Remove special chars: "~5.3" → "5.3"</li>
-                                        </ul>
-                                    </div>
-                                    <div class="fix-item">
-                                        <strong>⏰ Time Format Issues:</strong>
-                                        <ul>
-                                            <li>Use proper format: "10:65:30" → "11:05:30"</li>
-                                            <li>Convert units: "12m30s" → "12:30" or "750"</li>
-                                        </ul>
-                                    </div>
-                                    <div class="fix-item">
-                                        <strong>💰 Currency Issues:</strong>
-                                        <ul>
-                                            <li>Remove symbols: "$1,200" → "1200"</li>
-                                            <li>Remove commas: "500.abc" → "500"</li>
-                                        </ul>
-                                    </div>
-                                    <div class="fix-item">
-                                        <strong>🚫 Common CSV Issues:</strong>
-                                        <ul>
-                                            <li>Remove trademark symbols: ™, ®, ©</li>
-                                            <li>Fix unquoted commas in data fields</li>
-                                            <li>Remove leading/trailing whitespace</li>
-                                            <li>Check for mixed data types in columns</li>
-                                        </ul>
+                                    <?php else: ?>
+                                        <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> Found <?php echo $actualErrorCount; ?> validation errors in your CSV file(s):</p>
+                                    <?php endif; ?>
+                                    
+                                    <ul class="error-list">
+                                        <?php foreach($allErrorList as $error): ?>
+                                            <?php $error = trim($error); ?>
+                                            <?php if(!empty($error)): ?>
+                                                <?php
+                                                // Check if this is a file separator
+                                                if (strpos($error, '--- File') !== false) {
+                                                    ?>
+                                                    <li class="error-item" style="background: #e9ecef !important; border-left: 3px solid #6c757d !important; font-weight: bold; text-align: center;">
+                                                        <div class="error-message" style="color: #495057 !important;"><?php echo htmlspecialchars($error); ?></div>
+                                                    </li>
+                                                    <?php
+                                                } else {
+                                                    // Parse error and suggestions - same as index.php
+                                                    $parts = explode(' Suggestions: ', $error);
+                                                    $mainError = $parts[0];
+                                                    $suggestions = isset($parts[1]) ? $parts[1] : '';
+                                                    ?>
+                                                    <li class="error-item">
+                                                        <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
+                                                        <?php if (!empty($suggestions)): ?>
+                                                            <div class="error-suggestions">
+                                                                <strong>💡 Suggestions:</strong> 
+                                                                <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </li>
+                                                    <?php
+                                                }
+                                                ?>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                </div>
+                                                                        
+                                <div class="validation-help">
+                                    <h4>Quick Fix Guide:</h4>
+                                    <div class="fix-guide">
+                                        <div class="fix-item">
+                                            <strong>📁 File Format Issues:</strong>
+                                            <ul>
+                                                <li>Ensure CSV has proper headers</li>
+                                                <li>Check for GA4 metadata lines starting with #</li>
+                                                <li>Verify file isn't corrupted or empty</li>
+                                                <li>Make sure data rows aren't all empty</li>
+                                            </ul>
+                                        </div>
+                                        <div class="fix-item">
+                                            <strong>🔢 Integer Issues:</strong>
+                                            <ul>
+                                                <li>Remove letters: "15a" → "15"</li>
+                                                <li>Evaluate expressions: "42+3" → "45"</li>
+                                                <li>Convert Unicode: "５０" → "50"</li>
+                                            </ul>
+                                        </div>
+                                        <div class="fix-item">
+                                            <strong>📊 Float/Decimal Issues:</strong>
+                                            <ul>
+                                                <li>Fix multiple decimals: "8..5" → "8.5"</li>
+                                                <li>Convert scientific: "1.2e3" → "1200"</li>
+                                                <li>Remove special chars: "~5.3" → "5.3"</li>
+                                            </ul>
+                                        </div>
+                                        <div class="fix-item">
+                                            <strong>⏰ Time Format Issues:</strong>
+                                            <ul>
+                                                <li>Use proper format: "10:65:30" → "11:05:30"</li>
+                                                <li>Convert units: "12m30s" → "12:30" or "750"</li>
+                                            </ul>
+                                        </div>
+                                        <div class="fix-item">
+                                            <strong>💰 Currency Issues:</strong>
+                                            <ul>
+                                                <li>Remove symbols: "$1,200" → "1200"</li>
+                                                <li>Remove commas: "500.abc" → "500"</li>
+                                            </ul>
+                                        </div>
+                                        <div class="fix-item">
+                                            <strong>🚫 Common CSV Issues:</strong>
+                                            <ul>
+                                                <li>Remove trademark symbols: ™, ®, ©</li>
+                                                <li>Fix unquoted commas in data fields</li>
+                                                <li>Remove leading/trailing whitespace</li>
+                                                <li>Check for mixed data types in columns</li>
+                                            </ul>
+                                        </div>
                                     </div>
                                 </div>
+                                                                        
+                                <p class="error-footer">Please correct these issues and upload again.</p>
                             </div>
-                                                                
-                            <p class="error-footer">Please correct these issues and upload again.</p>
-                        </div>
-                                                                
-                    <?php else: ?>
-                        <!-- Display other types of messages -->
-                        <div class="user-alert user-alert-danger">
-                            <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
-                        </div>
+                                                                        
+                        <?php else: ?>
+                            <!-- Display regular error message -->
+                            <div class="user-alert user-alert-danger">
+                                <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
+                            </div>
+                        <?php endif; ?>
                     <?php endif; ?>
                 <?php endif; ?>
 
@@ -2287,7 +2369,7 @@ function calculateStats($values) {
                         <input type="text" name="comparisonName" placeholder="Enter a name to save this comparison">
                     </div>
                             
-                    <button type="submit" name="compare" class="compare-button">Save Comparison</button>
+                    <button type="submit" name="compare" class="btn">Save Comparison</button>
                 </form>
             </div>
 
