@@ -247,87 +247,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         display: none;
     }
 
-    /* No Data Notification Styles */
-    .no-data-notification {
-        background: linear-gradient(135deg, #ffc107 0%, #ffca2c 100%);
-        border: 1px solid var(--warning);
-        border-radius: 8px;
-        padding: 20px;
-        margin: 20px 0;
-        text-align: center;
-        color: var(--text-warning);
-        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
-        display: none;
-        animation: slideDown 0.3s ease-out;
-    }
 
-    .no-data-notification.show {
-        display: block;
-    }
-
-    .no-data-notification .icon {
-        font-size: 2.5em;
-        margin-bottom: 15px;
-        display: block;
-    }
-
-    .no-data-notification h4 {
-        margin: 0 0 10px 0;
-        color: var(--text-warning);
-        font-size: 1.2em;
-    }
-
-    .no-data-notification p {
-        margin: 0 0 15px 0;
-        color: var(--text-warning);
-        font-size: 1em;
-        line-height: 1.5;
-    }
-
-    .no-data-notification .action-buttons {
-        display: flex;
-        justify-content: center;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
-    .no-data-notification .btn {
-        padding: 8px 16px;
-        border: 1px solid var(--text-warning);
-        background-color: transparent;
-        color: var(--text-warning);
-        border-radius: 4px;
-        cursor: pointer;
-        text-decoration: none;
-        transition: all 0.3s ease;
-        font-size: 0.9em;
-    }
-
-    .no-data-notification .btn:hover {
-        background-color: var(--text-warning);
-        color: var(--white);
-        transform: translateY(-1px);
-    }
-
-    .no-data-notification .btn.primary {
-        background-color: #856404;
-        color: #fff;
-    }
-
-    .no-data-notification .btn.primary:hover {
-        background-color: #6c5103;
-    }
-
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
 
     @media (max-width: 768px) {
         .filter-controls {
@@ -416,17 +336,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       		  </div>
       		</div>
 
-      		<!-- No Data Notification -->
-      		<div class="no-data-notification" id="noDataNotification">
-      		  <span class="icon">🔍</span>
-      		  <h4>No Traffic Sources Found</h4>
-      		  <p>Your current filters have excluded all traffic sources from the display.<br>
-      		  Try adjusting your filter criteria to see the data.</p>
-      		  <div class="action-buttons">
-      		    <button class="btn primary" onclick="clearAllFilters()">Clear All Filters</button>
-      		    <button class="btn" onclick="selectAllSources()">Select All Sources</button>
-      		  </div>
-      		</div>
+
 
       		<!-- Sample Data Notice (from current) -->
       		<?php if ($sampleNotice['is_sample']): ?>
@@ -455,7 +365,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       		  <div class="user-export-controls">
       		    <button onclick="exportChartToPDF()" class="user-export-btn pdf">
       		      <span class="icon">📄</span>
-      		      <span class="text">Export Chart to PDF</span>
+      		      <span class="text">Export to PDF</span>
       		    </button>
       		  </div>
 					</div>
@@ -540,9 +450,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       minPercentage: 0,
       selectedSources: []
     };
-    
-    // Track if a quick filter button was used
-    let quickFilterUsed = false;
+
 
     // Create chart context
     let currentChart = null;
@@ -722,26 +630,17 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function handleTopSourcesChange() {
-      // Reset quick filter flag when manually changing top sources filter
-      quickFilterUsed = false;
-      
       currentFilters.topSources = document.getElementById('topSourcesFilter').value;
       applyFilters();
     }
 
     function handleMinPercentageChange() {
-      // Reset quick filter flag when manually changing percentage filter
-      quickFilterUsed = false;
-      
       const value = parseFloat(document.getElementById('minPercentageFilter').value) || 0;
       currentFilters.minPercentage = value;
       applyFilters();
     }
 
     function handleSourceSelectionChange() {
-      // Reset quick filter flag when manually changing source selection
-      quickFilterUsed = false;
-      
       const checkboxes = document.querySelectorAll('#sourceSelection input[type="checkbox"]');
       const selected = [];
       
@@ -757,8 +656,6 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function applyQuickFilter(type) {
-      // Set flag to indicate a quick filter was used
-      quickFilterUsed = true;
       
       // Clear other filters first
       document.getElementById('topSourcesFilter').value = 'all';
@@ -769,9 +666,12 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       currentFilters.minPercentage = 0;
       currentFilters.selectedSources = [];
       
+      let filterName = '';
+      
       switch(type) {
         case 'major':
           // For major sources, show only sources > 5%
+          filterName = 'Major Sources (>5%)';
           const majorSources = sourcesData.filter(source => {
             const pct = parseFloat(source.percentage);
             return pct > 5;
@@ -781,6 +681,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
           break;
         case 'moderate':
           // For moderate sources, show only sources between 1-5%
+          filterName = 'Moderate Sources (1-5%)';
           const moderateSources = sourcesData.filter(source => {
             const pct = parseFloat(source.percentage);
             return pct >= 1 && pct <= 5;
@@ -790,22 +691,30 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
           break;
         case 'minor':
           // For minor sources, show only sources < 1%
+          filterName = 'Minor Sources (<1%)';
+          console.log('Processing minor filter');
           const minorSources = sourcesData.filter(source => {
             const pct = parseFloat(source.percentage);
+            console.log(`Source: ${source.traffic_source}, Percentage: ${pct}, Is < 1%: ${pct < 1}`);
             return pct < 1;
           }).map(source => source.traffic_source);
+          console.log('Minor sources found:', minorSources);
           currentFilters.selectedSources = minorSources;
           updateSourceCheckboxes();
           break;
       }
       
       applyFilters();
+      
+      // Show alert if no data found after filtering
+      if (currentFilters.selectedSources.length === 0) {
+        alert(`No data found for ${filterName}. All sources in your data fall outside this range.`);
+        // Optionally, you could clear filters and show all data again
+        // clearAllFilters();
+      }
     }
 
     function clearAllFilters() {
-      // Reset quick filter flag
-      quickFilterUsed = false;
-      
       // Reset all filters
       document.getElementById('topSourcesFilter').value = 'all';
       document.getElementById('minPercentageFilter').value = '';
@@ -822,9 +731,6 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function selectAllSources() {
-      // Reset quick filter flag when manually selecting all
-      quickFilterUsed = false;
-      
       const checkboxes = document.querySelectorAll('#sourceSelection input[type="checkbox"]');
       checkboxes.forEach(checkbox => checkbox.checked = true);
       
@@ -834,9 +740,6 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function deselectAllSources() {
-      // Reset quick filter flag when manually deselecting all
-      quickFilterUsed = false;
-      
       const checkboxes = document.querySelectorAll('#sourceSelection input[type="checkbox"]');
       checkboxes.forEach(checkbox => checkbox.checked = false);
       
@@ -862,6 +765,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 
     function updateTable() {
       const tableRows = document.querySelectorAll('#sourcesTable tbody tr');
+      let visibleRowCount = 0;
       
       tableRows.forEach(row => {
         const sourceName = row.dataset.sourceName;
@@ -889,14 +793,40 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         if (showRow) {
           row.style.display = '';
           row.classList.remove('table-row-filtered');
+          visibleRowCount++;
         } else {
           row.style.display = 'none';
           row.classList.add('table-row-filtered');
         }
       });
       
+      // Show/hide no data message for table
+      updateTableNoDataMessage(visibleRowCount === 0);
+      
       // Update table percentages for visible rows
       updateTablePercentages();
+    }
+
+    function updateTableNoDataMessage(showNoDataMessage) {
+      const tableContainer = document.querySelector('.user-sources-table-container');
+      let noDataMsg = tableContainer.querySelector('.no-data-table-message');
+      
+      if (showNoDataMessage) {
+        if (!noDataMsg) {
+          noDataMsg = document.createElement('div');
+          noDataMsg.className = 'no-data-table-message';
+          noDataMsg.style.cssText = 'text-align: center; padding: 40px; color: #666; font-size: 16px; background: #f8f9fa; border-radius: 8px; margin: 20px 0; border: 2px dashed #dee2e6;';
+          noDataMsg.innerHTML = '<i class="fas fa-table" style="font-size: 48px; color: #ccc; display: block; margin-bottom: 15px;"></i><strong>No Data to Display</strong><br><small>The current filters exclude all traffic sources. Try adjusting your filters or click "Clear Filters" to see all data.</small>';
+          tableContainer.appendChild(noDataMsg);
+        }
+        noDataMsg.style.display = 'block';
+        document.getElementById('sourcesTable').style.display = 'none';
+      } else {
+        if (noDataMsg) {
+          noDataMsg.style.display = 'none';
+        }
+        document.getElementById('sourcesTable').style.display = 'table';
+      }
     }
 
     function updateTablePercentages() {
@@ -922,25 +852,12 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     function updateFilterSummary() {
       const summaryDiv = document.getElementById('filterSummary');
       const summaryText = document.getElementById('filterSummaryText');
-      const noDataNotification = document.getElementById('noDataNotification');
       
       // Check if there's no data after filtering
       if (filteredData.length === 0) {
-        // Only show notification if a quick filter button was used
-        if (quickFilterUsed) {
-          // Hide filter summary and show no data notification
-          summaryDiv.style.display = 'none';
-          noDataNotification.classList.add('show');
-        } else {
-          // Hide both notification and summary if no quick filter was used
-          summaryDiv.style.display = 'none';
-          noDataNotification.classList.remove('show');
-        }
+        summaryDiv.style.display = 'none';
         return;
       }
-      
-      // Hide no data notification if there's data
-      noDataNotification.classList.remove('show');
       
       if (filteredData.length === sourcesData.length) {
         summaryDiv.style.display = 'none';

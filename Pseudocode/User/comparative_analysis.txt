@@ -1,5 +1,4 @@
-
-//compare.php
+//compare.ph
 START
     IMPORT necessary PHP modules and session management
 
