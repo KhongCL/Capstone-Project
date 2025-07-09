@@ -1462,7 +1462,6 @@ select:focus {
     margin-bottom: 20px;
     border-radius: 8px;
     border: 1px solid;
-    display: flex;
     align-items: center;
     gap: 10px;
     font-weight: 500;
@@ -1636,7 +1635,7 @@ select:focus {
     border-radius: 8px;
 		font-family: inherit;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
     text-decoration: none;
@@ -1666,6 +1665,7 @@ select:focus {
 
 .user-btn-secondary:hover {
     background-color: #545b62;
+		color: white;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
