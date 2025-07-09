@@ -108,67 +108,143 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         $error_message = "Please map at least one column before proceeding.";
         error_log("ERROR: No columns mapped");
     } else {
-        error_log("Starting data transformation...");
+        // ENHANCED: Check for minimum required mappings for meaningful analytics
+        $mappedFields = array_values($columnMapping);
+        $hasTrafficSource = in_array('traffic_source', $mappedFields);
+        $hasMetric = array_intersect(['visits', 'sessions', 'users', 'pageviews', 'events_per_session', 'key_events', 'total_revenue'], $mappedFields);
         
-        // For manual mapping cases, we need to determine the format
-        $format = null;
-        if (isset($mappingResult['format']) && $mappingResult['format']) {
-            // Format was detected but needed confirmation
-            $format = $mappingResult['format'];
-            error_log("Using detected format: $format");
+        if (!$hasTrafficSource) {
+            $error_message = "Please map at least one 'Traffic Source' column for meaningful analytics. This helps identify where your visitors are coming from.";
+            error_log("ERROR: No traffic source mapped");
+        } elseif (empty($hasMetric)) {
+            $error_message = "Please map at least one metric column (Visits, Sessions, Users, Events, Revenue, etc.) to analyze your data properly.";
+            error_log("ERROR: No metrics mapped");
         } else {
-            // Manual mapping - try to detect format based on column mappings
-            $ga4RequiredFields = ['traffic_source', 'visits', 'engaged_sessions', 'bounce_rate'];
-            $mappedFields = array_values($columnMapping);
-            $ga4MatchCount = count(array_intersect($ga4RequiredFields, $mappedFields));
+            error_log("Starting data transformation...");
             
-            if ($ga4MatchCount >= 3) {
-                $format = 'ga4_traffic_acquisition';
-                error_log("Detected GA4 format based on manual mappings (matches: $ga4MatchCount)");
-            } else {
-                error_log("Could not detect format automatically, using manual mapping");
-            }
-        }
-
-        error_log("Using format for transformation: " . ($format ?? 'null'));
-        
-        try {
-            $transformedData = $processor->transformData($_SESSION['uploaded_csv'], $columnMapping, $format);
-            error_log("Transformation completed. Rows: " . count($transformedData));
+            // CRITICAL FIX: Get the file path from session
+            $filePath = $_SESSION['uploaded_csv'] ?? null;
             
-            if (empty($transformedData)) {
-                error_log("ERROR: No data returned from transformation");
-                $error_message = 'No valid data found after transformation. Please check your CSV file.';
+            if (!$filePath || !file_exists($filePath)) {
+                $error_message = "File not found. Please upload your CSV file again.";
+                error_log("ERROR: File path not found or file doesn't exist: " . ($filePath ?? 'NULL'));
             } else {
-                error_log("Sample transformed data: " . json_encode($transformedData[0] ?? []));
+                // Rest of the existing transformation code...
+                // CRITICAL FIX: For manual mapping, set a default format to avoid validation errors
+                $format = 'manual_mapping'; // Use a special format identifier for manual mappings
                 
-                // Save transformed data to database
-                if (saveTransformedData($conn, $transformedData)) {
-                    error_log("Data successfully saved to database");
-                    $_SESSION['message'] = 'Data successfully imported and mapped.';
-                    
-                    // CRITICAL: Clear mapping session data
-                    unset($_SESSION['mapping_result']);
-                    unset($_SESSION['uploaded_csv']);
-                    unset($_SESSION['csv_metadata']);
-                    
-                    error_log("Redirecting to overview.php");
-                    header('Location: overview.php');
-                    exit;
+                // Check if we can detect format based on mapped columns
+                $ga4RequiredFields = ['traffic_source', 'visits', 'engaged_sessions', 'bounce_rate'];
+                $ga4MatchCount = count(array_intersect($ga4RequiredFields, $mappedFields));
+                
+                if ($ga4MatchCount >= 3) {
+                    $format = 'ga4_traffic_acquisition';
+                    error_log("Detected GA4 format based on manual mappings (matches: $ga4MatchCount)");
                 } else {
-                    error_log("ERROR: Failed to save data to database");
-                    // Check if we have a specific message from saveTransformedData
-                    if (isset($_SESSION['upload_message'])) {
-                        $error_message = $_SESSION['upload_message']['message'];
-                        unset($_SESSION['upload_message']);
-                    } else {
-                        $error_message = 'Error saving data to database.';
+                    error_log("Using manual mapping format for validation");
+                }
+
+                error_log("Using format for transformation: " . $format);
+                
+                try {
+                    // CRITICAL FIX: Clear any previous validation errors before transformation
+                    if (isset($_SESSION['validation_errors'])) {
+                        unset($_SESSION['validation_errors']);
+                        error_log("Cleared previous validation errors before new transformation");
                     }
+                    
+                    // CRITICAL FIX: Set a flag to indicate this is manual mapping
+                    $_SESSION['manual_mapping_mode'] = true;
+                    
+                    $transformedData = $processor->transformData($filePath, $columnMapping, $format);
+                    error_log("Transformation completed. Rows: " . count($transformedData));
+                    
+                    // Clear the manual mapping flag
+                    unset($_SESSION['manual_mapping_mode']);
+                    
+                    // Rest of the existing success/error handling code remains the same...
+                    if (empty($transformedData)) {
+                        error_log("ERROR: No data returned from transformation");
+                        
+                        // IMPROVED: Better error handling for validation errors
+                        if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
+                            $validationErrors = $_SESSION['validation_errors'];
+                            error_log("Found validation errors: " . implode('; ', array_slice($validationErrors, 0, 5)));
+                            
+                            // FIXED: Count unique error types instead of showing repetitive errors
+                            $uniqueErrors = array_unique($validationErrors);
+                            $errorCount = count($validationErrors);
+                            $uniqueCount = count($uniqueErrors);
+                            
+                            // Filter out "No format detected" errors for manual mapping
+                            $filteredErrors = array_filter($uniqueErrors, function($error) {
+                                return strpos($error, 'No format detected for validation') === false;
+                            });
+                            
+                            if (!empty($filteredErrors)) {
+                                if (count($filteredErrors) < 3) {
+                                    // Show all filtered errors if we have fewer than 3
+                                    $error_message = "Validation errors found: " . implode('; ', $filteredErrors);
+                                } else {
+                                    // Show first 2 filtered errors + count
+                                    $firstTwoErrors = array_slice($filteredErrors, 0, 2);
+                                    $error_message = "Validation errors found: " . implode('; ', $firstTwoErrors) . 
+                                                    " and " . (count($filteredErrors) - 2) . " more error type(s)";
+                                }
+                                
+                                $error_message .= ". Please review your column mappings and try again.";
+                            } else {
+                                // Only "No format detected" errors - this is a validation issue, not a data issue
+                                $error_message = 'Column mapping appears correct, but data validation failed. This may be due to unexpected data formats. Please check your CSV file for any unusual characters or formatting.';
+                            }
+                            
+                            // Don't clear session data here - let user try again
+                        } else {
+                            $error_message = 'No valid data found after transformation. Please check your CSV file and column mappings.';
+                        }
+                    } else {
+                        error_log("Sample transformed data: " . json_encode($transformedData[0] ?? []));
+                        
+                        // Save transformed data to database
+                        $saveResult = saveTransformedData($conn, $transformedData);
+                        error_log("Save result: " . json_encode($saveResult));
+                        
+                        if ($saveResult['type'] === 'success') {
+                            // Success - redirect to overview page
+                            error_log("Data successfully saved to database");
+                            
+                            // Clear mapping session data
+                            unset($_SESSION['uploaded_csv']);
+                            unset($_SESSION['mapping_result']);
+                            unset($_SESSION['csv_metadata']);
+                            unset($_SESSION['uploaded_file_name']);
+                            unset($_SESSION['uploaded_file_size']);
+                            
+                            // Clear any validation errors since we succeeded
+                            if (isset($_SESSION['validation_errors'])) {
+                                unset($_SESSION['validation_errors']);
+                            }
+                            
+                            // Set success flag for redirect
+                            $_SESSION['upload_just_completed'] = true;
+                            
+                            // Redirect to index.php with success parameter
+                            header('Location: index.php?upload_success=1');
+                            exit;
+                        } else {
+                            error_log("ERROR: Failed to save data to database");
+                            $error_message = $saveResult['message'];
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log("ERROR: Exception during transformation: " . $e->getMessage());
+                    
+                    // Clear the manual mapping flag on error
+                    unset($_SESSION['manual_mapping_mode']);
+                    
+                    $error_message = 'Error processing data: ' . $e->getMessage();
                 }
             }
-        } catch (Exception $e) {
-            error_log("ERROR: Exception during transformation: " . $e->getMessage());
-            $error_message = 'Error processing data: ' . $e->getMessage();
         }
     }
     

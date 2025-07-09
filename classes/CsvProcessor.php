@@ -1177,16 +1177,25 @@ class CsvProcessor {
      */
     private function formatValue($value, $column) {
         error_log("Validating value: '$value' for column: '$column'");
-            
-        if (!$this->detectedFormat) {
-            throw new Exception("No format detected for validation");
+        
+        // CRITICAL FIX: Check if we're in manual mapping mode
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        $isManualMapping = isset($_SESSION['manual_mapping_mode']) && $_SESSION['manual_mapping_mode'] === true;
+        
+        // Always get target field for validation rules that need it
+        $targetField = $this->columnMap[$column] ?? null;
+        
+        // CRITICAL FIX: For manual mapping, use more lenient validation
+        if ($isManualMapping || $this->detectedFormat === 'manual_mapping' || !$this->detectedFormat) {
+            error_log("Using manual mapping validation for: $column");
+            return $this->validateManualMapping($value, $column, $targetField);
         }
 
         // Original value for error messages
         $originalValue = $value;
-        
-        // Always get target field for validation rules that need it
-        $targetField = $this->columnMap[$column] ?? null;
 
         // DEBUG: Log the target field mapping
         error_log("DEBUG: Column '$column' maps to target field: " . ($targetField ? "'$targetField'" : "NULL"));
@@ -1662,6 +1671,110 @@ class CsvProcessor {
             default:
                 return $value;
         }
+    }
+
+    private function validateManualMapping($value, $column, $systemColumn = null) {
+        error_log("Manual mapping validation for column '$column', system column: " . ($systemColumn ?? 'null'));
+        
+        // Basic validation - check if value is not empty and reasonable
+        $trimmedValue = trim($value);
+        
+        if ($trimmedValue === '') {
+            error_log("❌ Manual validation error: Empty value in column '$column'");
+            throw new Exception("Empty value for column '$column' - This field requires a value");
+        }
+        
+        // Determine expected data type based on system column mapping
+        $expectedType = $this->getExpectedDataType($systemColumn ?? $column);
+        
+        switch ($expectedType) {
+            case 'numeric':
+                // Check if it's a valid number (allow decimals, commas, percentages)
+                $cleanValue = preg_replace('/[,%$]/', '', $trimmedValue);
+                if (!is_numeric($cleanValue)) {
+                    error_log("❌ Manual validation error: Non-numeric value '$value' in numeric column '$column'");
+                    throw new Exception("Invalid numeric value '$value' for column '$column'");
+                }
+                // Return the cleaned numeric value
+                $numValue = floatval($cleanValue);
+                if ($numValue < 0) {
+                    throw new Exception("Negative value '$value' not allowed for column '$column'");
+                }
+                error_log("✅ Manual validation passed for column '$column' - returning: $numValue");
+                return $numValue;
+                
+            case 'percentage':
+                // Check if it's a valid percentage or decimal
+                if (strpos($trimmedValue, '%') !== false) {
+                    $cleanValue = preg_replace('/[,%]/', '', $trimmedValue);
+                    if (!is_numeric($cleanValue)) {
+                        error_log("❌ Manual validation error: Invalid percentage '$value' in column '$column'");
+                        throw new Exception("Invalid percentage value '$value' for column '$column'");
+                    }
+                    $numValue = floatval($cleanValue);
+                    if ($numValue < 0 || $numValue > 100) {
+                        throw new Exception("Percentage value '$value' must be between 0-100% for column '$column'");
+                    }
+                    error_log("✅ Manual validation passed for column '$column' - returning: " . ($numValue / 100));
+                    return $numValue / 100; // Convert to decimal
+                } else {
+                    $cleanValue = preg_replace('/[,]/', '', $trimmedValue);
+                    if (!is_numeric($cleanValue)) {
+                        error_log("❌ Manual validation error: Invalid decimal percentage '$value' in column '$column'");
+                        throw new Exception("Invalid percentage value '$value' for column '$column'");
+                    }
+                    $numValue = floatval($cleanValue);
+                    if ($numValue < 0 || $numValue > 1) {
+                        throw new Exception("Decimal percentage value '$value' must be between 0-1 for column '$column'");
+                    }
+                    error_log("✅ Manual validation passed for column '$column' - returning: $numValue");
+                    return $numValue;
+                }
+                
+            case 'text':
+                // Text validation - just check for reasonable length and no malicious content
+                if (strlen($trimmedValue) > 255) {
+                    error_log("❌ Manual validation error: Text too long in column '$column'");
+                    throw new Exception("Text too long in column '$column' - maximum 255 characters");
+                }
+                // Check for potential malicious content
+                if (preg_match('/<script|javascript:|on\w+=/i', $trimmedValue)) {
+                    error_log("❌ Manual validation error: Potentially malicious content in column '$column'");
+                    throw new Exception("Invalid content in column '$column'");
+                }
+                error_log("✅ Manual validation passed for column '$column' - returning: '$trimmedValue'");
+                return $trimmedValue;
+                
+            default:
+                error_log("✅ Manual validation passed for column '$column' (generic validation) - returning: '$trimmedValue'");
+                return $trimmedValue;
+        }
+    }
+
+    private function getExpectedDataType($systemColumn) {
+        $numericColumns = [
+            'visits', 'sessions', 'engaged_sessions', 'users', 'pageviews',
+            'events_per_session', 'event_count', 'key_events', 'total_revenue',
+            'avg_session_duration', 'average_engagement_time_per_session'
+        ];
+        
+        $percentageColumns = [
+            'engagement_rate', 'bounce_rate', 'session_key_event_rate'
+        ];
+        
+        $textColumns = [
+            'traffic_source', 'page_title', 'page_path'
+        ];
+        
+        if (in_array($systemColumn, $numericColumns)) {
+            return 'numeric';
+        } elseif (in_array($systemColumn, $percentageColumns)) {
+            return 'percentage';
+        } elseif (in_array($systemColumn, $textColumns)) {
+            return 'text';
+        }
+        
+        return 'generic';
     }
 
     /**
