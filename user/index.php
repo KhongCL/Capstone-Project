@@ -958,14 +958,28 @@ error_log("=== END INDEX.PHP DEBUG ===");
                     <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
                 </p>
                 <form action="" method="post" enctype="multipart/form-data" id="uploadForm" data-ajax-handler="upload_handler.php">
-                    <div class="form-group">
-                        <label for="csvFile">Select CSV File:</label>
-                        <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
-                        <div class="file-info" id="fileInfo" style="display: none;">
-                            <span class="file-name"></span>
-                            <span class="file-size"></span>
-                        </div>
-                    </div>
+									<div class="file-input-container">
+									    <input type="file" id="csvFile" name="csvFile" accept=".csv" required>
+									    <label for="csvFile" class="file-input-button">
+									        <i class="fas fa-upload"></i>
+									        Choose CSV File
+									    </label>
+
+											<div class="file-info" id="fileInfo" style="display: none;">
+  									      <div class="file-details">
+  									          <div class="file-detail-item">
+  									              <i class="fas fa-file-csv"></i>
+  									              <span class="file-name"></span>
+  									          </div>
+  									          <div class="file-detail-item">
+  									              <i class="fas fa-database"></i>
+  									              <span class="file-size"></span>
+  									          </div>
+  									      </div>
+  									  </div>
+									</div>
+
+
                     
                     <!-- Enhanced Progress Indicators -->
                     <div class="upload-progress" id="uploadProgress" style="display: none;">
