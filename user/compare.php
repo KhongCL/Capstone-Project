@@ -1836,12 +1836,13 @@ function calculateStats($values) {
         </style>
 </head>
 <body>
-    <div class="container compare-user-compare-container" id="dashboard">
+    <div class="container">
         <?php include 'user_header.php'; ?>
 
         <main>
-            <h2><i class="fas fa-balance-scale"></i> Analytics CSV Comparison</h2>
-            <p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
+						<section class="user-section">
+            		<h2>Analytics CSV Comparison</h2>
+            		<p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
 
             <!-- Upload Form -->
             <div class="compare-user-upload-form">
@@ -2261,7 +2262,7 @@ function calculateStats($values) {
             </div>
 
             <div class="compare-comparison-container">
-                <h3>Compare CSV Files</h3>
+                <h3><i class="fas fa-balance-scale"></i> Compare CSV Files</h3>
                             
                 <!-- Load Saved Comparison -->
                 <?php if (!empty($savedComparisons)): ?>
@@ -2276,7 +2277,7 @@ function calculateStats($values) {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <button type="submit" name="load_comparison" class="compare-button">Load Comparison</button>
+                        <button type="submit" name="load_comparison" class="btn">Load Comparison</button>
                     </form>
                     <hr>
                 </div>
@@ -2315,7 +2316,7 @@ function calculateStats($values) {
                         <input type="text" name="comparisonName" placeholder="Enter a name to save this comparison">
                     </div>
                             
-                    <button type="submit" name="compare" class="compare-button">Save Comparison</button>
+                    <button type="submit" name="compare" class="btn">Save Comparison</button>
                 </form>
             </div>
 
@@ -2538,7 +2539,7 @@ function calculateStats($values) {
         </main>
 
         <?php include 'user_footer.php'; ?>
-    </div>
+		</div>
 
     
     <script>
