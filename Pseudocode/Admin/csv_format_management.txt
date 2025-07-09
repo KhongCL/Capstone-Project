@@ -1,7 +1,3 @@
-If you want to manage CSV formats and mappings, use admin_mappings.php.
-If you want to upload or preview sample CSVs, use upload_sample_data.php and upload_sample.php.
-
-
 //admin_mappings.php
 START
 
