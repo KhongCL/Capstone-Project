@@ -214,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Need an admin account? <a href="admin_register.php?key=<?php echo $admin_key; ?>">Register Here</a>
             </div>
             <div class="sign-up" style="margin-top: 10px;">
-                <a href="login.php">Go to User Login</a>
+                <a href="login.php">Go to User Login</a> | <a href="index.php">Return to Home Page</a>
             </div>
         </div>
         <div class="auth-image"></div>
