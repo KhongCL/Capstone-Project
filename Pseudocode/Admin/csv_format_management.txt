@@ -447,3 +447,232 @@ START
     END FUNCTION
 
 END
+
+
+
+
+
+//validate_format.php
+START
+
+    REQUIRE admin authentication
+    REQUIRE configuration file
+
+    SET response header to JSON
+
+    IF the request method is POST THEN
+        GET 'format_name' from POST data, default to empty string if not set
+        GET 'detection_columns' from POST data, default to empty string if not set
+        GET 'target_fields' from POST data, default to empty string if not set
+        GET 'is_new' from POST data, default to 'false' if not set
+
+        INITIALIZE response as a dictionary with 'valid' set to true and 'errors' as an empty list
+
+        // Validate format name
+        IF format_name is empty or only whitespace THEN
+            SET response['valid'] to false
+            ADD "Format name is required" to response['errors']
+        ELSE
+            IF format_name contains spaces THEN
+                SET response['valid'] to false
+                ADD "Format name cannot contain spaces. Use underscores instead." to response['errors']
+            END IF
+
+            IF format_name contains characters other than letters, numbers, or underscores THEN
+                SET response['valid'] to false
+                ADD "Format name can only contain letters, numbers, and underscores" to response['errors']
+            END IF
+
+            IF format_name is less than 3 characters long THEN
+                SET response['valid'] to false
+                ADD "Format name must be at least 3 characters long" to response['errors']
+            END IF
+        END IF
+
+        // Validate detection columns
+        IF detection_columns is empty or only whitespace THEN
+            SET response['valid'] to false
+            ADD "Detection columns are required" to response['errors']
+        ELSE
+            SPLIT detection_columns by commas, trim each value, and filter out empty values
+            IF number of columns is less than 2 THEN
+                SET response['valid'] to false
+                ADD "At least 2 detection columns are required" to response['errors']
+            END IF
+
+            FOR each column in columns
+                IF column is empty THEN
+                    SET response['valid'] to false
+                    ADD "Detection columns cannot be empty" to response['errors']
+                    BREAK the loop
+                END IF
+            END FOR
+        END IF
+
+        // Validate target fields for duplicates
+        IF target_fields is not empty THEN
+            SPLIT target_fields by commas, trim each value, and filter out empty values
+            FIND duplicates in the list of target fields
+            IF duplicates exist THEN
+                SET response['valid'] to false
+                ADD "Duplicate target fields detected: ..." to response['errors']
+            END IF
+        END IF
+
+        // Check if format name already exists (for new formats only)
+        IF is_new is 'true' AND format_name is not empty THEN
+            SET mappingsFile to the path of csv_mappings.json
+            IF mappingsFile exists THEN
+                LOAD existingMappings from the JSON file
+                CONVERT format_name to lowercase and replace spaces with underscores to get formatKey
+                IF formatKey exists in existingMappings THEN
+                    SET response['valid'] to false
+                    ADD "A format with this name already exists" to response['errors']
+                END IF
+            END IF
+        END IF
+
+        OUTPUT response as JSON
+
+    ELSE
+        OUTPUT JSON with 'valid' set to false and error "Invalid request method"
+    END IF
+
+END
+
+
+
+
+
+//migrate_mappings.php
+START
+
+    REQUIRE admin authentication
+    REQUIRE database configuration
+
+    SET mappingsFile to the path "../config/csv_mappings.json"
+
+    IF mappingsFile does not exist THEN
+        OUTPUT "Mappings file not found"
+        TERMINATE the script
+    END IF
+
+    LOAD mappings from mappingsFile as JSON
+
+    TRY
+        BEGIN database transaction
+
+        // Clear existing mappings and formats
+        EXECUTE SQL "DELETE FROM column_mapping"
+        EXECUTE SQL "DELETE FROM csv_format"
+        EXECUTE SQL "ALTER TABLE csv_format AUTO_INCREMENT = 1"
+        EXECUTE SQL "ALTER TABLE column_mapping AUTO_INCREMENT = 1"
+
+        SET formatId to 1
+
+        FOR EACH formatKey, format IN mappings
+            // Insert CSV format
+            SET formatName to formatKey with underscores replaced by spaces and first letter capitalized
+            SET reportType to the joined string of format['format_detection'] (comma separated)
+            PREPARE SQL statement to INSERT INTO csv_format (FormatID, FormatName, ReportType, AdminUserID, CreatedAt, LastModifiedDate)
+            BIND formatId, formatName, reportType to the statement
+            EXECUTE the statement
+
+            // Insert column mappings for this format
+            FOR EACH csvCol, systemField IN format['column_mappings']
+                PREPARE SQL statement to INSERT INTO column_mapping (FormatID, CSVColumnName, SystemFieldName)
+                BIND formatId, csvCol, systemField to the statement
+                EXECUTE the statement
+            END FOR
+
+            INCREMENT formatId by 1
+        END FOR
+
+        COMMIT the database transaction
+
+        OUTPUT "Migration completed successfully!"
+        OUTPUT "Migrated {number of formats} formats."
+
+    CATCH any Exception AS e
+        ROLLBACK the database transaction
+        OUTPUT "Migration failed: {error message from e}"
+    END TRY
+
+END
+
+
+
+
+
+
+//supported_formats.php
+START
+
+    REQUIRE user authentication
+
+    IF user is not logged in THEN
+        REDIRECT to login page
+        EXIT
+    END IF
+
+    SET mappingsFile to path of csv_mappings.json
+    INITIALIZE supportedFormats as empty list
+
+    IF mappingsFile exists THEN
+        LOAD mappings from mappingsFile as JSON
+        IF mappings loaded successfully THEN
+            SET supportedFormats to mappings
+        END IF
+    END IF
+
+    SET page variables: title, active_page
+
+    OUTPUT HTML header and styles
+
+    INCLUDE site header
+
+    OUTPUT main content page
+        OUTPUT floating visual elements
+
+        OUTPUT hero section
+            DISPLAY page title and description
+
+        OUTPUT stats highlight section
+            DISPLAY number of supported formats, auto-detection, max file size, processing info
+
+        OUTPUT export guide section
+            FOR each supported analytics platform (e.g., Google Analytics 4)
+                DISPLAY step-by-step export instructions
+            END FOR
+
+        OUTPUT section divider
+
+        OUTPUT supported formats section
+            IF supportedFormats is not empty THEN
+                DISPLAY section header and description
+
+                FOR each format in supportedFormats
+                    DISPLAY format card with:
+                        - Format name
+                        - Toggle for details
+                        - Detection info (required columns)
+                        - Column mappings table (CSV column, system field, data type)
+                END FOR
+            ELSE
+                DISPLAY "No Formats Configured" message
+            END IF
+
+        OUTPUT visual separator
+
+        OUTPUT tips section
+            FOR each tip category (File Requirements, Date Ranges, Data Quality, Need Help)
+                DISPLAY tip card with icon, title, and bullet points
+            END FOR
+
+    INCLUDE site footer
+
+    OUTPUT JavaScript
+        DEFINE function to toggle format details on click
+        ON page load, ensure all format dropdowns are closed
+
+END

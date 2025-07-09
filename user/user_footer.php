@@ -19,14 +19,14 @@
 	}
 
 	.footer-links a {
-			color: #4c78d0;
+			color: var(--primary-color);
 			text-decoration: none;
 			margin: 0 1rem;
 			transition: color 0.5s;
 	}
 
 	.footer-links a:hover {
-			color: #3a5fb0;
+			color: var(--primary-dark);
 			text-decoration: underline;
 	}
 </style>

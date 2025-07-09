@@ -295,6 +295,28 @@ error_log("=== END INDEX.PHP DEBUG ===");
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="../scripts.js"></script>
     <style>
+				#uploadBtn {
+				    display: none;
+				    opacity: 0;
+				    transform: translateY(10px);
+				    transition: all 0.3s ease;
+				}
+
+				/* Show upload button when file is selected */
+				#uploadBtn.show {
+				    display: inline-block;
+				    opacity: 1;
+				    transform: translateY(0);
+				}
+
+				/* Enhanced button container styling */
+				.button-container {
+				    margin-top: 15px;
+				    display: flex;
+				    gap: 10px;
+				    align-items: center;
+				}
+				
         /* ==================== SAMPLE DATA STATUS STYLES ==================== */
         .sample-data-status {
             background: linear-gradient(135deg, #2980b9 0%, #0066cc 100%);
@@ -1266,14 +1288,28 @@ error_log("=== END INDEX.PHP DEBUG ===");
                     <i class="fas fa-info-circle tooltip-trigger" title="Expected format: GA4 export with columns for date, sessions, users, etc."></i>
                 </p>
                 <form action="" method="post" enctype="multipart/form-data" id="uploadForm" data-ajax-handler="upload_handler.php">
-                    <div class="form-group">
-                        <label for="csvFile">Select CSV File:</label>
-                        <input type="file" name="csvFile" id="csvFile" accept=".csv" required>
-                        <div class="file-info" id="fileInfo" style="display: none;">
-                            <span class="file-name"></span>
-                            <span class="file-size"></span>
-                        </div>
-                    </div>
+									<div class="file-input-container">
+									    <input type="file" id="csvFile" name="csvFile" accept=".csv" required>
+									    <label for="csvFile" class="file-input-button">
+									        <i class="fas fa-upload"></i>
+									        Choose CSV File
+									    </label>
+
+											<div class="file-info" id="fileInfo" style="display: none;">
+  									      <div class="file-details">
+  									          <div class="file-detail-item">
+  									              <i class="fas fa-file-csv"></i>
+  									              <span class="file-name"></span>
+  									          </div>
+  									          <div class="file-detail-item">
+  									              <i class="fas fa-database"></i>
+  									              <span class="file-size"></span>
+  									          </div>
+  									      </div>
+  									  </div>
+									</div>
+
+
                     
                     <!-- Enhanced Progress Indicators -->
                     <div class="upload-progress" id="uploadProgress" style="display: none;">
@@ -1397,23 +1433,31 @@ error_log("=== END INDEX.PHP DEBUG ===");
         window.sessionIsUsingSampleData = <?php echo (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data']) ? 'true' : 'false'; ?>;
         
         // File info display
-        document.getElementById('csvFile').addEventListener('change', function() {
-            const fileInfo = document.getElementById('fileInfo');
-            const fileName = fileInfo.querySelector('.file-name');
-            const fileSize = fileInfo.querySelector('.file-size');
-            
-            if (this.files.length > 0) {
-                const file = this.files[0];
-                fileName.textContent = file.name;
-                fileSize.textContent = formatFileSize(file.size);
-                fileInfo.style.display = 'block';
-                
-                // DON'T clear error messages here - let them remain visible
-                // Error messages will be cleared when upload actually starts
-            } else {
-                fileInfo.style.display = 'none';
-            }
-        });
+				document.getElementById('csvFile').addEventListener('change', function() {
+				    const fileInfo = document.getElementById('fileInfo');
+				    const fileName = fileInfo.querySelector('.file-name');
+				    const fileSize = fileInfo.querySelector('.file-size');
+				    const uploadBtn = document.getElementById('uploadBtn'); // Add this line
+				
+				    if (this.files.length > 0) {
+				        const file = this.files[0];
+				        fileName.textContent = file.name;
+				        fileSize.textContent = formatFileSize(file.size);
+				        fileInfo.style.display = 'block';
+						
+				        // Show upload button when file is selected
+				        uploadBtn.classList.add('show');
+				        uploadBtn.style.display = 'inline-block';
+						
+				        // DON'T clear error messages here - let them remain visible
+				        // Error messages will be cleared when upload actually starts
+				    } else {
+				        // Hide upload button when no file is selected
+				        fileInfo.style.display = 'none';
+				        uploadBtn.classList.remove('show');
+				        uploadBtn.style.display = 'none';
+				    }
+				});
 
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';

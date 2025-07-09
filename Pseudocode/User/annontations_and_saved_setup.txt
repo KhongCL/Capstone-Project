@@ -115,3 +115,317 @@ START
     OUTPUT the annotations list as a JSON response
 
 END
+
+
+
+
+
+//overview.php
+START
+
+    IMPORT Chart.js
+    IMPORT chartjs-plugin-annotation
+    IMPORT jsPDF
+    IMPORT html2canvas
+
+    DEFINE FUNCTION render_traffic_trend_chart
+        GET traffic data
+        INITIALIZE Chart.js chart with traffic data
+        ENABLE annotation plugin
+        LOAD saved annotations if available
+        DISPLAY chart on the page
+    END FUNCTION
+
+    DEFINE FUNCTION add_annotation WITH PARAMETERS chart, annotation_details
+        ADD annotation_details to chart's annotation plugin
+        UPDATE chart to show new annotation
+        SAVE annotation to local storage or backend
+    END FUNCTION
+
+    DEFINE FUNCTION edit_annotation WITH PARAMETERS chart, annotation_id, new_details
+        FIND annotation by annotation_id in chart
+        UPDATE annotation with new_details
+        UPDATE chart to reflect changes
+        SAVE updated annotation to local storage or backend
+    END FUNCTION
+
+    DEFINE FUNCTION delete_annotation WITH PARAMETERS chart, annotation_id
+        REMOVE annotation with annotation_id from chart
+        UPDATE chart to remove annotation
+        DELETE annotation from local storage or backend
+    END FUNCTION
+
+    DEFINE FUNCTION save_comparison_setup WITH PARAMETERS setup_name, chart_config, annotations
+        CREATE setup object with chart_config and annotations
+        SAVE setup object to local storage or backend with setup_name
+        OUTPUT "Setup saved successfully"
+    END FUNCTION
+
+    DEFINE FUNCTION load_comparison_setup WITH PARAMETER setup_name
+        RETRIEVE setup object by setup_name from local storage or backend
+        IF setup FOUND THEN
+            APPLY chart_config to chart
+            APPLY annotations to chart
+            UPDATE chart display
+            OUTPUT "Setup loaded successfully"
+        ELSE
+            OUTPUT "Setup not found"
+        END IF
+    END FUNCTION
+
+    DEFINE FUNCTION display_saved_setups
+        GET list of saved setups from local storage or backend
+        DISPLAY list to user with options to load or delete
+    END FUNCTION
+
+    DEFINE FUNCTION delete_saved_setup WITH PARAMETER setup_name
+        REMOVE setup with setup_name from local storage or backend
+        OUTPUT "Setup deleted successfully"
+    END FUNCTION
+
+    ON PAGE LOAD
+        CALL render_traffic_trend_chart
+        CALL display_saved_setups
+    END
+
+END
+
+
+
+
+
+//save_annotation.php
+START
+
+    IMPORT database_connection
+    IMPORT user_authentication
+
+    DEFINE FUNCTION save_annotation
+        IF user is not authenticated
+            RETURN error message "User not authenticated"
+        END IF
+
+        GET user_id from session
+        GET upload_id, data_date, note, annotation_id from POST data
+
+        TRY
+            IF annotation_id is provided AND not null or empty
+                PREPARE SQL to update annotation WHERE AnnotationID, UserID, and UploadID match
+                BIND data_date, note, annotation_id, user_id, upload_id to SQL
+            ELSE
+                PREPARE SQL to insert new annotation with UserID, UploadID, DataDate, AnnotationText
+                BIND user_id, upload_id, data_date, note to SQL
+            END IF
+
+            EXECUTE SQL statement
+
+            IF execution is successful
+                RETURN success message ("Annotation updated successfully" or "Annotation added successfully")
+            ELSE
+                RETURN error message with SQL error
+            END IF
+        CATCH database exception
+            RETURN error message with exception details
+        END TRY
+    END FUNCTION
+
+    DEFINE FUNCTION delete_annotation
+        IF user is not authenticated
+            RETURN error message "User not authenticated"
+        END IF
+
+        GET annotation_id from POST data
+
+        TRY
+            PREPARE SQL to delete annotation WHERE AnnotationID and UserID match
+            BIND annotation_id, user_id to SQL
+
+            EXECUTE SQL statement
+
+            IF execution is successful
+                RETURN success message "Annotation deleted successfully"
+            ELSE
+                RETURN error message with SQL error
+            END IF
+        CATCH database exception
+            RETURN error message with exception details
+        END TRY
+    END FUNCTION
+
+    DEFINE FUNCTION save_comparison_setup
+        IF user is not authenticated
+            RETURN error message "User not authenticated"
+        END IF
+
+        GET setup_name, setup_data from POST data
+
+        TRY
+            PREPARE SQL to insert or update comparison setup for user
+            BIND user_id, setup_name, setup_data to SQL
+
+            EXECUTE SQL statement
+
+            IF execution is successful
+                RETURN success message "Setup saved successfully"
+            ELSE
+                RETURN error message with SQL error
+            END IF
+        CATCH database exception
+            RETURN error message with exception details
+        END TRY
+    END FUNCTION
+
+    DEFINE FUNCTION load_comparison_setups
+        IF user is not authenticated
+            RETURN error message "User not authenticated"
+        END IF
+
+        TRY
+            PREPARE SQL to select all setups for user
+            BIND user_id to SQL
+
+            EXECUTE SQL statement
+
+            IF execution is successful
+                RETURN list of setups
+            ELSE
+                RETURN error message with SQL error
+            END IF
+        CATCH database exception
+            RETURN error message with exception details
+        END TRY
+    END FUNCTION
+
+END
+
+
+
+
+
+//compare.php
+DEFINE FUNCTION compareCSVFiles WITH PARAMETERS file1_path, file2_path
+    CALL parseCSV WITH file1_path AND STORE RESULT IN data1
+    CALL parseCSV WITH file2_path AND STORE RESULT IN data2
+
+    IF data1 IS EMPTY OR data2 IS EMPTY
+        THROW Exception "One or both CSV files are empty or invalid."
+    END IF
+
+    SET headers1 TO KEYS OF data1[0]
+    SET headers2 TO KEYS OF data2[0]
+
+    SET analytics_metrics TO [
+        'traffic_source',
+        'sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
+        'events_per_session', 'event_count', 'key_events', 'session_key_event_rate', 'total_revenue'
+    ]
+
+    INITIALIZE comparison DICTIONARY WITH:
+        basic_metrics: {
+            file1_rows: LENGTH OF data1,
+            file2_rows: LENGTH OF data2,
+            file1_columns: LENGTH OF headers1,
+            file2_columns: LENGTH OF headers2,
+            row_difference: LENGTH OF data1 MINUS LENGTH OF data2,
+            column_difference: LENGTH OF headers1 MINUS LENGTH OF headers2
+        }
+        headers: {
+            file1_headers: headers1,
+            file2_headers: headers2,
+            common_headers: INTERSECTION OF headers1 AND headers2,
+            unique_to_file1: DIFFERENCE OF headers1 AND headers2,
+            unique_to_file2: DIFFERENCE OF headers2 AND headers1
+        }
+        analytics_metrics: EMPTY DICTIONARY
+        summary_comparison: EMPTY DICTIONARY
+        data_sample: {
+            file1_sample: FIRST 5 ELEMENTS OF data1,
+            file2_sample: FIRST 5 ELEMENTS OF data2
+        }
+
+    SET common_headers TO CONCATENATION OF comparison.headers.common_headers, headers1, headers2
+    INITIALIZE semantic_common AS EMPTY LIST
+
+    FOR EACH metric IN analytics_metrics
+        CALL findMetricColumn WITH common_headers, metric AND STORE RESULT IN found_column
+
+        IF found_column EXISTS
+            CALL findMetricColumn WITH headers1, metric AND STORE RESULT IN col1
+            CALL findMetricColumn WITH headers2, metric AND STORE RESULT IN col2
+
+            IF col1 AND col2 EXIST
+                APPEND metric TO semantic_common
+                SET values1 TO COLUMN col1 FROM data1
+                SET values2 TO COLUMN col2 FROM data2
+
+                IF col1 CONTAINS '_CONVERT_FROM_'
+                    STRIP CONVERSION SUFFIX FROM col1 TO GET actualCol1
+                    SET values1 TO COLUMN actualCol1 FROM data1
+                    IF col1 CONTAINS '_CONVERT_FROM_ENGAGEMENT'
+                        MAP values1 TO 1 - value
+                    ELSE IF col1 CONTAINS '_CONVERT_FROM_BOUNCE'
+                        MAP values1 TO 1 - value
+                    END IF
+                    SET col1 TO actualCol1
+                END IF
+
+                IF col2 CONTAINS '_CONVERT_FROM_'
+                    STRIP CONVERSION SUFFIX FROM col2 TO GET actualCol2
+                    SET values2 TO COLUMN actualCol2 FROM data2
+                    IF col2 CONTAINS '_CONVERT_FROM_ENGAGEMENT'
+                        MAP values2 TO 1 - value
+                    ELSE IF col2 CONTAINS '_CONVERT_FROM_BOUNCE'
+                        MAP values2 TO 1 - value
+                    END IF
+                    SET col2 TO actualCol2
+                END IF
+
+                CALL cleanNumericValues WITH values1 AND STORE RESULT IN numeric1
+                CALL cleanNumericValues WITH values2 AND STORE RESULT IN numeric2
+
+                IF numeric1 AND numeric2 ARE NOT EMPTY
+                    CALL calculateStats WITH numeric1 AND STORE RESULT IN stats1
+                    CALL calculateStats WITH numeric2 AND STORE RESULT IN stats2
+
+                    IF stats1.sum IS NOT ZERO
+                        SET percent_change TO ((stats2.sum - stats1.sum) / ABS(stats1.sum)) * 100, ROUNDED TO 2 DECIMALS
+                    ELSE IF stats2.sum > 0
+                        SET percent_change TO 100
+                    ELSE IF stats2.sum < 0
+                        SET percent_change TO -100
+                    END IF
+
+                    SET comparison.analytics_metrics[metric] TO {
+                        column_name: CONCAT col1, " vs ", col2,
+                        file1_column: col1,
+                        file2_column: col2,
+                        file1_stats: stats1,
+                        file2_stats: stats2,
+                        comparison: {
+                            total_diff: stats2.sum - stats1.sum,
+                            avg_diff: stats2.mean - stats1.mean,
+                            percent_change: percent_change,
+                            improvement: CALL determineImprovement WITH metric, stats2.mean, stats1.mean
+                        }
+                    }
+                END IF
+            END IF
+        END IF
+    END FOR
+
+    SET comparison.summary_comparison TO CALL calculateSummaryComparison WITH data1, data2, comparison.analytics_metrics
+    SET comparison.headers.semantic_common TO semantic_common
+    SET comparison.headers.semantic_common_count TO LENGTH OF semantic_common
+
+    RETURN comparison
+END FUNCTION
+
+
+
+
+
+
+
+
+
+

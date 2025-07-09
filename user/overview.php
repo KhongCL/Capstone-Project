@@ -422,8 +422,8 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
                       <strong>${item.date} (${index + 1}/5)</strong>: ${item.note}
                   </div>
                   <div class="user-annotation-actions">
-                      <button class="user-annotation-edit" onclick="editAnnotation(${item.id})">Edit</button>
-                      <button class="user-annotation-delete" onclick="deleteAnnotation(${item.id})">Delete</button>
+                      <button class="btn btn-sm user-annotation-edit" onclick="editAnnotation(${item.id})">Edit</button>
+                      <button class="btn btn-sm user-annotation-delete" onclick="deleteAnnotation(${item.id})">Delete</button>
                   </div>
               `;
               list.appendChild(div);

@@ -2296,18 +2296,54 @@ function calculateStats($values) {
                 <?php endif; ?>
 
                 <form method="post" enctype="multipart/form-data">
-                    <div class="compare-user-file-input-group">
-                        <div>
-                            <label for="csv_file1">First Period CSV File</label>
-                            <input type="file" id="csv_file1" name="csv_file1" accept=".csv" required>
-                            <small>Upload your first analytics period data</small>
-                        </div>
-                        <div>
-                            <label for="csv_file2">Second Period CSV File</label>
-                            <input type="file" id="csv_file2" name="csv_file2" accept=".csv" required>
-                            <small>Upload your second analytics period data</small>
-                        </div>
-                    </div>
+										<div class="compare-user-file-input-group">
+												<div>
+														<label>First Period CSV File</label>
+														<div class="file-input-container">
+																<input type="file" id="csv_file1" name="csv_file1" accept=".csv" required>
+																<label for="csv_file1" class="file-input-button">
+																		<i class="fas fa-upload"></i>
+																		Choose First Period CSV
+																</label>
+																<div class="file-info" id="fileInfo1" style="display: none;">
+																		<div class="file-details">
+																				<div class="file-detail-item">
+																						<i class="fas fa-file-csv"></i>
+																						<span class="file-name">-</span>
+																				</div>
+																				<div class="file-detail-item">
+																						<i class="fas fa-weight-hanging"></i>
+																						<span class="file-size">-</span>
+																				</div>
+																		</div>
+																</div>
+														</div>
+														<small>Upload your first analytics period data</small>
+												</div>
+												<div>
+														<label>Second Period CSV File</label>
+														<div class="file-input-container">
+																<input type="file" id="csv_file2" name="csv_file2" accept=".csv" required>
+																<label for="csv_file2" class="file-input-button">
+																		<i class="fas fa-upload"></i>
+																		Choose Second Period CSV
+																</label>
+																<div class="file-info" id="fileInfo2" style="display: none;">
+																		<div class="file-details">
+																				<div class="file-detail-item">
+																						<i class="fas fa-file-csv"></i>
+																						<span class="file-name">-</span>
+																				</div>
+																				<div class="file-detail-item">
+																						<i class="fas fa-weight-hanging"></i>
+																						<span class="file-size">-</span>
+																				</div>
+																		</div>
+																</div>
+														</div>
+														<small>Upload your second analytics period data</small>
+												</div>
+</div>
                     <button type="submit" class="compare-user-btn-submit">
                         <i class="fas fa-chart-bar"></i> Compare Analytics Data
                     </button>

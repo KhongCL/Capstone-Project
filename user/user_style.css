@@ -195,7 +195,7 @@ section {
 }
 
 .overview-section {
-	margin-bottom: 30px;
+		margin-bottom: 30px;
 }
 
 .user-metric {
@@ -205,11 +205,37 @@ section {
 }
 
 .user-metric-card {
-	  background-color: var(--white);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
+		backdrop-filter: blur(10px);
     box-shadow: var(--shadow);
+    position: relative;
+    border-width: 1px;
+    border-style: solid;
+    border-color: rgba(14, 165, 233, 0.2);
+    border-image: initial;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    overflow: hidden;
+    transition: 0.3s;
+}
+
+.user-metric-card:hover {
+		transform: translateY(-5px);
+}
+
+.user-metric-card h4 {
+		font-size: 0.875rem;
+    color: var(--dark-gray);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.user-metric-card p {
+		font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
 }
 
 .user-section {
@@ -543,7 +569,48 @@ label {
     color: var(--text-color);
 }
 
-input[type="file"],
+.file-input-container {
+    position: relative;
+    display: block;
+    width: auto;
+}
+
+.file-input-container input[type="file"] {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+    width: 0.1px;
+    height: 0.1px;
+}
+
+.file-input-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--primary-color);
+    color: var(--white);
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+		font-family: inherit;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    text-align: center;
+    justify-content: center;
+    width: auto;
+    border: 2px solid transparent;
+}
+
+.file-input-button:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    border-color: var(--primary-color);
+}
+
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -582,6 +649,7 @@ select:focus {
     padding: 12px 24px;
     border: none;
     border-radius: 8px;
+		font-family: inherit;
     font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
@@ -928,45 +996,9 @@ select:focus {
 /* =====================================================
    FILE INPUT STYLING
    ===================================================== */
-.file-input-container {
-    position: relative;
-    display: inline-block;
-    width: 100%;
-}
-
-.file-input-container input[type="file"] {
-    position: absolute;
-    left: -9999px;
-    opacity: 0;
-}
-
-.file-input-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background-color: var(--primary-color);
-    color: var(--white);
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    text-align: center;
-    justify-content: center;
-    width: 100%;
-}
-
-.file-input-button:hover {
-    background-color: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(76, 120, 208, 0.3);
-}
-
 .file-info {
     margin-top: 10px;
+		margin-bottom: 20px;
     padding: 10px;
     background-color: #f8f9fa;
     border-radius: 6px;
@@ -1278,7 +1310,7 @@ select:focus {
     display: flex;
     gap: 10px;
     justify-content: center;
-    margin-top: 15px;
+    margin-top: 20px;
     flex-wrap: wrap;
 }
 
@@ -1289,6 +1321,7 @@ select:focus {
     padding: 10px 16px;
     border: none;
     border-radius: 6px;
+		font-family: inherit;
     font-size: 0.9rem;
     font-weight: 500;
     cursor: pointer;
@@ -1400,6 +1433,7 @@ select:focus {
 
 .user-annotation-btn {
     padding: 4px 8px;
+		font-family: inherit;
     font-size: 0.8rem;
     border: none;
     border-radius: 4px;
@@ -1428,7 +1462,6 @@ select:focus {
     margin-bottom: 20px;
     border-radius: 8px;
     border: 1px solid;
-    display: flex;
     align-items: center;
     gap: 10px;
     font-weight: 500;
@@ -1600,8 +1633,9 @@ select:focus {
     padding: 12px 24px;
     border: none;
     border-radius: 8px;
+		font-family: inherit;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
     text-decoration: none;
@@ -1621,6 +1655,7 @@ select:focus {
     padding: 12px 24px;
     border: none;
     border-radius: 8px;
+		font-family: inherit;
     font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
@@ -1630,6 +1665,7 @@ select:focus {
 
 .user-btn-secondary:hover {
     background-color: #545b62;
+		color: white;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
@@ -1723,7 +1759,6 @@ select:focus {
 .compare-user-file-input-group label {
     display: block;
     margin-bottom: 5px;
-    font-weight: bold;
 }
 
 .compare-file-input-group input,
@@ -1748,7 +1783,9 @@ select:focus {
     border: none;
     border-radius: 4px;
     cursor: pointer;
+		font-family: inherit;
     font-size: 16px;
+		font-weight: 500;
 }
 
 .compare-btn-submit:hover,
