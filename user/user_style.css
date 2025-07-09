@@ -196,7 +196,7 @@ section {
 }
 
 .overview-section {
-	margin-bottom: 20px;
+	margin-bottom: 30px;
 }
 
 .user-metric {
@@ -1245,7 +1245,7 @@ select:focus {
 
 /* User Charts */
 .user-chart-section {
-    margin-bottom: 20px;
+    margin-bottom: 30px;
 }
 
 .user-chart-container {
@@ -1314,7 +1314,7 @@ select:focus {
 
 /* User Data Tables */
 .user-data-table-section {
-    margin-bottom: 20px;
+    margin-bottom: 30px;
 }
 
 .user-table-container {
@@ -1700,7 +1700,7 @@ select:focus {
 
 .compare-user-upload-form {
 		margin-top: 20px;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
 }
 
 .compare-file-input-group {
@@ -2068,7 +2068,7 @@ select:focus {
 }
 
 .compare-comparison-container {
-    margin-bottom: 20px;
+    margin-bottom: 30px;
 }
 
 .compare-saved-comparisons {
