@@ -93,7 +93,6 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     .filter-group {
         display: flex;
         flex-direction: column;
-        gap: 5px;
     }
 
     .filter-group label {
@@ -114,7 +113,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
-				margin-top: 10px;
+				margin-top: 12px;
     }
 
     .filter-btn {
@@ -147,7 +146,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 10px;
-        margin-bottom: 10px;
+        margin-bottom: 12px;
         max-height: 200px;
         overflow-y: auto;
         padding: 10px;
@@ -269,7 +268,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       		  </div>
 
       		  <!-- Source Selection Area -->
-      		  <div style="margin-top: 15px;">
+      		  <div style="margin-top: 20px;">
       		    <div style="display: flex; justify-content: space-between; align-items: center;">
       		      <label style="font-weight: 500; color: #495057;">Select Specific Sources:</label>
       		    </div>

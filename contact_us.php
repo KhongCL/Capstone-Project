@@ -15,7 +15,7 @@ session_start();
 
     <section id="contact-us">
         <div class="contact-container">
-            <h2>Connect with the TrafAnalyz Team</h2>
+            <h1>Connect with the TrafAnalyz Team</h1>
             <div id="contact-block">
                 <div class="contact-box">
                     <h3><i class="fas fa-phone-alt icon fa-flip-horizontal"></i> Project Inquiries</h3>

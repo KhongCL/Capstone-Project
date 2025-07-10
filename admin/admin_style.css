@@ -7,27 +7,23 @@
   --primary-blue: #0ea5e9;
   --light-blue: #e0f2fe;
   --pastel-blue: #bae6fd;
-  --dark-blue: #0369a1;
-  --emerald: #10b981;
-  --amber: #f59e0b;
-  --slate: #64748b;
+  --primary-dark: #0369a1;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --dark-gray: #64748b;
   --white: #ffffff;
   --gray-50: #f8fafc;
   --gray-100: #f1f5f9;
   --gray-200: #e2e8f0;
 
   /* Legacy color mappings for compatibility */
-  --primary: var(--primary-blue);
-  --primary-dark: var(--dark-blue);
   --secondary: #5ea1e5;
   --danger: #ef4444;
   --danger-light: #fecaca;
   --danger-border: #fca5a5;
-  --success: var(--emerald);
   --success-light: #d1fae5;
   --success-dark: #059669;
   --success-border: #a7f3d0;
-  --warning: var(--amber);
   --warning-dark: #d97706;
   --warning-light: #fef3c7;
   --warning-border: #fde68a;
@@ -35,7 +31,7 @@
   --light-gray: var(--gray-100);
   --medium-gray: var(--gray-200);
   --dark: #1e293b;
-  --gray: var(--slate);
+  --gray: var(--dark-gray);
   --text-color: #334155;
   --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   --info: #06b6d4;
@@ -54,8 +50,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
-    "Helvetica Neue", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   color: var(--text-color);
   background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 50%, #bae6fd 100%);
   line-height: 1.6;
@@ -108,7 +103,7 @@ h6 {
 }
 
 h1 {
-  color: var(--slate);
+  color: var(--dark-gray);
   margin-bottom: 1rem;
   font-size: 2rem;
 }
@@ -125,7 +120,7 @@ a {
 }
 
 a:hover {
-  color: var(--dark-blue);
+  color: var(--primary-dark);
 }
 
 /* =====================================================
@@ -186,17 +181,6 @@ nav a {
   overflow: hidden;
 }
 
-nav a::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s ease;
-}
-
 nav a:hover::before {
   left: 100%;
 }
@@ -211,7 +195,6 @@ nav a.active {
 
 nav .logout {
   color: var(--text-color);
-  margin-left: 1rem;
 }
 
 nav .logout:hover {
@@ -271,7 +254,7 @@ section:hover {
 
 /* Welcome Banner - Enhanced */
 .welcome-banner {
-  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-dark) 100%);
   color: white;
   padding: 2rem;
   border-radius: 1rem;
@@ -345,7 +328,7 @@ section:hover {
 
 .stat-card .label {
   font-size: 0.875rem;
-  color: var(--slate);
+  color: var(--dark-gray);
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 0.5rem;
@@ -361,7 +344,7 @@ section:hover {
 
 .stat-card .trend {
   font-size: 0.875rem;
-  color: var(--slate);
+  color: var(--dark-gray);
 }
 
 .stat-card .trend.up {
@@ -439,7 +422,7 @@ section:hover {
 
 .quick-link p {
   font-size: 0.875rem;
-  color: var(--slate);
+  color: var(--dark-gray);
   margin-bottom: 1rem;
   flex-grow: 1;
 }
@@ -463,7 +446,7 @@ section:hover {
 }
 
 .data-table th {
-  background: var(--dark-blue);
+  background: var(--primary-dark);
   color: white;
   text-align: left;
   padding: 1rem;
@@ -607,7 +590,7 @@ section:hover {
 }
 
 .sample-upload:hover {
-  border-color: var(--dark-blue);
+  border-color: var(--primary-dark);
   background: rgba(224, 242, 254, 0.5);
 }
 
@@ -624,7 +607,7 @@ section:hover {
 
 .sample-upload p {
   margin-bottom: 1.5rem;
-  color: var(--slate);
+  color: var(--dark-gray);
 }
 
 /* Report Types - Enhanced */
@@ -640,7 +623,7 @@ section:hover {
   border-radius: 1rem;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
-  color: var(--dark-blue);
+  color: var(--primary-dark);
   font-weight: 500;
   transition: all 0.3s ease;
 }
@@ -695,7 +678,7 @@ section:hover {
 
 .help-text {
   font-size: 0.8rem;
-  color: var(--slate);
+  color: var(--dark-gray);
   margin-top: 0.25rem;
   font-style: italic;
 }
@@ -714,7 +697,7 @@ section:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: var(--primary-blue);
+  background-color: var(--primary-blue);
   color: var(--white);
   padding: 0.75rem 1.5rem;
   border: none;
@@ -737,16 +720,10 @@ section:hover {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s ease;
-}
-
-.btn:hover::before {
-  left: 100%;
 }
 
 .btn:hover {
-  background: var(--dark-blue);
+  background: var(--primary-dark);
   transform: translateY(-2px);
   box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3);
   color: var(--white);
@@ -763,7 +740,7 @@ section:hover {
 }
 
 .btn.active {
-  background: var(--dark-blue);
+  background: var(--primary-dark);
 }
 
 .btn-primary {
@@ -772,11 +749,11 @@ section:hover {
 }
 
 .btn-primary:hover {
-  background: var(--dark-blue);
+  background: var(--primary-dark);
 }
 
 .btn-secondary {
-  background: var(--slate);
+  background: var(--dark-gray);
   color: white;
 }
 
@@ -957,7 +934,7 @@ section:hover {
 }
 
 .user-table th {
-  background: var(--dark-blue);
+  background: var(--primary-dark);
   color: white;
   font-weight: 600;
 }
@@ -997,7 +974,7 @@ section:hover {
 }
 
 .admin-user-table th {
-  background: var(--dark-blue);
+  background: var(--primary-dark);
   color: white;
   font-weight: 600;
 }
@@ -1103,7 +1080,7 @@ section:hover {
   border-radius: 0.5rem;
   font-family: "Courier New", monospace;
   font-size: 0.875rem;
-  border-left: 4px solid var(--slate);
+  border-left: 4px solid var(--dark-gray);
 }
 
 .admin-debug-info p {
@@ -1114,7 +1091,7 @@ section:hover {
 .admin-no-users-message {
   text-align: center;
   padding: 3rem;
-  color: var(--slate);
+  color: var(--dark-gray);
   font-style: italic;
   background: rgba(248, 250, 252, 0.8);
   backdrop-filter: blur(10px);
@@ -1283,7 +1260,7 @@ section:hover {
 }
 
 .format-header {
-  background: var(--dark-blue);
+  background: var(--primary-dark);
   color: white;
   padding: 1.5rem;
   cursor: pointer;
@@ -1295,24 +1272,10 @@ section:hover {
   overflow: hidden;
 }
 
-.format-header::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  transition: left 0.5s ease;
-}
-
-.format-header:hover::before {
-  left: 100%;
-}
-
 .format-header:hover {
-  background: #1e40af;
-  transform: translateY(-1px);
+  background: var(--primary-color);
+	box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+	transition: all 0.3s ease;
 }
 
 .format-header h3 {
@@ -1385,7 +1348,7 @@ section:hover {
 }
 
 .mapping-table th {
-  background: var(--dark-blue);
+  background: var(--primary-dark);
   color: white;
   font-weight: 600;
   font-size: 0.875rem;
@@ -1462,7 +1425,7 @@ select option:disabled {
 
 .custom-field-input:focus,
 .custom-type-input:focus {
-  border-color: var(--dark-blue);
+  border-color: var(--primary-dark);
   background: white;
   font-style: normal;
 }
@@ -1530,7 +1493,7 @@ footer {
 }
 
 .footer-links a:hover {
-  color: var(--dark-blue);
+  color: var(--primary-dark);
   text-decoration: underline;
 }
 
@@ -1936,7 +1899,6 @@ body:has(.non-print) {
   padding: 1.5rem !important;
   margin-bottom: 2rem !important;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -1956,7 +1918,7 @@ body:has(.non-print) {
 }
 
 .non-print p {
-  color: var(--slate) !important;
+  color: var(--dark-gray) !important;
   margin-bottom: 1.5rem !important;
 }
 
@@ -1987,16 +1949,11 @@ body:has(.non-print) {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   transition: left 0.5s ease;
 }
 
-.non-print .btn:hover::before {
-  left: 100%;
-}
-
 .non-print .btn[style*="background-color: #6c757d"] {
-  background: var(--slate) !important;
+  background: var(--dark-gray) !important;
 }
 
 .non-print .btn[style*="background-color: #6c757d"]:hover {
@@ -2026,7 +1983,7 @@ body:has(.non-print) > *:not(.non-print):not(script) {
 
 /* Enhanced export page title - now part of main container */
 body:has(.non-print) h1 {
-  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-blue) 100%) !important;
+  background: var(--primary-dark) !important;
   color: white !important;
   padding: 2rem !important;
   margin: 0 !important;
@@ -2059,7 +2016,7 @@ body:has(.non-print) .header-info {
   border: 1px solid rgba(14, 165, 233, 0.2) !important;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
   font-size: 0.875rem !important;
-  color: var(--slate) !important;
+  color: var(--dark-gray) !important;
   text-align: center !important;
   max-width: 1200px;
   margin: 2rem auto 1rem auto !important;
@@ -2068,13 +2025,13 @@ body:has(.non-print) .header-info {
 
 body:has(.non-print) .header-info p {
   margin: 0.25rem 0 !important;
-  color: var(--slate) !important;
+  color: var(--dark-gray) !important;
   font-size: 0.875rem !important;
 }
 
 /* Remove the padding-right from stats h2 since header-info is no longer positioned there */
 .stats h2 {
-  color: var(--dark-blue) !important;
+  color: var(--primary-dark) !important;
   margin-top: 0 !important;
   margin-bottom: 1.5rem !important;
   font-size: 1.5rem !important;
@@ -2099,7 +2056,7 @@ body:has(.non-print) .stats {
 }
 
 .stats h2 {
-  color: var(--dark-blue) !important;
+  color: var(--primary-dark) !important;
   margin-top: 0 !important;
   margin-bottom: 1.5rem !important;
   font-size: 1.5rem !important;
@@ -2129,7 +2086,7 @@ body:has(.non-print) .stats {
 }
 
 .stat-item strong {
-  color: var(--slate);
+  color: var(--dark-gray);
   font-weight: 600;
 }
 
@@ -2163,7 +2120,7 @@ body:has(.non-print) table {
 }
 
 body:has(.non-print) th {
-  background: var(--dark-blue) !important;
+  background: var(--primary-dark) !important;
   color: white !important;
   padding: 1rem !important;
   text-align: left !important;
@@ -2226,7 +2183,7 @@ body:has(.non-print) .footer {
   font-size: 0.875rem !important;
   font-style: italic !important;
   text-align: center !important;
-  color: var(--slate) !important;
+  color: var(--dark-gray) !important;
 }
 
 /* Print-specific overrides for export pages */
@@ -2246,7 +2203,7 @@ body:has(.non-print) .footer {
   }
 
   body:has(.non-print) h1 {
-    background: var(--dark-blue) !important;
+    background: var(--primary-dark) !important;
     color: white !important;
   }
 

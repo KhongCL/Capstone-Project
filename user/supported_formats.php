@@ -39,7 +39,6 @@ $active_page = "supported_formats";
             --dark-blue: #0369a1;
             --emerald: #10b981;
             --amber: #f59e0b;
-            --slate: #64748b;
             --white: #ffffff;
             --gray-50: #f8fafc;
             --gray-100: #f1f5f9;
@@ -200,7 +199,7 @@ $active_page = "supported_formats";
         }
 
         .platform-card h3 {
-            color: var(--slate);
+            color: var(--dark-gray);
             margin-top: 0;
             margin-bottom: 1rem;
             display: flex;
@@ -222,7 +221,7 @@ $active_page = "supported_formats";
             display: flex;
             gap: 0.75rem;
             align-items: flex-start;
-            color: var(--slate);
+            color: var(--dark-gray);
             font-size: 0.9rem;
         }
 
@@ -267,7 +266,7 @@ $active_page = "supported_formats";
             margin-bottom: 1rem;
             font-size: 1.875rem;
             font-weight: 700;
-            color: var(--slate);
+            color: var(--dark-gray);
         }
 
         .section-icon {
@@ -278,7 +277,7 @@ $active_page = "supported_formats";
         }
 
         .section-description {
-            color: var(--slate);
+            color: var(--dark-gray);
             font-size: 1.125rem;
             line-height: 1.7;
         }
@@ -429,11 +428,11 @@ $active_page = "supported_formats";
             gap: 0.5rem;
             margin-bottom: 1rem;
             font-weight: 600;
-            color: var(--slate);
+            color: var(--dark-gray);
         }
 
         .mappings-section p {
-            color: var(--slate);
+            color: var(--dark-gray);
             font-size: 0.9rem;
             margin-bottom: 1rem;
         }
@@ -456,7 +455,7 @@ $active_page = "supported_formats";
         .mappings-table th {
             background: rgba(248, 250, 252, 0.8);
             font-weight: 600;
-            color: var(--slate);
+            color: var(--dark-gray);
             font-size: 0.9rem;
         }
 
@@ -466,7 +465,7 @@ $active_page = "supported_formats";
 
         .mappings-table td:first-child {
             font-weight: 600;
-            color: var(--slate);
+            color: var(--dark-gray);
         }
 
         .data-type-badge {
@@ -615,7 +614,7 @@ $active_page = "supported_formats";
             display: flex;
             align-items: flex-start;
             gap: 0.5rem;
-            color: var(--slate);
+            color: var(--dark-gray);
             font-size: 0.9rem;
             line-height: 1.5;
         }
@@ -629,7 +628,7 @@ $active_page = "supported_formats";
         .no-formats {
             text-align: center;
             padding: 4rem 1.5rem;
-            color: var(--slate);
+            color: var(--dark-gray);
         }
 
         .no-formats i {
