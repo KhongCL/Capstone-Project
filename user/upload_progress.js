@@ -1,3 +1,114 @@
+// Global confirmation function for upload progress tracker
+function confirmDataReplacement() {
+    // ENHANCED: Use the global variables set by PHP
+    const hasExistingData = window.sessionHasExistingData;
+    const isUsingSampleData = window.sessionIsUsingSampleData;
+    
+    // NEW: Check if there are error messages displayed that would be helpful to keep
+    const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
+    
+    // ENHANCED DEBUG LOGGING
+    console.log('=== CONFIRMATION DEBUG ===');
+    console.log('hasExistingData:', hasExistingData);
+    console.log('isUsingSampleData:', isUsingSampleData);
+    console.log('hasErrorMessages:', hasErrorMessages);
+    console.log('Current URL:', window.location.href);
+    console.log('Referrer:', document.referrer);
+    
+    // NEW: Check if this is a page refresh after successful upload
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('upload_success') === '1') {
+        console.log('Page loaded after successful upload - sample data should be cleared');
+        return true; // Proceed without confirmation on post-upload page loads
+    }
+    
+    // CRITICAL FIX: Check for mapping page return but STILL show confirmation if needed
+    const isFromMappingPage = document.referrer && document.referrer.includes('map_columns.php');
+    if (isFromMappingPage) {
+        console.log('Detected return from mapping page');
+        // Even if from mapping page, we should confirm if there's existing data
+        // The only exception is if we're uploading the same file again with no existing data
+        if (!hasExistingData && !hasErrorMessages) {
+            console.log('No existing data or error messages from mapping page - proceeding');
+            return true;
+        }
+        console.log('Has existing data or error messages from mapping page - showing confirmation');
+    }
+    
+    console.log('========================');
+    
+    // FIXED: ALWAYS show confirmation if there's existing data, regardless of error messages
+    if (!hasExistingData && !hasErrorMessages) {
+        console.log('No existing data or error messages - proceeding without confirmation');
+        return true; // No existing data or helpful messages, proceed
+    }
+    
+    let confirmMessage;
+    
+    // NEW: Add special messaging for mapping page returns
+    if (isFromMappingPage && hasErrorMessages) {
+        confirmMessage = "⚠️ Upload Different File?\n\n" +
+                    "You just came back from the column mapping page with validation errors displayed.\n\n" +
+                    "The current error messages contain helpful suggestions for fixing your previous CSV file:\n" +
+                    "• 💡 Data fix suggestions\n" +
+                    "• 🔧 Quick fix guide\n" +
+                    "• 📋 Detailed error explanations\n\n" +
+                    "Uploading a new file will clear these helpful messages.\n\n" +
+                    "Do you want to continue with the upload?";
+    } else if (hasErrorMessages && !hasExistingData) {
+        confirmMessage = "⚠️ Clear Error Messages?\n\n" +
+                    "You have validation error messages displayed that contain helpful suggestions for fixing your CSV file:\n" +
+                    "• 💡 Data fix suggestions\n" +
+                    "• 🔧 Quick fix guide\n" +
+                    "• 📋 Detailed error explanations\n\n" +
+                    "Uploading a new file will clear these helpful messages.\n\n" +
+                    "Do you want to continue with the upload?";
+    } else if (hasErrorMessages && hasExistingData) {
+        if (isUsingSampleData) {
+            confirmMessage = "⚠️ Upload New Data?\n\n" +
+                        "You are currently viewing sample data AND have error messages with helpful suggestions displayed.\n\n" +
+                        "Uploading a new file will:\n" +
+                        "• Replace the sample data with your own data\n" +
+                        "• Clear all current dashboard results\n" +
+                        "• Reset all analytics and charts\n" +
+                        "• Remove the helpful error messages and fix suggestions\n\n" +
+                        "Do you want to continue with the upload?";
+        } else {
+            confirmMessage = "⚠️ Replace Existing Data?\n\n" +
+                        "You have uploaded data AND error messages with helpful suggestions displayed.\n\n" +
+                        "Uploading a new file will:\n" +
+                        "• Replace your current data completely\n" +
+                        "• Clear all dashboard results and analytics\n" +
+                        "• Remove all annotations and saved metrics\n" +
+                        "• Clear the helpful error messages and fix suggestions\n\n" +
+                        "This action cannot be undone. Do you want to continue?";
+        }
+    } else if (isUsingSampleData) {
+        confirmMessage = "⚠️ Upload New Data?\n\n" +
+                    "You are currently viewing sample data. Uploading a new file will:\n" +
+                    "• Replace the sample data with your own data\n" +
+                    "• Clear all current dashboard results\n" +
+                    "• Reset all analytics and charts\n\n" +
+                    "Do you want to continue with the upload?";
+    } else {
+        confirmMessage = "⚠️ Replace Existing Data?\n\n" +
+                    "You already have uploaded data. Uploading a new file will:\n" +
+                    "• Replace your current data completely\n" +
+                    "• Clear all dashboard results and analytics\n" +
+                    "• Remove all annotations and saved metrics\n" +
+                    "• Reset all charts and comparisons\n\n" +
+                    "This action cannot be undone. Do you want to continue?";
+    }
+    
+    console.log('Showing confirmation dialog:', confirmMessage);
+    const result = confirm(confirmMessage);
+    console.log('Confirmation result:', result);
+    return result;
+}
+
+// CRITICAL: Ensure the function is available globally
+window.confirmDataReplacement = confirmDataReplacement;
+
 class UploadProgressTracker {
     constructor() {
         this.uploadStartTime = null;
@@ -36,7 +147,7 @@ class UploadProgressTracker {
             this.handleFileSelection(e.target.files[0]);
         });
 
-        // Form submission handler
+        // Form submission handler - ENHANCED WITH CONFIRMATION
         uploadForm.addEventListener('submit', (e) => {
             e.preventDefault();
             console.log('Form submitted'); // Debug log
@@ -51,27 +162,25 @@ class UploadProgressTracker {
             console.log('typeof confirmDataReplacement:', typeof confirmDataReplacement);
             console.log('window.confirmDataReplacement exists:', typeof window.confirmDataReplacement);
             
-            // NEW: Check for confirmation before proceeding with AJAX upload
+            // ENHANCED: Always check for confirmation before proceeding with AJAX upload
             const confirmFunction = window.confirmDataReplacement || confirmDataReplacement;
             if (typeof confirmFunction === 'function') {
-                console.log('Calling confirmation function...');
-                const confirmed = confirmFunction();
-                console.log('Confirmation result:', confirmed);
-                if (!confirmed) {
-                    console.log('User cancelled upload confirmation');
-                    return; // User cancelled, don't proceed
+                console.log('Checking for data replacement confirmation...');
+                if (!confirmFunction()) {
+                    console.log('User cancelled upload via confirmation dialog');
+                    return; // User cancelled
                 }
+                console.log('User confirmed upload, proceeding...');
             } else {
-                console.log('No confirmation function found, proceeding with upload');
+                console.log('No confirmation function available, proceeding...');
             }
             
             const file = fileInput.files[0];
             if (file) {
-                console.log('File selected:', file.name, file.size); // Debug log
+                console.log('Starting upload for file:', file.name);
                 this.startUpload(file);
             } else {
-                console.error('No file selected'); // Debug log
-                alert('Please select a file before uploading.');
+                alert('Please select a file to upload.');
             }
         });
 
@@ -1110,7 +1219,7 @@ class UploadProgressTracker {
         const response = this.serverResponse;
 
         if (response.success) {
-            // Check if this needs mapping (redirect to mapping page)
+            // FIXED: Check for manual mapping redirect FIRST
             if (response.redirect && response.redirect.includes('map_columns.php')) {
                 // CRITICAL FIX: Clear confirmation state when redirecting to mapping
                 // This prevents stale sample data state from affecting future confirmations
@@ -1155,13 +1264,14 @@ class UploadProgressTracker {
                     this.showValidationWarnings(response.message, response.validation_errors);
                 }, 1500);
             } else {
-                // FIXED: Complete success - redirect with confirmation
+                // FIXED: Complete success - redirect with confirmation IMMEDIATELY
                 this.completeStage(0); // File upload ✅
                 this.completeStage(1); // Structure validation ✅  
                 this.completeStage(2); // Data processing ✅
                 this.completeStage(3); // Database save ✅
                 this.updateOverallProgress(100, 'Upload completed successfully!');
                 
+                // FIXED: Redirect immediately instead of waiting 2 seconds
                 setTimeout(() => {
                     // CRITICAL FIX: Get session state from global variables set by PHP
                     const hasExistingData = window.sessionHasExistingData || false;
@@ -1189,7 +1299,7 @@ class UploadProgressTracker {
                         // User cancelled - just refresh the current page to show updated state
                         window.location.reload();
                     }
-                }, 2000);
+                }, 500); // REDUCED from 2000ms to 500ms for immediate redirect
             }
         } else {
             // Error handling - these methods will call hideProgressContainer
@@ -1453,7 +1563,7 @@ class UploadProgressTracker {
         validationHelp.appendChild(errorFooter);
     }
 
-handleError(message) {
+    handleError(message) {
         this.clearSimulationTimeouts();
         
         // Show error state

@@ -828,8 +828,5 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     }
 
   </script>
-  
-  <!-- Sample Data Transitions Script -->
-  <script src="sample_data_transitions.js"></script>
 </body>
 </html>
