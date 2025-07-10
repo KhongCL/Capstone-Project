@@ -58,56 +58,6 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
-    .sample-data-notice {
-        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
-        padding: 15px 20px;
-        margin: 20px 0;
-        border-radius: 8px;
-        color: var(--text-color);
-        box-shadow: 0 4px 12px rgba(255, 154, 158, 0.3);
-    }
-
-    .notice-content {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 15px;
-    }
-
-    .notice-content i {
-        font-size: 1.2em;
-        margin-right: 10px;
-        color: var(--danger);
-    }
-
-    .notice-content span {
-        flex: 1;
-        font-weight: 500;
-    }
-
-    .notice-content .btn {
-        padding: 8px 16px;
-        font-size: 0.9em;
-        border: 1px solid var(--danger);
-        background-color: var(--danger);
-        color: var(--white);
-        text-decoration: none;
-        border-radius: 4px;
-        transition: all 0.3s ease;
-    }
-
-    .notice-content .btn:hover {
-        background-color: var(--danger-hover);
-        transform: translateY(-1px);
-    }
-
-    @media (max-width: 768px) {
-        .notice-content {
-            flex-direction: column;
-            text-align: center;
-        }
-    }
 
     .admin-notice {
         background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);

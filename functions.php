@@ -1174,8 +1174,8 @@ function getSampleDataNotice() {
     if (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data'] === true) {
         $notice = [
             'is_sample' => true,
-            'message' => '🧪 You\'re currently viewing sample data to explore TrafAnalyz features.',
-            'action' => '<a href="index.php?clear_sample=1" class="btn">Switch to Your Data</a>'
+            'message' => 'You\'re currently viewing sample data to explore TrafAnalyz features.',
+            'action' => '<a href="index.php?clear_sample=1" class="notice-content-btn">Switch to Your Data</a>'
         ];
         error_log("Returning sample notice: " . json_encode($notice));
         error_log("=== END GET SAMPLE DATA NOTICE (SAMPLE) ===");
