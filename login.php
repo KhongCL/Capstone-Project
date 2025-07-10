@@ -31,8 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Process login if no errors
     if (empty($errors)) {
-        // FIXED: Use correct column name PasswordHash
-        $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ?");
+        // FIXED: Only check for End-User role in user login
+        $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ? AND Role = 'End-User'");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -44,20 +44,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user_id'] = $user['UserID'];
                 $_SESSION['username'] = $user['Username'];
                 $_SESSION['role'] = $user['Role'];
-                // REMOVED: $_SESSION['login_success'] = true;
                 
-                // DIRECT REDIRECT - no JavaScript needed
-                if ($user['Role'] === 'Admin') {
-                    header("Location: admin/index.php");
-                } else {
-                    header("Location: user/index.php");
-                }
+                // Only redirect to user area since we verified End-User role
+                header("Location: user/index.php");
                 exit();
             } else {
-                $errors['general'] = 'Invalid username or password';
+                $errors['general'] = 'Invalid username or password.';
             }
         } else {
-            $errors['general'] = 'Invalid username or password';
+            // ENHANCED: More specific error message for user login
+            $errors['general'] = 'Invalid user credentials. If you\'re an administrator, please use the admin login.';
         }
     }
 }
@@ -192,8 +188,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="sign-up">
                 Don't have an account? <a href="register.php">Create Account</a>
             </div>
-						<div class="sign-up" style="margin-top: 10px;">
-								<a href="index.php">Return to Home Page</a>
+            <div class="sign-up" style="margin-top: 10px;">
+                <a href="index.php">Return to Home Page</a>
             </div>
         </div>
         <div class="auth-image"></div>
