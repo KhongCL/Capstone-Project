@@ -567,7 +567,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
 
         .progress-stage.error .progress-fill {
             background-color: #dc3545 !important;
-            background: linear-gradient(90deg, #dc3545 0%, #c82333 100%) !important;
         }
 
         .progress-stage.error .progress-text {
@@ -1260,7 +1259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     progressFill.style.width = `${percent}%`;
                     
                     if (percent === 100 && !stageElement.classList.contains('error')) {
-                        progressFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+                        progressFill.style.background = '#28a745';
                         progressFill.style.boxShadow = '0 2px 8px rgba(40, 167, 69, 0.4)';
                     }
                 }
@@ -1277,7 +1276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 
                 updateOverallProgress(overallPercent, message);
             }
-            
+
             function updateOverallProgress(percent, message) {
                 const overallFill = document.getElementById('mappingOverallFill');
                 const overallPercent = document.getElementById('mappingOverallPercent');
@@ -1287,11 +1286,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     overallFill.style.width = `${Math.round(percent)}%`;
                     
                     if (percent >= 100) {
-                        overallFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+                        overallFill.style.background = '#28a745';
                         overallFill.style.boxShadow = '0 4px 12px rgba(40, 167, 69, 0.5)';
                         overallFill.style.animation = 'pulse-success 1.5s infinite';
                     } else if (message && message.includes('failed')) {
-                        overallFill.style.background = 'linear-gradient(90deg, #dc3545 0%, #c82333 100%)';
+                        overallFill.style.background = '#dc3545';
                         overallFill.style.boxShadow = '0 4px 12px rgba(220, 53, 69, 0.5)';
                     }
                 }
@@ -1362,7 +1361,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 
                 if (progressFill) {
                     progressFill.style.width = '100%';
-                    progressFill.style.background = 'linear-gradient(90deg, #28a745 0%, #20c997 100%)';
+                    progressFill.style.background = '#28a745';
                 }
                 if (progressText) {
                     progressText.textContent = '100%';

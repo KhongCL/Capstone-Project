@@ -936,26 +936,17 @@ select:focus {
 
 .overall-fill {
     height: 100%;
-    background-color: #4facfe;
+    /* FIXED: Removed gradient, using solid green color for maximum contrast */
+    background-color: #28a745;
     border-radius: 10px;
     transition: width 0.5s ease;
     position: relative;
+    /* FIXED: Removed glow effect */
 }
 
 .overall-fill::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: linear-gradient(
-        90deg, 
-        transparent 0%, 
-        rgba(255,255,255,0.4) 50%, 
-        transparent 100%
-    );
-    animation: shimmer 2s infinite;
+    /* FIXED: Removed shimmer animation completely */
+    display: none;
 }
 
 .overall-text {
