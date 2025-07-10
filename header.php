@@ -28,12 +28,11 @@ $active_page = isset($active_page) ? $active_page : 'home';
     <?php endif; ?>
 </head>
 <body>
-    <header>
-        <a href="index.php" class="logo">
-            <div class="logo-icon">T</div>
-            TrafAnalyz
-        </a>
-        <nav>
+        <header>
+            <a href="index.php" class="logo">
+                <img src="images/logo2.png" alt="TrafAnalyz Logo" class="logo-image">
+            </a>
+            <nav>
             <ul>
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <?php if ($_SESSION['role'] === 'Admin'): ?>
