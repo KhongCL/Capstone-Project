@@ -9,11 +9,11 @@ if ($admin_key !== 'trafanalyz') {
 }
 
 if (isset($_SESSION['role']) && $_SESSION['role'] === 'End-User') {
-		displayAccessDeniedMessage();		
+        displayAccessDeniedMessage();		
 }
 
 function displayAccessDeniedMessage() {
-		echo '<!DOCTYPE html>
+        echo '<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
@@ -24,11 +24,11 @@ function displayAccessDeniedMessage() {
         <div class="access-denied">
             <h2>Access Denied</h2>
             <p>Access denied. Admin area requires proper authorization.</p>
-            <a href="../index.php">Return to Homepage</a>
+            <a href="index.php">Return to Homepage</a>
         </div>
     </body>
     </html>';
-		exit();
+        exit();
 }
 
 // Initialize variables
@@ -56,33 +56,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Process login if no errors
     if (empty($errors)) {
-        // FIXED: Use correct column name PasswordHash
-        $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ?");
+        // FIXED: Only check for Admin users in admin login
+        $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ? AND Role = 'Admin'");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
         
         if ($user = $result->fetch_assoc()) {
             if ($user['AccountStatus'] === 'Suspended') {
-                $errors['general'] = 'Your account has been suspended. Please contact support.';
+                $errors['general'] = 'Your admin account has been suspended. Please contact support.';
             } elseif (password_verify($password, $user['PasswordHash'])) {
                 $_SESSION['user_id'] = $user['UserID'];
                 $_SESSION['username'] = $user['Username'];
                 $_SESSION['role'] = $user['Role'];
-                // REMOVED: $_SESSION['login_success'] = true;
                 
-                // DIRECT REDIRECT - no JavaScript needed
-                if ($user['Role'] === 'Admin') {
-                    header("Location: admin/index.php");
-                } else {
-                    header("Location: user/index.php");
-                }
+                // Only redirect to admin area since we verified Admin role
+                header("Location: admin/index.php");
                 exit();
             } else {
-                $errors['general'] = 'Invalid username or password';
+                $errors['general'] = 'Invalid admin credentials. Please check your username and password.';
             }
         } else {
-            $errors['general'] = 'Invalid username or password';
+            // ENHANCED: More specific error message for admin login
+            $errors['general'] = 'Invalid admin credentials. This login is for administrators only.';
         }
     }
 }
