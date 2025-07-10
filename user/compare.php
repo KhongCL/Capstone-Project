@@ -1238,7 +1238,7 @@ function calculateStats($values) {
         VALIDATION HELP STYLES
         ===================================================== */
         .user-alert-danger .validation-help {
-            background: #e2e3e5 !important;
+            background: white !important;
             border-radius: 6px !important;
             padding: 15px !important;
             margin: 20px 0 !important;

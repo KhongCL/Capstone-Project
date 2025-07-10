@@ -262,6 +262,8 @@ if ($row = $result->fetch_assoc()) {
             background: rgba(255, 255, 255, 0.15);
             padding: 8px 12px;
             border-radius: 6px;
+						overflow: hidden;
+						text-overflow: ellipsis;
         }
 
         .existing-sample-info .detail-label {
