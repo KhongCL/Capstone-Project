@@ -1561,10 +1561,6 @@ select:focus {
     color: #721c24;
 }
 
-.user-alert-danger:before {
-    content: "⚠️ ";
-}
-
 .user-alert-warning {
     background-color: #fff3cd;
     border-color: #ffeaa7;
