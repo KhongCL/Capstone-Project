@@ -1159,7 +1159,47 @@ error_log("=== END INDEX.PHP DEBUG ===");
             <script>
                 // CRITICAL: Hide sample data UI immediately if upload was just completed
                 document.addEventListener('DOMContentLoaded', function() {
-                    // Check if we're on a post-upload page load
+                    console.log('=== INDEX.PHP DOM CONTENT LOADED ===');
+                    
+                    const uploadBtn = document.getElementById('uploadBtn');
+                    const csvFileInput = document.getElementById('csvFile');
+                    const fileInfo = document.getElementById('fileInfo');
+                    
+                    console.log('Elements found:', {
+                        uploadBtn: !!uploadBtn,
+                        csvFileInput: !!csvFileInput,
+                        fileInfo: !!fileInfo
+                    });
+                    
+                    // CRITICAL: Ensure upload button is in correct initial state
+                    if (uploadBtn) {
+                        // FIXED: Clear all inline styles first
+                        uploadBtn.style.cssText = '';
+                        uploadBtn.classList.remove('show');
+                        uploadBtn.disabled = false;
+                        
+                        // Set proper initial state
+                        uploadBtn.style.display = 'none';
+                        uploadBtn.style.opacity = '0';
+                        uploadBtn.style.transform = 'translateY(10px)';
+                        uploadBtn.style.transition = 'all 0.3s ease';
+                        
+                        console.log('Upload button reset to initial state');
+                    }
+                    
+                    // CRITICAL: Ensure file input is clean
+                    if (csvFileInput) {
+                        csvFileInput.value = '';
+                        console.log('File input cleared');
+                    }
+                    
+                    // CRITICAL: Ensure file info is hidden
+                    if (fileInfo) {
+                        fileInfo.style.display = 'none';
+                        console.log('File info hidden');
+                    }
+                    
+                    // Check if we're on a post-upload page load and handle sample data UI
                     const urlParams = new URLSearchParams(window.location.search);
                     const uploadSuccess = urlParams.get('upload_success');
                     
@@ -1171,6 +1211,8 @@ error_log("=== END INDEX.PHP DEBUG ===");
                             console.log('Sample data UI hidden immediately after upload success');
                         }
                     }
+                    
+                    console.log('=== INDEX.PHP DOM CONTENT LOADED COMPLETE ===');
                 });
             </script>
             
@@ -1426,7 +1468,8 @@ error_log("=== END INDEX.PHP DEBUG ===");
             $hasData = false;
             if (isset($_SESSION['latest_upload_id'])) {
                 $uploadId = $_SESSION['latest_upload_id'];
-                $stmt = $conn->prepare("SELECT COUNT(*) as count FROM analytics_data WHERE UploadID = ?");
+                // FIX: Use correct table name 'processed_data_point' instead of 'analytics_data'
+                $stmt = $conn->prepare("SELECT COUNT(*) as count FROM processed_data_point WHERE UploadID = ?");
                 $stmt->bind_param("i", $uploadId);
                 $stmt->execute();
                 $result = $stmt->get_result();
@@ -1457,26 +1500,80 @@ error_log("=== END INDEX.PHP DEBUG ===");
             const fileInfo = document.getElementById('fileInfo');
             const fileName = fileInfo.querySelector('.file-name');
             const fileSize = fileInfo.querySelector('.file-size');
-            const uploadBtn = document.getElementById('uploadBtn'); // Add this line
+            const uploadBtn = document.getElementById('uploadBtn');
+
+            console.log('=== FILE INPUT CHANGE EVENT ===');
+            console.log('Files selected:', this.files.length);
+            console.log('File info element found:', !!fileInfo);
+            console.log('Upload button found:', !!uploadBtn);
+            console.log('Upload button current state:', {
+                display: uploadBtn ? uploadBtn.style.display : 'not found',
+                classList: uploadBtn ? Array.from(uploadBtn.classList) : 'not found'
+            });
 
             if (this.files.length > 0) {
                 const file = this.files[0];
-                fileName.textContent = file.name;
-                fileSize.textContent = formatFileSize(file.size);
-                fileInfo.style.display = 'block';
+                console.log('Selected file:', file.name, 'Size:', file.size);
                 
-                // Show upload button when file is selected
-                uploadBtn.classList.add('show');
-                uploadBtn.style.display = 'inline-block';
+                // Update file info display
+                if (fileName && fileSize) {
+                    fileName.textContent = file.name;
+                    fileSize.textContent = formatFileSize(file.size);
+                }
+                
+                if (fileInfo) {
+                    fileInfo.style.display = 'block';
+                    console.log('File info displayed');
+                }
+                
+                // FIXED: Ensure upload button is properly shown
+                if (uploadBtn) {
+                    // CRITICAL: Clear all previous styles and classes first
+                    uploadBtn.style.cssText = '';
+                    uploadBtn.classList.remove('show');
+                    uploadBtn.disabled = false;
+                    
+                    // FIXED: Apply the correct styles immediately
+                    uploadBtn.style.display = 'inline-block';
+                    uploadBtn.style.opacity = '1';
+                    uploadBtn.style.transform = 'translateY(0)';
+                    uploadBtn.style.transition = 'all 0.3s ease';
+                    
+                    // Add the show class for consistency
+                    uploadBtn.classList.add('show');
+                    
+                    console.log('Upload button shown with proper styles');
+                    console.log('Final button state:', {
+                        display: uploadBtn.style.display,
+                        opacity: uploadBtn.style.opacity,
+                        transform: uploadBtn.style.transform,
+                        disabled: uploadBtn.disabled,
+                        classList: Array.from(uploadBtn.classList)
+                    });
+                } else {
+                    console.error('Upload button not found in DOM');
+                }
                 
                 // DON'T clear error messages here - let them remain visible
                 // Error messages will be cleared when upload actually starts
             } else {
+                console.log('No files selected, hiding elements');
+                
                 // Hide upload button when no file is selected
-                fileInfo.style.display = 'none';
-                uploadBtn.classList.remove('show');
-                uploadBtn.style.display = 'none';
+                if (fileInfo) {
+                    fileInfo.style.display = 'none';
+                }
+                
+                if (uploadBtn) {
+                    uploadBtn.classList.remove('show');
+                    uploadBtn.style.display = 'none';
+                    uploadBtn.style.opacity = '0';
+                    uploadBtn.style.transform = 'translateY(10px)';
+                    console.log('Upload button hidden');
+                }
             }
+            
+            console.log('=== END FILE INPUT CHANGE EVENT ===');
         });
 
         window.addEventListener('beforeunload', function(e) {
@@ -1670,25 +1767,37 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
         // Fallback handler for non-AJAX form submission (if JS fails)
         document.addEventListener('DOMContentLoaded', function() {
-            const uploadForm = document.getElementById('uploadForm');
-            
-            // Add a fallback listener that only triggers if upload_progress.js fails to load
-            setTimeout(function() {
-                // Check if UploadProgressTracker is handling the form
-                if (!uploadForm.dataset.handledByTracker) {
-                    console.log('Adding fallback form submission handler');
+            // Wait for upload_progress.js to load and initialize
+            setTimeout(() => {
+                const uploadForm = document.getElementById('uploadForm');
+                const uploadBtn = document.getElementById('uploadBtn');
+                
+                // FIXED: Ensure the upload button state is properly managed after upload_progress.js
+                if (uploadBtn && !uploadBtn.dataset.stateManaged) {
+                    console.log('Managing upload button state after upload_progress.js initialization');
                     
-                    uploadForm.addEventListener('submit', function(e) {
-                        const hasExistingData = window.sessionHasExistingData;
-                        
-                        if (hasExistingData && !confirmDataReplacement()) {
-                            e.preventDefault(); // Stop the form submission
-                            return false;
-                        }
-                        // If confirmed or no existing data, let form submit normally
-                    });
+                    // Mark as managed to avoid duplicate handlers
+                    uploadBtn.dataset.stateManaged = 'true';
+                    
+                    // CRITICAL: Don't override the button state if it's already properly set
+                    // Just ensure it's not disabled and has proper initial styling
+                    if (!uploadBtn.classList.contains('show')) {
+                        uploadBtn.style.display = 'none';
+                        uploadBtn.style.opacity = '0';
+                        uploadBtn.style.transform = 'translateY(10px)';
+                    }
+                    uploadBtn.disabled = false;
+                    
+                    console.log('Upload button state properly managed');
                 }
-            }, 500); // Give upload_progress.js time to load
+                
+                // Verify that upload_progress.js is properly loaded
+                if (window.UploadProgressTracker || uploadForm.dataset.handledByTracker) {
+                    console.log('UploadProgressTracker is active');
+                } else {
+                    console.log('UploadProgressTracker not detected, fallback handlers will be used');
+                }
+            }, 600); // Give upload_progress.js time to initialize
         });
     </script>
 </body>
