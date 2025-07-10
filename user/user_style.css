@@ -21,7 +21,7 @@
 		--light-blue: #e3f2fd;
     --light-green: #e8f5e8;
     --purple-theme: #667eea;
-    --pink-theme: #ff9a9e;
+    --pink-theme: #ffb7e5;
     --text-muted: #495057;
     --border-light: #dee2e6;
     --border-medium: #ced4da;
@@ -1108,6 +1108,11 @@ select:focus {
     transition: all 0.3s ease;
 }
 
+.sample-actions .btn:hover {
+		background-color: rgba(255, 255, 255, 0.1);
+		transform: translateY(-2px);
+}
+
 .sample-actions .btn-primary {
     background-color: rgba(255, 255, 255, 0.2);
     color: white;
@@ -1129,7 +1134,7 @@ select:focus {
 
 .sample-data-info {
     background-color: white;
-    color: #333;
+    color: var(--text-color);
     padding: 25px 30px;
     margin: 0;
 }
@@ -1155,7 +1160,7 @@ select:focus {
 
 .sample-data-table {
     background-color: white;
-    color: #333;
+    color: var(--text-color);
     padding: 25px 30px;
     margin: 0;
 }
@@ -1210,7 +1215,7 @@ select:focus {
     padding: 15px 20px;
     margin: 20px 0;
     border-radius: 8px;
-    color: #333;
+    color: var(--text-color);
     box-shadow: 0 4px 12px rgba(255, 154, 158, 0.3);
 }
 
@@ -1225,7 +1230,7 @@ select:focus {
 .notice-content i {
     font-size: 1.2em;
     margin-right: 10px;
-    color: #e91e63;
+    color: #d63384;
 }
 
 .notice-content span {
@@ -1233,41 +1238,109 @@ select:focus {
     font-weight: 500;
 }
 
-.notice-content .btn {
+.notice-content-btn {
+	  display: inline-flex;
+    align-items: center;
+		justify-content: center;
+    gap: 8px;
     padding: 8px 16px;
+		font-family: inherit;
     font-size: 0.9em;
     border: 1px solid rgba(255, 255, 255, 0.5);
+		border-radius: 8px;
     background-color: rgba(255, 255, 255, 0.2);
-    color: #333;
+    color: var(--text-color);
+		text-align: center;
     text-decoration: none;
     transition: all 0.3s ease;
 }
 
-.notice-content .btn:hover {
+.notice-content-btn:hover {
+		color: var(--text-color);
     background-color: rgba(255, 255, 255, 0.4);
     transform: translateY(-1px);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-    .sample-actions {
-        flex-direction: column;
-        align-items: center;
+/* =====================================================
+   SAMPLE DATA NOTICE TRANSITIONS
+   ===================================================== */
+
+/* Enhanced transitions for sample data elements */
+.sample-data-notice,
+.sample-data-status {
+    transition: all 0.3s ease;
+    transform-origin: top center;
+}
+
+.sample-data-notice.hiding,
+.sample-data-status.hiding,
+.sample-data-notice.sample-hiding,
+.sample-data-status.sample-hiding {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+    pointer-events: none;
+}
+
+/* Transition message styling */
+.transition-message {
+    font-family: inherit;
+    user-select: none;
+}
+
+/* Loading state for switch button */
+.notice-content-btn.loading {
+    opacity: 0.7;
+    pointer-events: none;
+    position: relative;
+}
+
+.notice-content-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Keyframe animations for transitions */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
     }
-    
-    .info-grid {
-        grid-template-columns: 1fr;
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
     }
-    
-    .notice-content {
-        flex-direction: column;
-        text-align: center;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
     }
-    
-    .sample-data-info,
-    .sample-data-table {
-        padding: 20px 15px;
+    to {
+        opacity: 1;
+        transform: translateX(0);
     }
+}
+
+/* Enhanced sample data display states */
+.sample-data-display.transitioning {
+    opacity: 0.5;
+    pointer-events: none;
+    transition: all 0.3s ease;
 }
 
 /* =====================================================
@@ -1598,7 +1671,7 @@ select:focus {
     font-weight: 600;
     z-index: 10;
     /* Dynamic text color based on background */
-    color: #333 !important; /* Default dark text for gray background */
+    color: var(--text-color) !important; /* Default dark text for gray background */
     text-shadow: 0 1px 2px rgba(255,255,255,0.8) !important; /* Light shadow for contrast */
     transition: all 0.3s ease;
 }

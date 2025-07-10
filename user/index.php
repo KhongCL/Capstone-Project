@@ -319,7 +319,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
 				
         /* ==================== SAMPLE DATA STATUS STYLES ==================== */
         .sample-data-status {
-            background: linear-gradient(135deg, #2980b9 0%, #0066cc 100%);
+            background-color:var(--primary-color);
             padding: 15px 20px;
             margin: 20px 0;
             border-radius: 8px;
@@ -1628,5 +1628,8 @@ error_log("=== END INDEX.PHP DEBUG ===");
             }, 500); // Give upload_progress.js time to load
         });
     </script>
+    
+    <!-- Sample Data Transitions Script -->
+    <script src="sample_data_transitions.js"></script>
 </body>
 </html>
