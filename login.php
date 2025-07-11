@@ -171,13 +171,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-left: 4px solid #0ea5e9;
             border: 1px solid rgba(226, 232, 240, 0.6);
         }
-
-        /* Remember checkbox - Updated to blue theme */
-        .remember input[type="checkbox"] {
-            width: auto;
-            margin: 0;
-            accent-color: #0ea5e9;
-        }
     </style>
     <script>
         function removeErrorBubbles() {
@@ -289,13 +282,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="password-field">
                         <input type="password" id="passwordInput" name="password" placeholder="Enter your password" required>
                         <span class="password-toggle" onclick="togglePassword()">👁️</span>
-                    </div>
-                </div>
-
-                <div class="remember-forgot">
-                    <div class="remember">
-                        <input type="checkbox" id="remember" name="remember">
-                        <label for="remember">Remember me</label>
                     </div>
                 </div>
 

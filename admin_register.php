@@ -219,12 +219,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 1px solid rgba(226, 232, 240, 0.6);
         }
 
-        /* Remember checkbox - Updated to blue theme */
-        .remember input[type="checkbox"] {
-            width: auto;
-            margin: 0;
-            accent-color: #0ea5e9;
-        }
     </style>
     <script>
         // Toggle password visibility

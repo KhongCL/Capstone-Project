@@ -197,12 +197,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 1px solid rgba(226, 232, 240, 0.6);
         }
 
-        /* Remember checkbox - Updated to blue theme */
-        .remember input[type="checkbox"] {
-            width: auto;
-            margin: 0;
-            accent-color: #0ea5e9;
-        }
     </style>
     <script>
         // Define functions first
@@ -311,13 +305,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="password-field">
                         <input type="password" id="passwordInput" name="password" placeholder="Enter admin password" required>
                         <span class="password-toggle" onclick="togglePassword()">👁️</span>
-                    </div>
-                </div>
-
-                <div class="remember-forgot">
-                    <div class="remember">
-                        <input type="checkbox" id="remember" name="remember">
-                        <label for="remember">Remember me</label>
                     </div>
                 </div>
 

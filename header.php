@@ -39,11 +39,11 @@ $imagePath = (basename(dirname($_SERVER['SCRIPT_NAME'])) === 'user') ? '../image
             <ul>
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <?php if ($_SESSION['role'] === 'Admin'): ?>
-                        <li><a href="/trafanalyz/admin/index.php">Admin Dashboard</a></li>
+                        <li><a href="admin/index.php">Admin Dashboard</a></li>
                     <?php else: ?>
-                        <li><a href="/trafanalyz/user/index.php">Dashboard</a></li>
+                        <li><a href="user/index.php">Dashboard</a></li>
                     <?php endif; ?>
-                    <li><a href="/trafanalyz/logout.php">Logout</a></li>
+                    <li><a href="logout.php">Logout</a></li>
                 <?php else: ?>
                     <li><a href="login.php">Login</a></li>
                     <li><a href="register.php">Register</a></li>

@@ -803,26 +803,6 @@ select:focus {
   color: var(--text-color);
 }
 
-/* Remember Me and Forgot Password */
-.remember-forgot {
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.remember {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.remember input[type="checkbox"] {
-  width: auto;
-  margin: 0;
-  accent-color: #9333ea;
-}
-
 /* Auth Button - Enhanced */
 .auth-btn {
   background:#7e22ce;
