@@ -9,6 +9,9 @@
 // Set defaults if not provided
 $title = isset($title) ? $title . ' - TrafAnalyz' : 'Web Traffic Analysis Dashboard';
 $active_page = isset($active_page) ? $active_page : 'home';
+
+// Determine the correct path to images based on current directory
+$imagePath = (basename(dirname($_SERVER['SCRIPT_NAME'])) === 'user') ? '../images/' : 'images/';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,17 +33,17 @@ $active_page = isset($active_page) ? $active_page : 'home';
 <body>
         <header>
             <a href="index.php" class="logo">
-                <img src="images/logo2.png" alt="TrafAnalyz Logo" class="logo-image">
+                <img src="<?php echo $imagePath; ?>logo2.png" alt="TrafAnalyz Logo" class="logo-image">
             </a>
             <nav>
             <ul>
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <?php if ($_SESSION['role'] === 'Admin'): ?>
-                        <li><a href="/admin/index.php">Admin Dashboard</a></li>
+                        <li><a href="/trafanalyz/admin/index.php">Admin Dashboard</a></li>
                     <?php else: ?>
-                        <li><a href="/user/index.php">Dashboard</a></li>
+                        <li><a href="/trafanalyz/user/index.php">Dashboard</a></li>
                     <?php endif; ?>
-                    <li><a href="/logout.php">Logout</a></li>
+                    <li><a href="/trafanalyz/logout.php">Logout</a></li>
                 <?php else: ?>
                     <li><a href="login.php">Login</a></li>
                     <li><a href="register.php">Register</a></li>
