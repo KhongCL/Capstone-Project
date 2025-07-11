@@ -7,8 +7,12 @@ require_once 'classes/CsvProcessor.php';
 function handleCsvUpload($conn, $file) {
     error_log("=== HANDLE CSV UPLOAD START ===");
     
+    // CRITICAL FIX: Check if this is a comparison upload
+    $isComparisonUpload = isset($_POST['comparison_context']) && $_POST['comparison_context'] === true;
+    error_log("Is comparison upload: " . ($isComparisonUpload ? 'YES' : 'NO'));
+    
     // CRITICAL FIX: Clear sample data session when user uploads their own file
-    if (isset($_SESSION['using_sample_data'])) {
+    if (isset($_SESSION['using_sample_data']) && !$isComparisonUpload) {
         error_log("CRITICAL: User uploading new file - clearing sample data session");
         unset($_SESSION['using_sample_data']);
         unset($_SESSION['sample_upload_id']);
@@ -194,40 +198,28 @@ function handleCsvUpload($conn, $file) {
             $_SESSION['csv_metadata'] = $metadata;
             
             // CRITICAL FIX: Clear sample data session when user uploads their own file
-            if (isset($_SESSION['using_sample_data'])) {
+            if (isset($_SESSION['using_sample_data']) && !$isComparisonUpload) {
                 unset($_SESSION['using_sample_data']);
                 unset($_SESSION['sample_upload_id']);
                 error_log("CRITICAL: Cleared sample data session for manual mapping");
             }
             
-            // CRITICAL FIX: Clear comparison session data for regular uploads that need mapping
-            unset($_SESSION['compare_files']);
-            unset($_SESSION['compare_ready']);
-            unset($_SESSION['compare_error']);
-            unset($_SESSION['compare_file_1_upload_id']);
-            unset($_SESSION['compare_file_2_upload_id']);
-            error_log("CRITICAL: Cleared comparison session data for regular upload needing mapping");
+            // CRITICAL FIX: Only clear comparison session data for regular uploads
+            if (!$isComparisonUpload) {
+                unset($_SESSION['compare_files']);
+                unset($_SESSION['compare_ready']);
+                unset($_SESSION['compare_error']);
+                error_log("CRITICAL: Cleared comparison session data for regular upload needing mapping");
+            }
             
             // Check if this is an AJAX request
             $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
             
             // IMPROVED: More precise comparison context detection
-            $isComparison = false;
+            $isComparison = $isComparisonUpload;
 
-            // Check explicit comparison context flags first (most reliable)
-            if (isset($_POST['comparison_context']) && $_POST['comparison_context'] === true) {
-                $isComparison = true;
-                error_log("COMPARISON: Detected comparison context from POST flag");
-            } else {
-                // Check if we have comparison session data
-                if (isset($_SESSION['compare_files'])) {
-                    $isComparison = true;
-                    error_log("COMPARISON: Detected comparison context from session");
-                }
-            }
-
-            if (!isset($_POST['comparison_context'])) {
+            if (!$isComparison) {
                 // Only clear upload sessions for non-comparison uploads
                 error_log("CRITICAL: Cleared upload session data for regular upload");
                 unset($_SESSION['uploaded_csv']);
@@ -241,30 +233,19 @@ function handleCsvUpload($conn, $file) {
             if ($isAjax) {
                 return [
                     'type' => 'needs_mapping',
+                    'message' => 'Manual column mapping required.',
                     'redirect' => $isComparison ? 'map_columns_compare.php' : 'map_columns.php'
                 ];
             } else {
                 // CRITICAL FIX: Use proper comparison detection for redirects
                 if ($isComparison) {
-                    // For comparison uploads, we need to determine which file index
-                    $fileIndex = 1; // Default to file 1
-                    
-                    // Try to determine the correct file index from session
-                    if (isset($_SESSION['compare_files'])) {
-                        $compareFiles = $_SESSION['compare_files'];
-                        // Find the first file that needs mapping
-                        foreach ($compareFiles as $index => $file) {
-                            if (isset($file['needs_mapping']) && $file['needs_mapping'] === true && 
-                                (!isset($file['mapped']) || $file['mapped'] === false)) {
-                                $fileIndex = $index;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    error_log("COMPARISON: Redirecting to map_columns_compare.php?file=$fileIndex");
-                    header("Location: map_columns_compare.php?file=$fileIndex");
-                    exit;
+                    // For comparison uploads, return the result instead of redirecting
+                    return [
+                        'type' => 'needs_mapping',
+                        'message' => 'Manual column mapping required.',
+                        'original_filename' => $originalName,
+                        'clean_filename' => $originalName
+                    ];
                 } else {
                     header('Location: map_columns.php');
                     exit;
@@ -1223,5 +1204,45 @@ function getSampleDataNotice() {
     error_log("Not using sample data, returning no notice");
     error_log("=== END GET SAMPLE DATA NOTICE (NO SAMPLE) ===");
     return ['is_sample' => false];
+}
+
+function handleCsvUploadForComparison($conn, $file) {
+    // CRITICAL FIX: Set comparison context flag BEFORE calling handleCsvUpload
+    $_POST['comparison_context'] = true;
+    
+    // Also ensure session comparison context exists
+    if (!isset($_SESSION['compare_files'])) {
+        $_SESSION['compare_files'] = [];
+    }
+    
+    // CRITICAL FIX: Store original filename before processing
+    $originalFileName = $file['name'];
+    error_log("COMPARISON: Processing file with original name: $originalFileName");
+    
+    // Use the same logic as handleCsvUpload but with comparison context
+    $result = handleCsvUpload($conn, $file);
+    
+    // CRITICAL FIX: Ensure clean filename is preserved in result
+    if (!isset($result['original_filename']) || empty($result['original_filename'])) {
+        $result['original_filename'] = $originalFileName;
+        error_log("COMPARISON: Added original filename to result: $originalFileName");
+    }
+    
+    // CRITICAL FIX: Store clean filename without hash
+    $result['clean_filename'] = $originalFileName;
+    
+    // Make sure we return the upload_id if available
+    if (isset($_SESSION['latest_upload_id'])) {
+        $result['upload_id'] = $_SESSION['latest_upload_id'];
+        error_log("Added upload_id to result: " . $_SESSION['latest_upload_id']);
+    }
+    
+    // CRITICAL FIX: Add file path to result if available
+    if (isset($_SESSION['uploaded_file_name'])) {
+        $result['file_path'] = __DIR__ . '/uploads/' . $_SESSION['uploaded_file_name'];
+        error_log("COMPARISON: Added file_path to result: " . $result['file_path']);
+    }
+    
+    return $result;
 }
 ?>

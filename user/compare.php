@@ -409,47 +409,6 @@ if (isset($_SESSION['compare_error'])) {
     unset($_SESSION['compare_error']);
 }
 
-// Add the new function for comparison upload handling
-function handleCsvUploadForComparison($conn, $file) {
-    // CRITICAL FIX: Set comparison context flag BEFORE calling handleCsvUpload
-    $_POST['comparison_context'] = true;
-    
-    // Also ensure session comparison context exists
-    if (!isset($_SESSION['compare_files'])) {
-        $_SESSION['compare_files'] = [];
-    }
-    
-    // CRITICAL FIX: Store original filename before processing
-    $originalFileName = $file['name'];
-    error_log("COMPARISON: Processing file with original name: $originalFileName");
-    
-    // Use the same logic as handleCsvUpload but with comparison context
-    $result = handleCsvUpload($conn, $file);
-    
-    // CRITICAL FIX: Ensure clean filename is preserved in result
-    if (!isset($result['original_filename']) || empty($result['original_filename'])) {
-        $result['original_filename'] = $originalFileName;
-        error_log("COMPARISON: Added original filename to result: $originalFileName");
-    }
-    
-    // CRITICAL FIX: Store clean filename without hash
-    $result['clean_filename'] = $originalFileName;
-    
-    // Make sure we return the upload_id if available
-    if (isset($_SESSION['latest_upload_id'])) {
-        $result['upload_id'] = $_SESSION['latest_upload_id'];
-        error_log("Added upload_id to result: " . $_SESSION['latest_upload_id']);
-    }
-    
-    // CRITICAL FIX: Add file path to result if available
-    if (isset($_SESSION['uploaded_file_name'])) {
-        $result['file_path'] = __DIR__ . '/uploads/' . $_SESSION['uploaded_file_name'];
-        error_log("COMPARISON: Added file_path to result: " . $result['file_path']);
-    }
-    
-    return $result;
-}
-
 // Handle saving comparison
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['compare'])) {
     $upload1 = $_POST['upload1'];
