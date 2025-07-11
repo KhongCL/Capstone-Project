@@ -4,7 +4,7 @@
    CSS CUSTOM PROPERTIES (VARIABLES) - UPDATED
    ===================================================== */
 :root {
-  --primary-blue: #0ea5e9;
+  --primary-color: #0ea5e9;
   --light-blue: #e0f2fe;
   --pastel-blue: #bae6fd;
   --primary-dark: #0369a1;
@@ -103,7 +103,7 @@ h6 {
 }
 
 h1 {
-  color: var(--dark-gray);
+  color: var(--primary-color);
   margin-bottom: 1rem;
   font-size: 2rem;
 }
@@ -114,7 +114,7 @@ p {
 }
 
 a {
-  color: var(--primary-blue);
+  color: var(--primary-color);
   text-decoration: none;
   transition: color 0.3s ease;
 }
@@ -127,20 +127,18 @@ a:hover {
    HEADER AND NAVIGATION STYLES - MODERNIZED
    ===================================================== */
 header {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  padding: 1.5rem 2rem;
-  box-shadow: var(--shadow);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 100;
-  border-radius: 1rem;
-  margin-bottom: 2rem;
-  border: 1px solid rgba(226, 232, 240, 0.6);
-  animation: slideInDown 0.8s ease-out 0.2s both;
+    background-color: var(--white);
+    padding: 1rem 2rem;
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    display: flex;
+		flex-direction: column;
+		align-items: start;
+}
+
+header h1 {
+    margin-bottom: 1rem;
 }
 
 @keyframes slideInDown {
@@ -152,13 +150,6 @@ header {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-header h1 {
-  color: var(--primary-blue);
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
 }
 
 /* Navigation - Enhanced */
@@ -187,7 +178,7 @@ nav a:hover::before {
 
 nav a:hover,
 nav a.active {
-  background: var(--primary-blue);
+  background: var(--primary-color);
   color: var(--white);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
@@ -254,7 +245,7 @@ section:hover {
 
 /* Welcome Banner - Enhanced */
 .welcome-banner {
-  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-dark) 100%);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
   color: white;
   padding: 2rem;
   border-radius: 1rem;
@@ -313,7 +304,7 @@ section:hover {
 }
 
 .stat-card:hover {
-  transform: translateY(-4px) rotate(1deg);
+  transform: translateY(-4px);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
@@ -323,7 +314,7 @@ section:hover {
   top: 1.5rem;
   font-size: 2.5rem;
   opacity: 0.1;
-  color: var(--primary-blue);
+  color: var(--primary-color);
 }
 
 .stat-card .label {
@@ -338,7 +329,7 @@ section:hover {
 .stat-card .value {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--primary-blue);
+  color: var(--primary-color);
   margin-bottom: 0.5rem;
 }
 
@@ -378,7 +369,7 @@ section:hover {
 }
 
 .admin-section h3 i {
-  color: var(--primary-blue);
+  color: var(--primary-color);
 }
 
 /* Quick Links - Enhanced */
@@ -412,7 +403,7 @@ section:hover {
 .quick-link i {
   font-size: 2rem;
   margin-bottom: 1rem;
-  color: var(--primary-blue);
+  color: var(--primary-color);
 }
 
 .quick-link h4 {
@@ -430,7 +421,7 @@ section:hover {
 .quick-link .link-action {
   margin-top: auto;
   font-weight: 600;
-  color: var(--primary-blue);
+  color: var(--primary-color);
   font-size: 0.875rem;
 }
 
@@ -581,7 +572,7 @@ section:hover {
 
 /* Sample Upload Area - Enhanced */
 .sample-upload {
-  border: 2px dashed var(--primary-blue);
+  border: 2px dashed var(--primary-color);
   border-radius: 1rem;
   padding: 2rem;
   text-align: center;
@@ -596,7 +587,7 @@ section:hover {
 
 .sample-upload i {
   font-size: 3rem;
-  color: var(--primary-blue);
+  color: var(--primary-color);
   margin-bottom: 1rem;
 }
 
@@ -619,7 +610,7 @@ section:hover {
 
 .report-type {
   background: var(--light-blue);
-  border: 1px solid var(--primary-blue);
+  border: 1px solid var(--primary-color);
   border-radius: 1rem;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
@@ -629,7 +620,7 @@ section:hover {
 }
 
 .report-type:hover {
-  background: var(--primary-blue);
+  background: var(--primary-color);
   color: white;
   transform: translateY(-2px);
 }
@@ -653,7 +644,7 @@ section:hover {
 }
 
 .form-group label i {
-  color: var(--primary-blue);
+  color: var(--primary-color);
 }
 
 .form-group input,
@@ -670,7 +661,7 @@ section:hover {
 
 .form-group input:focus,
 .form-group select:focus {
-  border-color: var(--primary-blue);
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
   outline: none;
   background: white;
@@ -697,11 +688,12 @@ section:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: var(--primary-blue);
+  background-color: var(--primary-color);
   color: var(--white);
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 0.5rem;
+	font-family: inherit;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -744,7 +736,7 @@ section:hover {
 }
 
 .btn-primary {
-  background: var(--primary-blue);
+  background: var(--primary-color);
   color: white;
 }
 
@@ -1133,9 +1125,9 @@ section:hover {
 }
 
 .filter-controls button.active {
-  background: var(--primary-blue);
+  background: var(--primary-color);
   color: white;
-  border-color: var(--primary-blue);
+  border-color: var(--primary-color);
 }
 
 .filter-controls button:hover {
@@ -1197,33 +1189,239 @@ section:hover {
 }
 
 /* PDF Report Styling - Enhanced */
-.badge-active {
-  background: var(--success-light);
-  color: var(--success);
-  border: 1px solid var(--success-border);
-}
-
-.badge-suspended {
-  background: var(--danger-light);
-  color: var(--danger);
-  border: 1px solid var(--danger-border);
-}
-
-.non-print {
-  margin: 1.5rem 0;
-  padding: 1rem;
-  background: rgba(248, 250, 252, 0.8);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--gray-200);
-  border-radius: 0.5rem;
-}
-
 .form-actions {
   display: flex;
   gap: 0.75rem;
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--gray-200);
+}
+
+/* =====================================================
+   FILE INPUT STYLING - MATCHING USER/INDEX.PHP
+   ===================================================== */
+.file-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+    flex-wrap: wrap;
+    margin: 10px 0;
+}
+
+.file-input-container input[type="file"] {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+    width: 0.1px;
+    height: 0.1px;
+}
+
+.file-input-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: var(--white);
+    padding: 0.75rem 1.5rem;
+    border: 2px solid transparent;
+    border-radius: 0.5rem;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    text-align: center;
+    justify-content: center;
+    width: auto;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.file-input-button:hover {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, #0284c7 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+    border-color: var(--primary-color);
+    text-decoration: none;
+    color: var(--white);
+}
+
+.file-input-button:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.file-input-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+}
+
+/* File selected state */
+.file-input-button.file-selected {
+    background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+    border-color: var(--success);
+}
+
+.file-input-button.file-selected:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+/* File Info Display */
+.file-info {
+    padding: 8px 12px;
+    background: rgba(248, 250, 252, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--gray-200);
+    border-radius: 0.5rem;
+    display: none;
+    min-width: 200px;
+    flex: 1;
+    transition: all 0.3s ease;
+}
+
+.file-info.show {
+    display: flex;
+    align-items: center;
+    animation: slideDown 0.3s ease;
+}
+
+.file-details {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.file-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--dark-gray);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.file-detail-item i {
+    color: var(--primary-color);
+    font-size: 1em;
+}
+
+.file-name {
+    font-weight: 600;
+    color: var(--text-color);
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-size {
+    background: rgba(14, 165, 233, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Animation for file info display */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Enhanced form group styling for file inputs */
+.form-group.file-input-group {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.form-group.file-input-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.form-group.file-input-group label i {
+    color: var(--primary-color);
+    font-size: 1.1em;
+}
+
+.form-group.file-input-group .help-text {
+    font-size: 0.85rem;
+    color: var(--dark-gray);
+    margin-top: 0.5rem;
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-group.file-input-group .help-text::before {
+    content: "💡";
+    font-size: 1em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .file-input-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .file-input-button {
+        width: 100%;
+        justify-content: center;
+        padding: 0.625rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .file-info {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .file-details {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .file-name {
+        max-width: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .file-input-button {
+        padding: 0.5rem 0.875rem;
+        font-size: 0.85rem;
+    }
+    
+    .file-info {
+        padding: 6px 10px;
+    }
+    
+    .file-details {
+        justify-content: space-between;
+    }
 }
 
 .main-actions {
@@ -1308,7 +1506,7 @@ section:hover {
 }
 
 .format-indicator {
-  background: var(--primary-blue);
+  background: var(--primary-color);
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 1rem;
@@ -1379,7 +1577,7 @@ section:hover {
 
 .mapping-table input:focus,
 .mapping-table select:focus {
-  border-color: var(--primary-blue);
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
   outline: none;
   background: white;
@@ -1418,7 +1616,7 @@ select option:disabled {
 
 .custom-field-input,
 .custom-type-input {
-  border: 2px dashed var(--primary-blue);
+  border: 2px dashed var(--primary-color);
   background: rgba(224, 242, 254, 0.3);
   font-style: italic;
 }
@@ -1486,7 +1684,7 @@ footer {
 }
 
 .footer-links a {
-  color: var(--primary-blue);
+  color: var(--primary-color);
   text-decoration: none;
   margin: 0 1rem;
   transition: color 0.3s;
@@ -1850,7 +2048,7 @@ body {
    ===================================================== */
 /* Focus indicators */
 *:focus {
-  outline: 2px solid var(--primary-blue);
+  outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
 
@@ -1868,7 +2066,7 @@ body {
 /* High contrast mode */
 @media (prefers-contrast: high) {
   :root {
-    --primary-blue: #0000ff;
+    --primary-color: #0000ff;
     --text-color: #000000;
     --white: #ffffff;
   }
@@ -1878,343 +2076,3 @@ body {
   }
 }
 
-/* =====================================================
-   EXPORT PAGES SPECIFIC STYLES - FIXED LAYOUT
-   ===================================================== */
-
-/* Target export pages by detecting specific elements */
-body:has(.non-print) {
-  background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 50%, #bae6fd 100%);
-  margin: 0;
-  padding: 2rem;
-  min-height: 100vh;
-}
-
-/* Enhanced non-print section */
-.non-print {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(226, 232, 240, 0.6) !important;
-  border-radius: 1rem !important;
-  padding: 1.5rem !important;
-  margin-bottom: 2rem !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.non-print h2 {
-  color: var(--text-color) !important;
-  margin-top: 0 !important;
-  margin-bottom: 1rem !important;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.non-print h2::before {
-  content: "🖨️";
-  font-size: 1.25rem;
-}
-
-.non-print p {
-  color: var(--dark-gray) !important;
-  margin-bottom: 1.5rem !important;
-}
-
-/* Enhanced export page buttons */
-.non-print .btn {
-  display: inline-flex !important;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--primary-blue) !important;
-  color: white !important;
-  padding: 0.75rem 1.5rem !important;
-  border: none !important;
-  border-radius: 0.5rem !important;
-  font-size: 1rem !important;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-decoration: none !important;
-  margin-right: 1rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.non-print .btn::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  transition: left 0.5s ease;
-}
-
-.non-print .btn[style*="background-color: #6c757d"] {
-  background: var(--dark-gray) !important;
-}
-
-.non-print .btn[style*="background-color: #6c757d"]:hover {
-  background: var(--text-color) !important;
-  box-shadow: 0 10px 15px -3px rgba(100, 116, 139, 0.3);
-}
-
-/* Create main container for export content */
-body:has(.non-print) {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-/* Main export container - groups title and table */
-body:has(.non-print) > *:not(.non-print):not(script) {
-  max-width: 1200px;
-  width: 100%;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  border-radius: 1rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  border: 1px solid rgba(226, 232, 240, 0.6);
-  overflow: hidden;
-  margin-bottom: 2rem;
-}
-
-/* Enhanced export page title - now part of main container */
-body:has(.non-print) h1 {
-  background: var(--primary-dark) !important;
-  color: white !important;
-  padding: 2rem !important;
-  margin: 0 !important;
-  text-align: center !important;
-  font-size: 2.5rem !important;
-  font-weight: 700 !important;
-  position: relative;
-  overflow: hidden;
-}
-
-body:has(.non-print) h1::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-  opacity: 0.3;
-  pointer-events: none;
-}
-
-/* Position the header-info as a separate container between title and stats */
-body:has(.non-print) .header-info {
-  position: static !important;
-  background: rgba(224, 242, 254, 0.8) !important;
-  backdrop-filter: blur(10px);
-  padding: 1rem 1.5rem !important;
-  border-radius: 0.75rem !important;
-  border: 1px solid rgba(14, 165, 233, 0.2) !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-  font-size: 0.875rem !important;
-  color: var(--dark-gray) !important;
-  text-align: center !important;
-  max-width: 1200px;
-  margin: 2rem auto 1rem auto !important;
-  z-index: 10 !important;
-}
-
-body:has(.non-print) .header-info p {
-  margin: 0.25rem 0 !important;
-  color: var(--dark-gray) !important;
-  font-size: 0.875rem !important;
-}
-
-/* Remove the padding-right from stats h2 since header-info is no longer positioned there */
-.stats h2 {
-  color: var(--primary-dark) !important;
-  margin-top: 0 !important;
-  margin-bottom: 1.5rem !important;
-  font-size: 1.5rem !important;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding-top: 0 !important;
-  padding-right: 0 !important;
-}
-
-/* Stats section - separate container with relative positioning for header-info */
-body:has(.non-print) .stats {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(226, 232, 240, 0.6) !important;
-  border-radius: 1rem !important;
-  padding: 2rem !important;
-  margin: 0 auto 2rem auto !important;
-  max-width: 1200px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  position: relative !important;
-}
-
-.stats h2 {
-  color: var(--primary-dark) !important;
-  margin-top: 0 !important;
-  margin-bottom: 1.5rem !important;
-  font-size: 1.5rem !important;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding-top: 0 !important;
-  padding-right: 0 !important;
-}
-
-.stats h2::before {
-  content: "📊";
-  font-size: 1.25rem;
-}
-
-.stat-item {
-  background: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(14, 165, 233, 0.2);
-  border-radius: 0.75rem;
-  padding: 1rem !important;
-  margin: 0.75rem 0 !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.stat-item strong {
-  color: var(--dark-gray);
-  font-weight: 600;
-}
-
-/* Enhanced export page h2 headers - User Accounts in main container with more padding */
-body:has(.non-print) h2:not(.stats h2):not(.non-print h2) {
-  color: var(--text-color) !important;
-  margin: 0 !important;
-  padding: 2rem 2rem 1.5rem 2rem !important;
-  font-size: 1.5rem !important;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  border-bottom: 2px solid var(--light-blue);
-  background: rgba(248, 250, 252, 0.3);
-}
-
-body:has(.non-print) h2:not(.stats h2):not(.non-print h2)::before {
-  content: "👥";
-  font-size: 1.25rem;
-}
-
-/* Enhanced export page tables - now inside main container */
-body:has(.non-print) table {
-  width: calc(100% - 4rem) !important;
-  margin: 0 2rem 2rem 2rem !important;
-  border-collapse: collapse !important;
-  background: white !important;
-  border-radius: 0.75rem !important;
-  overflow: hidden !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-}
-
-body:has(.non-print) th {
-  background: var(--primary-dark) !important;
-  color: white !important;
-  padding: 1rem !important;
-  text-align: left !important;
-  font-weight: 600 !important;
-  font-size: 0.875rem !important;
-  border: none !important;
-}
-
-body:has(.non-print) td {
-  padding: 1rem !important;
-  border-bottom: 1px solid var(--gray-200) !important;
-  color: var(--text-color) !important;
-  border-left: none !important;
-  border-right: none !important;
-}
-
-body:has(.non-print) tr:hover {
-  background: rgba(224, 242, 254, 0.3) !important;
-}
-
-body:has(.non-print) tr:last-child td {
-  border-bottom: none !important;
-}
-
-body:has(.non-print) tr:nth-child(even) {
-  background: rgba(248, 250, 252, 0.5) !important;
-}
-
-/* Enhanced export page badges */
-body:has(.non-print) .badge {
-  display: inline-block !important;
-  padding: 0.25rem 0.75rem !important;
-  border-radius: 1rem !important;
-  font-size: 0.75rem !important;
-  font-weight: 500 !important;
-  border: 1px solid !important;
-}
-
-body:has(.non-print) .badge-active {
-  background: var(--success-light) !important;
-  color: var(--success) !important;
-  border-color: var(--success-border) !important;
-}
-
-body:has(.non-print) .badge-suspended {
-  background: var(--danger-light) !important;
-  color: var(--danger) !important;
-  border-color: var(--danger-border) !important;
-}
-
-/* Enhanced footer for export pages - separate container */
-body:has(.non-print) .footer {
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(226, 232, 240, 0.6) !important;
-  border-radius: 1rem !important;
-  margin: 0 auto 2rem auto !important;
-  padding: 2rem !important;
-  max-width: 1200px;
-  font-size: 0.875rem !important;
-  font-style: italic !important;
-  text-align: center !important;
-  color: var(--dark-gray) !important;
-}
-
-/* Print-specific overrides for export pages */
-@media print {
-  body:has(.non-print) {
-    background: white !important;
-    margin: 0 !important;
-    padding: 15px !important;
-  }
-
-  body:has(.non-print) > *:not(.non-print) {
-    background: white !important;
-    box-shadow: none !important;
-    border: none !important;
-    backdrop-filter: none !important;
-    max-width: none !important;
-  }
-
-  body:has(.non-print) h1 {
-    background: var(--primary-dark) !important;
-    color: white !important;
-  }
-
-  body:has(.non-print) .header-info {
-    background: #f8f9fa !important;
-    border: 1px solid #ddd !important;
-    color: #333 !important;
-  }
-
-  body:has(.non-print) .stats {
-    background: white !important;
-    border: 1px solid #ddd !important;
-  }
-}
