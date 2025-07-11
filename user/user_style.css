@@ -308,11 +308,6 @@ section {
     gap: 8px;
 }
 
-.error-summary::before {
-    content: "⚠️";
-    font-size: 1.2rem;
-}
-
 .error-list {
     list-style: none;
     padding: 0;
@@ -378,12 +373,6 @@ section {
     align-items: center;
     font-size: 1.2rem;
     font-weight: 600;
-}
-
-.validation-help h4::before {
-    content: "💡";
-    margin-right: 10px;
-    font-size: 1.3em;
 }
 
 .fix-guide {
@@ -455,19 +444,11 @@ section {
     color: var(--success-text);
 }
 
-.message.success:before {
-    content: "✓ ";
-    font-weight: bold;
-}
 
 .message.error {
     background-color: #f8d7da;
     border-color: #f5c6cb;
     color: #721c24;
-}
-
-.message.error:before {
-    content: "⚠️ ";
 }
 
 .message.warning {
@@ -1510,11 +1491,6 @@ select:focus {
     background-color: #d4edda;
     border-color: #c3e6cb;
     color: #155724;
-}
-
-.user-alert-success:before {
-    content: "✓ ";
-    font-weight: bold;
 }
 
 .user-alert-danger {

@@ -995,7 +995,6 @@ select:focus {
 }
 
 .message.success:before {
-  content: "✓";
   font-weight: bold;
   font-size: 1.2rem;
 }
@@ -1004,11 +1003,6 @@ select:focus {
   background: rgba(254, 202, 202, 0.8);
   color: var(--danger);
   border-color: var(--danger-border);
-}
-
-.message.error:before {
-  content: "⚠️";
-  font-size: 1.2rem;
 }
 
 .message.warning {

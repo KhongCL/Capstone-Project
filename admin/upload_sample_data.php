@@ -635,7 +635,6 @@ if ($row = $result->fetch_assoc()) {
 														<div class="file-input-container">
 																<input type="file" name="sampleCsv" id="sampleCsv" accept=".csv" required>
 																<label for="sampleCsv" class="file-input-button">
-																		<i class="fas fa-upload"></i>
 																		Choose CSV File
 																</label>
 																<div class="file-info" id="fileInfo">
@@ -645,7 +644,7 @@ if ($row = $result->fetch_assoc()) {
 																						<span class="file-name" id="fileName">-</span>
 																				</div>
 																				<div class="file-detail-item">
-																						<i class="fas fa-weight-hanging"></i>
+																						<i class="fas fa-database"></i>
 																						<span class="file-size" id="fileSize">-</span>
 																				</div>
 																		</div>
@@ -1234,38 +1233,19 @@ if ($row = $result->fetch_assoc()) {
 										fileInfo.classList.add('show');
 										fileInfo.style.display = 'flex';
 										
-										// Update button appearance
-										fileButton.classList.add('file-selected');
-										fileButton.innerHTML = '<i class="fas fa-check-circle"></i> File Selected';
-										
 										// File validation with visual feedback
 										const isValidCSV = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
 										const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
 										const isNotEmpty = file.size > 0;
 										
 										if (!isValidCSV) {
-												fileName.style.color = '#dc3545';
-												fileName.textContent = file.name + ' (⚠️ Not a CSV file)';
-												fileButton.classList.remove('file-selected');
-												fileButton.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Invalid File Type';
-												fileButton.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+												fileName.textContent = file.name + ' (Not a CSV file)';
 										} else if (!isValidSize) {
-												fileSize.style.color = '#dc3545';
-												fileSize.textContent = formatFileSize(file.size) + ' (⚠️ Too large)';
-												fileButton.classList.remove('file-selected');
-												fileButton.innerHTML = '<i class="fas fa-exclamation-triangle"></i> File Too Large';
-												fileButton.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+												fileSize.textContent = formatFileSize(file.size) + ' (Too large)';
 										} else if (!isNotEmpty) {
-												fileName.style.color = '#dc3545';
-												fileName.textContent = file.name + ' (⚠️ Empty file)';
-												fileButton.classList.remove('file-selected');
-												fileButton.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Empty File';
-												fileButton.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+												fileName.textContent = file.name + ' (Empty file)';
 										} else {
-												// Valid file - reset colors and styles
-												fileName.style.color = '#155724';
-												fileSize.style.color = '#155724';
-												fileButton.style.background = ''; // Reset to default
+
 										}
 										
 										console.log('Admin sample file selected:', file.name, formatFileSize(file.size), 'Valid:', isValidCSV && isValidSize && isNotEmpty);
@@ -1278,8 +1258,7 @@ if ($row = $result->fetch_assoc()) {
 										fileInfo.style.display = 'none';
 										
 										// Reset button appearance
-										fileButton.classList.remove('file-selected');
-										fileButton.innerHTML = '<i class="fas fa-upload"></i> Choose CSV File';
+										fileButton.innerHTML = 'Choose CSV File';
 										fileButton.style.background = ''; // Reset to default
 										
 										// Reset colors

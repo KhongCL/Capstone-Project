@@ -870,21 +870,10 @@ section:hover {
   border-color: var(--success-border);
 }
 
-.message.success:before {
-  content: "✓";
-  font-weight: bold;
-  font-size: 1.2rem;
-}
-
 .message.error {
   background: rgba(254, 202, 202, 0.8);
   color: var(--danger);
   border-color: var(--danger-border);
-}
-
-.message.error:before {
-  content: "⚠️";
-  font-size: 1.2rem;
 }
 
 .message.warning {
@@ -1222,14 +1211,15 @@ section:hover {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    color: var(--white);
+    background-color: var(--primary-color);
+    color: var(--white) !important;
     padding: 0.75rem 1.5rem;
-    border: 2px solid transparent;
+		border: none;
     border-radius: 0.5rem;
-    font-family: inherit;
-    font-size: 1rem;
+    font-family: inherit !important;
+    font-size: 1rem !important;
     font-weight: 500;
+		line-height: normal;
     cursor: pointer;
     transition: all 0.3s ease;
     text-decoration: none;
@@ -1242,35 +1232,13 @@ section:hover {
 }
 
 .file-input-button:hover {
-    background: linear-gradient(135deg, var(--primary-dark) 0%, #0284c7 100%);
+    background-color: var(--primary-dark);
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
-    border-color: var(--primary-color);
     text-decoration: none;
     color: var(--white);
 }
 
-.file-input-button:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-}
-
-.file-input-button:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
-}
-
-/* File selected state */
-.file-input-button.file-selected {
-    background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
-    border-color: var(--success);
-}
-
-.file-input-button.file-selected:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
-}
 
 /* File Info Display */
 .file-info {
@@ -1313,6 +1281,7 @@ section:hover {
 }
 
 .file-name {
+		font-size: 0.9em;
     font-weight: 600;
     color: var(--text-color);
     max-width: 200px;
@@ -1322,11 +1291,9 @@ section:hover {
 }
 
 .file-size {
-    background: rgba(14, 165, 233, 0.1);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.8em;
-    color: var(--primary-color);
+		color: var(--text-color);
+    border: none;
+    font-size: 0.9em;
     font-weight: 600;
 }
 
@@ -1348,21 +1315,6 @@ section:hover {
     position: relative;
 }
 
-.form-group.file-input-group label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    color: var(--text-color);
-    margin-bottom: 0.75rem;
-    font-size: 0.95rem;
-}
-
-.form-group.file-input-group label i {
-    color: var(--primary-color);
-    font-size: 1.1em;
-}
-
 .form-group.file-input-group .help-text {
     font-size: 0.85rem;
     color: var(--dark-gray);
@@ -1371,11 +1323,6 @@ section:hover {
     display: flex;
     align-items: center;
     gap: 6px;
-}
-
-.form-group.file-input-group .help-text::before {
-    content: "💡";
-    font-size: 1em;
 }
 
 /* Responsive adjustments */

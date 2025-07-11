@@ -2180,7 +2180,6 @@ function calculateStats($values) {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: #495057;
         }
 
         .compare-user-file-input-group small {
