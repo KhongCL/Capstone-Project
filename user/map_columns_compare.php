@@ -81,9 +81,10 @@ if (!$currentFile) {
     exit;
 }
 
-// CRITICAL FIX: Check if file exists and if not, try to find it
-if (!file_exists($currentFile['path'])) {
-    error_log("ERROR: File path does not exist: " . ($currentFile['path'] ?? 'NULL'));
+$currentFilePath = $currentFile['path'] ?? null;
+
+if (!$currentFilePath || !file_exists($currentFilePath)) {
+    error_log("ERROR: File path does not exist or is missing: " . ($currentFilePath ?? 'NULL'));
     
     // Try to find the file in uploads directory by name
     $fileName = $currentFile['name'] ?? null;
