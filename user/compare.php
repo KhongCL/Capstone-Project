@@ -3431,6 +3431,78 @@ function calculateStats($values) {
     }
 
     window.addEventListener('resize', cleanupErrorNavigation);
+
+		// File input handling for compare page
+		document.addEventListener('DOMContentLoaded', function() {
+				// Handle first file input
+				document.getElementById('csv_file1').addEventListener('change', function() {
+						handleFileSelection(this, 'fileInfo1', 'Choose First Period CSV');
+				});
+				
+				// Handle second file input
+				document.getElementById('csv_file2').addEventListener('change', function() {
+						handleFileSelection(this, 'fileInfo2', 'Choose Second Period CSV');
+				});
+				
+				function handleFileSelection(input, fileInfoId, defaultText) {
+						const fileInfo = document.getElementById(fileInfoId);
+						const fileName = fileInfo.querySelector('.file-name');
+						const fileSize = fileInfo.querySelector('.file-size');
+						const button = document.querySelector(`label[for="${input.id}"]`);
+						
+						if (input.files.length > 0) {
+								const file = input.files[0];
+								fileName.textContent = file.name;
+								fileSize.textContent = formatFileSize(file.size);
+								fileInfo.style.display = 'flex';
+								
+								// Update button appearance
+								button.classList.add('file-selected');
+								button.innerHTML = `<i class="fas fa-check-circle"></i> File Selected`;
+								
+								// File validation
+								if (file.type !== 'text/csv' && !file.name.toLowerCase().endsWith('.csv')) {
+										fileName.style.color = '#dc3545';
+										fileName.textContent = file.name + ' (⚠️ Not a CSV file)';
+								} else {
+										fileName.style.color = '#155724';
+								}
+								
+								// Size validation
+								const maxSize = 10 * 1024 * 1024; // 10MB
+								if (file.size > maxSize) {
+										fileSize.style.color = '#dc3545';
+										fileSize.textContent = formatFileSize(file.size) + ' (⚠️ Too large)';
+								} else {
+										fileSize.style.color = '#155724';
+								}
+								
+								console.log(`File selected for ${input.id}:`, file.name, formatFileSize(file.size));
+								
+						} else {
+								// Reset to default state
+								fileName.textContent = '-';
+								fileSize.textContent = '-';
+								fileInfo.style.display = 'none';
+								
+								// Reset button appearance
+								button.classList.remove('file-selected');
+								button.innerHTML = `<i class="fas fa-upload"></i> ${defaultText}`;
+								
+								// Reset colors
+								fileName.style.color = '#6c757d';
+								fileSize.style.color = '#6c757d';
+						}
+				}
+				
+				function formatFileSize(bytes) {
+						if (bytes === 0) return '0 Bytes';
+						const k = 1024;
+						const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+						const i = Math.floor(Math.log(bytes) / Math.log(k));
+						return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+				}
+		});
     </script>    
 </body>
 </html>

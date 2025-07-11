@@ -234,7 +234,7 @@ if ($row = $result->fetch_assoc()) {
 
         /* Existing sample data info styles */
         .existing-sample-info {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            background: #138496;
             padding: 15px 20px;
             margin: 20px 0;
             border-radius: 8px;
