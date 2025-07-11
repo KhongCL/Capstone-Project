@@ -104,7 +104,7 @@ if (isset($_SESSION['user_id'])) {
                     </div>
                 </div>
                 <div class="model-viewer-container">
-                    <div id="pieChart3DViewer" style="width: 100%; height: 600px;"></div> <!-- Increased from 500px to 600px -->
+                    <div id="pieChart3DViewer" style="width: 100%; height: 400px;"></div> <!-- Increased from 500px to 600px -->
                 </div>
             </div>
         </div>
