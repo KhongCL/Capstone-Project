@@ -100,7 +100,7 @@ if (!file_exists($currentFile['path'])) {
             $_SESSION['compare_files'][$currentFileIndex]['path'] = $foundFile;
             $currentFile['path'] = $foundFile;
             
-            // CRITICAL FIX: Extract and clean the filename
+            // CRITICAL FIX: Extract and clean the filename properly
             $extractedName = basename($foundFile);
             $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
             $_SESSION['compare_files'][$currentFileIndex]['name'] = $cleanName;
@@ -120,8 +120,8 @@ if (!file_exists($currentFile['path'])) {
         exit;
     }
 } else {
-    // File exists, but ensure we have a clean name
-    if (!isset($currentFile['name']) || $currentFile['name'] === 'Unknown file' || empty($currentFile['name'])) {
+    // CRITICAL FIX: File exists, but ensure we have a clean name
+    if (!isset($currentFile['name']) || $currentFile['name'] === 'Unknown file' || empty($currentFile['name']) || strpos($currentFile['name'], '_') !== false) {
         $extractedName = basename($currentFile['path']);
         $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
         $_SESSION['compare_files'][$currentFileIndex]['name'] = $cleanName;
@@ -339,9 +339,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     // Check if we need to map the other file or proceed with comparison
                     $nextFileIndex = ($currentFileIndex == 1) ? 2 : 1;
                     $nextFile = $updatedCompareFiles[$nextFileIndex] ?? null;
-                    
+
                     error_log("Checking next file (index $nextFileIndex): " . json_encode($nextFile));
-                    
+
                     // FIXED: Better logic to determine if next file needs mapping
                     $nextFileNeedsMapping = false;
                     if ($nextFile) {
@@ -355,8 +355,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                                 ($nextFile['needs_mapping'] ?? 'not set') . 
                                 ", mapped=" . ($nextFile['mapped'] ?? 'not set') . 
                                 ", result=" . ($nextFileNeedsMapping ? 'YES' : 'NO'));
+                    } else {
+                        // CRITICAL FIX: If there's no second file, we're in single-file comparison mode
+                        error_log("No next file found - this appears to be a single file upload");
                     }
-                    
+
                     if ($nextFileNeedsMapping) {
                         // CRITICAL FIX: Verify the next file exists before redirecting
                         $nextFilePath = $nextFile['path'] ?? null;
@@ -377,29 +380,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                                 
                                 if (!empty($foundFiles)) {
                                     $foundFile = $foundFiles[0];
-                                    error_log("RECOVERY: Found next file at: $foundFile");
-                                    
-                                    // Update session with correct path
                                     $_SESSION['compare_files'][$nextFileIndex]['path'] = $foundFile;
-                                    
-                                    // Force session write and redirect
-                                    session_write_close();
+                                    error_log("RECOVERY: Found next file at: $foundFile");
                                     header("Location: map_columns_compare.php?file=$nextFileIndex");
                                     exit;
-                                } else {
-                                    error_log("RECOVERY FAILED: Could not find next file with pattern: $pattern");
-                                    $_SESSION['compare_error'] = "File not found for mapping. Please upload your files again.";
-                                    header('Location: compare.php');
-                                    exit;
                                 }
-                            } else {
-                                error_log("ERROR: No filename available for recovery of next file");
-                                $_SESSION['compare_error'] = "File information incomplete. Please upload your files again.";
-                                header('Location: compare.php');
-                                exit;
                             }
+                            
+                            // Recovery failed
+                            $_SESSION['compare_error'] = "Second file not found for mapping. Please upload your files again.";
+                            header('Location: compare.php');
+                            exit;
                         }
                     } else {
+                        // CRITICAL FIX: Only proceed if we actually have a second file
+                        if ($nextFile === null) {
+                            // Single file scenario - this shouldn't happen in comparison mode
+                            error_log("CRITICAL ERROR: Single file in comparison mode");
+                            $_SESSION['compare_error'] = "Comparison requires two files. Please upload both files again.";
+                            header('Location: compare.php');
+                            exit;
+                        }
+                        
                         // All files are ready, proceed with comparison
                         error_log("All files ready for comparison");
                         
