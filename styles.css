@@ -161,7 +161,8 @@ header {
   font-weight: 600;
   font-size: 1.5rem;
   transition: all 0.3s ease;
-  height: 100%; /* Take full header height */
+  height: 100%;
+	margin-bottom: 40px;
 }
 
 .logo-icon {
@@ -176,31 +177,14 @@ header {
   color: white;
   font-weight: bold;
   font-size: 1.2rem;
-  box-shadow: 0 4px 6px rgba(14, 165, 233, 0.3);
 }
 
 .logo-image {
-  height: calc(80px * 0.75); /* 75% of header height (60px) */
+  height: calc(80px * 0.75);
   width: auto;
   object-fit: contain;
   transition: all 0.3s ease;
 }
-
-.logo:hover {
-  transform: translateY(-2px);
-}
-
-.logo:hover .logo-image {
-  transform: scale(1.05); /* Slight zoom effect on hover */
-}
-
-/* Remove the old logo-icon styles since we're not using them anymore */
-
-.logo:hover {
-  color: var(--primary-color);
-  transform: translateY(-2px);
-}
-
 
 /* Navigation - Enhanced */
 nav ul {
@@ -661,6 +645,14 @@ select:focus {
   box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.3);
 }
 
+.terms-link {
+	color: #7e22ce;
+}
+
+.privacy-link {
+	color: #7e22ce;
+}
+
 /* Features Section - Enhanced */
 .features {
   padding: 4rem 2rem;
@@ -744,15 +736,6 @@ select:focus {
 }
 
 /* Auth Logo - Enhanced */
-.auth-container .logo {
-  margin-bottom: 40px;
-}
-
-.auth-container .logo-icon {
-  background-color: #7e22ce;
-  box-shadow: 0 4px 6px rgba(147, 51, 234, 0.3);
-}
-
 .logo-text {
   color: var(--text-color);
   font-weight: 600;

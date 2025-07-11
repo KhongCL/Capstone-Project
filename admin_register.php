@@ -226,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="auth-container">
         <div class="auth-form">
             <div class="logo">
-                <div class="logo-icon"></div>
+                <img src="images/icon.png" alt="TrafAnalyz Icon" class="logo-icon">
                 <div class="logo-text">TrafAnalyz <span class="admin-badge">Admin</span></div>
             </div>
 

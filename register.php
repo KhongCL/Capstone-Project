@@ -240,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="auth-container">
         <div class="auth-form">
             <div class="logo">
-                <div class="logo-icon"></div>
+                <img src="images/icon.png" alt="TrafAnalyz Icon" class="logo-icon">
                 <div class="logo-text">TrafAnalyz</div>
             </div>
 
@@ -293,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-group">
                     <label>
                         <input type="checkbox" id="terms" name="terms" required>
-                        I agree to the <a href="terms.php" target="_blank">Terms & Conditions</a> and <a href="privacy.php" target="_blank">Privacy Policy</a>
+                        I agree to the <a href="terms.php" class="terms-link"  target="_blank">Terms & Conditions</a> and <a href="privacy.php" class="privacy-link" target="_blank">Privacy Policy</a>
                     </label>
                 </div>
 
