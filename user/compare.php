@@ -40,26 +40,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         unset($_SESSION['compare_files']);
         unset($_SESSION['compare_ready']);
         unset($_SESSION['compare_error']);
+        unset($_SESSION['comparison_context']); // CRITICAL FIX: Clear comparison context
         
-        // CRITICAL FIX: Set up basic comparison session structure BEFORE processing files
-        $_SESSION['compare_files'] = [
-            1 => [
-                'name' => $file1['name'],
-                'upload_id' => null,
-                'needs_mapping' => false,
-                'mapped' => false
-            ],
-            2 => [
-                'name' => $file2['name'],
-                'upload_id' => null,
-                'needs_mapping' => false,
-                'mapped' => false
-            ]
-        ];
-        error_log("Set initial compare_files session structure");
-        
-        // Process both files through handleCsvUpload - they will be saved with unique hash names
+        // CRITICAL FIX: Process files separately without session interference
+        error_log("=== PROCESSING FILE 1 ===");
         $upload_result1 = handleCsvUploadForComparison($conn, $file1);
+        
+        // CRITICAL FIX: Clear any session state that might interfere with second file
+        $file1_session_state = [
+            'uploaded_csv' => $_SESSION['uploaded_csv'] ?? null,
+            'latest_upload_id' => $_SESSION['latest_upload_id'] ?? null,
+            'uploaded_file_name' => $_SESSION['uploaded_file_name'] ?? null
+        ];
+        
+        // Clear session state for second file processing
+        unset($_SESSION['uploaded_csv']);
+        unset($_SESSION['latest_upload_id']);
+        unset($_SESSION['uploaded_file_name']);
+        
+        error_log("=== PROCESSING FILE 2 ===");
         $upload_result2 = handleCsvUploadForComparison($conn, $file2);
         
         // ENHANCED DEBUGGING: Log detailed results
@@ -76,60 +75,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         error_log("COMPARISON: File 1 processed - valid: " . ($file1_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file1_needs_mapping ? 'YES' : 'NO') . ", upload_id: " . ($upload_result1['upload_id'] ?? 'NULL'));
         error_log("COMPARISON: File 2 processed - valid: " . ($file2_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file2_needs_mapping ? 'YES' : 'NO') . ", upload_id: " . ($upload_result2['upload_id'] ?? 'NULL'));
         
-        // CRITICAL FIX: Ensure compare_files exists before updating
-        if (!isset($_SESSION['compare_files'])) {
-            $_SESSION['compare_files'] = [
-                1 => ['name' => $file1['name'], 'upload_id' => null, 'needs_mapping' => false, 'mapped' => false],
-                2 => ['name' => $file2['name'], 'upload_id' => null, 'needs_mapping' => false, 'mapped' => false]
-            ];
-            error_log("RESTORED: compare_files session structure");
+        // CRITICAL FIX: Build comparison session structure properly
+        $_SESSION['compare_files'] = [
+            1 => [
+                'name' => $upload_result1['clean_filename'] ?? $file1['name'],
+                'upload_id' => $upload_result1['upload_id'] ?? null,
+                'needs_mapping' => $file1_needs_mapping,
+                'mapped' => $file1_valid,
+                'path' => $file1_session_state['uploaded_csv'] ?? ($upload_result1['file_path'] ?? null),
+                'result' => $file1_needs_mapping ? $upload_result1 : null
+            ],
+            2 => [
+                'name' => $upload_result2['clean_filename'] ?? $file2['name'],
+                'upload_id' => $upload_result2['upload_id'] ?? null,
+                'needs_mapping' => $file2_needs_mapping,
+                'mapped' => $file2_valid,
+                'path' => $_SESSION['uploaded_csv'] ?? ($upload_result2['file_path'] ?? null),
+                'result' => $file2_needs_mapping ? $upload_result2 : null
+            ]
+        ];
+        
+        // Handle errors for failed files
+        if (!$file1_valid && !$file1_needs_mapping) {
+            $_SESSION['compare_files'][1]['error'] = $upload_result1['message'] ?? 'Unknown error';
+        }
+        if (!$file2_valid && !$file2_needs_mapping) {
+            $_SESSION['compare_files'][2]['error'] = $upload_result2['message'] ?? 'Unknown error';
         }
         
-        // Update the session data with results
-        $compareFiles = $_SESSION['compare_files'];  // Get the structure we just created/restored
-        
-        // Handle File 1 - UPDATE existing structure
-        if ($file1_valid || $file1_needs_mapping) {
-            $compareFiles[1]['name'] = $upload_result1['clean_filename'] ?? $upload_result1['original_filename'] ?? $file1['name'];
-            $compareFiles[1]['upload_id'] = $upload_result1['upload_id'] ?? null;
-            $compareFiles[1]['needs_mapping'] = $file1_needs_mapping;
-            $compareFiles[1]['mapped'] = $file1_valid;
-            
-            // Add file path for valid uploads
-            if ($file1_valid && isset($upload_result1['file_path'])) {
-                $compareFiles[1]['path'] = $upload_result1['file_path'];
-            } else if ($file1_needs_mapping && isset($_SESSION['uploaded_csv'])) {
-                $compareFiles[1]['path'] = $_SESSION['uploaded_csv'];
-            }
-            
-            error_log("COMPARISON: File 1 processed successfully");
-        } else {
-            $compareFiles[1]['error'] = $upload_result1['message'] ?? 'Unknown error';
-            error_log("COMPARISON: File 1 failed - " . ($upload_result1['message'] ?? 'Unknown error'));
-        }
-
-        if ($file2_valid || $file2_needs_mapping) {
-            $compareFiles[2]['name'] = $upload_result2['clean_filename'] ?? $upload_result2['original_filename'] ?? $file2['name'];
-            $compareFiles[2]['upload_id'] = $upload_result2['upload_id'] ?? null;
-            $compareFiles[2]['needs_mapping'] = $file2_needs_mapping;
-            $compareFiles[2]['mapped'] = $file2_valid;
-            
-            // Add file path for valid uploads
-            if ($file2_valid && isset($upload_result2['file_path'])) {
-                $compareFiles[2]['path'] = $upload_result2['file_path'];
-            } else if ($file2_needs_mapping && isset($_SESSION['uploaded_csv'])) {
-                $compareFiles[2]['path'] = $_SESSION['uploaded_csv'];
-            }
-            
-            error_log("COMPARISON: File 2 processed successfully");
-        } else {
-            $compareFiles[2]['error'] = $upload_result2['message'] ?? 'Unknown error';
-            error_log("COMPARISON: File 2 failed - " . ($upload_result2['message'] ?? 'Unknown error'));
-        }
-        
-        // Update session with complete information
-        $_SESSION['compare_files'] = $compareFiles;
-        error_log("Updated compare_files session with complete information: " . json_encode(array_keys($compareFiles)));
+        error_log("Updated compare_files session: " . json_encode($_SESSION['compare_files']));
         
         session_write_close();
         session_start();
