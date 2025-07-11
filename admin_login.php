@@ -91,111 +91,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrafAnalyz Admin Login</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="animated-squares.css">
     <style>
-        /* Auth Page Specific Overrides */
-        .auth-container .logo {
-            margin-bottom: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            height: auto;
-        }
 
-        .auth-container .logo-icon {
-            display: none; /* Hide the old placeholder icon */
-        }
-
-        .auth-container .logo-image {
-            height: 60px;
-            width: auto;
-            object-fit: contain;
-            transition: all 0.3s ease;
-        }
-
-        .auth-container .logo:hover .logo-image {
-            transform: scale(1.05);
-        }
-
-        .auth-container .logo-text {
-            display: none; /* Hide text since logo image includes text */
-        }
-
-        /* Update admin badge to blue theme */
-        .admin-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 10px;
-            font-size: 14px;
-            margin-left: 10px;
-            box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
-        }
-
-        /* Auth Button - Updated to blue theme */
-        .auth-btn {
-            background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
-            color: white;
-            border: none;
-            border-radius: 0.5rem;
-            padding: 14px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
-            width: 100%;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .auth-btn:hover {
-            background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3);
-        }
-
-        /* Sign up/Sign in links - Updated to blue theme */
-        .sign-up a,
-        .sign-in a {
-            color: #0ea5e9;
-            text-decoration: none;
-            font-weight: 600;
-            transition: color 0.3s ease;
-        }
-
-        .sign-up a:hover,
-        .sign-in a:hover {
-            text-decoration: underline;
-            color: #0369a1;
-        }
-
-        /* Terms and Privacy links - Updated to blue theme */
-        .terms-link,
-        .privacy-link {
-            color: #0ea5e9 !important;
-            transition: color 0.3s ease;
-        }
-
-        .terms-link:hover,
-        .privacy-link:hover {
-            color: #0369a1 !important;
-        }
-
-        /* Form Note - Updated to blue theme */
-        .form-note {
-            background: rgba(248, 250, 252, 0.8);
-            backdrop-filter: blur(10px);
-            padding: 15px;
-            border-radius: 0.5rem;
-            margin-bottom: 20px;
-            color: #64748b;
-            font-size: 14px;
-            line-height: 1.5;
-            border-left: 4px solid #0ea5e9;
-            border: 1px solid rgba(226, 232, 240, 0.6);
-        }
 
     </style>
     <script>
@@ -272,12 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
     </script>
 </head>
-<body class="auth-page-with-squares" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
-    <!-- Auth page background squares -->
-    <div class="squares-background">
-        <canvas id="auth-squares" class="squares-canvas"></canvas>
-    </div>
-    
+<body style="background-color: #1e293b; display: flex; justify-content: center; align-items: center; min-height: 100vh;">
     <div class="auth-container">
         <div class="auth-form">
             <div class="logo">
@@ -326,6 +218,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <img src="images/success.png" alt="Success">
         <h2>Admin Login Successful!</h2>
     </div>
-    <script src="animated-squares.js"></script>
 </body>
 </html>

@@ -154,37 +154,21 @@ header {
 
 /* Logo Styling - Enhanced */
 .logo {
-  display: flex;
-  align-items: center;
-  text-decoration: none;
-  color: var(--text-color);
-  font-weight: 600;
-  font-size: 1.5rem;
-  transition: all 0.3s ease;
-  height: auto; /* Changed from 100% */
-  margin-bottom: 0; /* Remove the 40px margin that was causing enlargement */
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    height: auto;
+		transition: all 0.3s ease;
 }
 
 .logo:hover {
-  transform: translateY(-2px); /* Restore hover effect */
+  transform: translateY(-2px);
 }
-
 .logo-image {
-  height: 60px; /* Set a fixed height that matches your header */
-  width: auto;
-  object-fit: contain;
-  transition: all 0.3s ease;
-}
-
-.logo:hover .logo-image {
-  transform: scale(1.05); /* Restore hover zoom effect */
-  filter: brightness(1); /* Add subtle brightness on hover */
-}
-
-/* Remove or comment out the old logo-icon styles if they still exist */
-.logo-icon {
-  /* Remove this entire block or comment it out */
-  display: none;
+    height: 60px;
+    width: auto;
+    object-fit: contain;
+    transition: all 0.3s ease;
 }
 
 /* Navigation - Enhanced */
@@ -646,12 +630,15 @@ select:focus {
   box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.3);
 }
 
-.terms-link {
-	color: #7e22ce;
+.terms-link,
+.privacy-link {
+    color: var(--primary-color);
+    transition: color 0.3s ease;
 }
 
-.privacy-link {
-	color: #7e22ce;
+.terms-link:hover,
+.privacy-link:hover {
+    color: var(--primary-dark);
 }
 
 /* Features Section - Enhanced */
@@ -728,6 +715,10 @@ select:focus {
   flex-direction: column;
 }
 
+.auth-form .logo {
+	margin-bottom: 40px;
+}
+
 .auth-image {
   flex: 1;
   background-image: url("images/loginbg.png");
@@ -744,14 +735,15 @@ select:focus {
 }
 
 .admin-badge {
-  display: inline-block;
-  background:#7e22ce 100%;
-  color: white;
-  padding: 5px 10px;
-  border-radius: 10px;
-  font-size: 14px;
-  margin-left: 10px;
-  box-shadow: 0 2px 4px rgba(147, 51, 234, 0.3);
+    display: inline-block;
+    background: var(--primary-color);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: 14px;
+		font-weight: 700;
+    margin-left: 10px;
+    box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
 }
 
 /* Auth Form Styling - Enhanced */
@@ -803,27 +795,27 @@ select:focus {
   color: var(--text-color);
 }
 
-/* Auth Button - Enhanced */
 .auth-btn {
-  background:#7e22ce;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  padding: 14px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-bottom: 20px;
-  width: 100%;
-  position: relative;
-  overflow: hidden;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+		margin-top: 20px;
+    margin-bottom: 20px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
 }
 
 .auth-btn:hover {
-  background-color: #6b21a8;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(147, 51, 234, 0.3);
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3);
 }
 
 /* Sign up/Sign in links */
@@ -836,30 +828,29 @@ select:focus {
 
 .sign-up a,
 .sign-in a {
-  color: #9333ea;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.3s ease;
+    color: #0ea5e9;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.3s ease;
 }
-
 .sign-up a:hover,
 .sign-in a:hover {
-  text-decoration: underline;
-  color: #7e22ce;
+    text-decoration: underline;
+    color: #0369a1;
 }
 
 /* Form Note - Enhanced */
 .form-note {
-  background: rgba(248, 250, 252, 0.8);
-  backdrop-filter: blur(10px);
-  padding: 15px;
-  border-radius: 0.5rem;
-  margin-bottom: 20px;
-  color: var(--dark-gray);
-  font-size: 14px;
-  line-height: 1.5;
-  border-left: 4px solid #9333ea;
-  border: 1px solid rgba(226, 232, 240, 0.6);
+    background: rgba(248, 250, 252, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 15px;
+    border-radius: 0.5rem;
+    margin-bottom: 20px;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.5;
+    border-left: 4px solid #0ea5e9;
+    border: 1px solid rgba(226, 232, 240, 0.6);
 }
 
 /* =====================================================
