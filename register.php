@@ -117,6 +117,118 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - TrafAnalyz</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Auth Page Specific Overrides */
+        .auth-container .logo {
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            height: auto;
+        }
+
+        .auth-container .logo-icon {
+            display: none; /* Hide the old placeholder icon */
+        }
+
+        .auth-container .logo-image {
+            height: 60px;
+            width: auto;
+            object-fit: contain;
+            transition: all 0.3s ease;
+        }
+
+        .auth-container .logo:hover .logo-image {
+            transform: scale(1.05);
+        }
+
+        .auth-container .logo-text {
+            display: none; /* Hide text since logo image includes text */
+        }
+
+        /* Update admin badge to blue theme */
+        .admin-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-left: 10px;
+            box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
+        }
+
+        /* Auth Button - Updated to blue theme */
+        .auth-btn {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-btn:hover {
+            background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3);
+        }
+
+        /* Sign up/Sign in links - Updated to blue theme */
+        .sign-up a,
+        .sign-in a {
+            color: #0ea5e9;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .sign-up a:hover,
+        .sign-in a:hover {
+            text-decoration: underline;
+            color: #0369a1;
+        }
+
+        /* Terms and Privacy links - Updated to blue theme */
+        .terms-link,
+        .privacy-link {
+            color: #0ea5e9 !important;
+            transition: color 0.3s ease;
+        }
+
+        .terms-link:hover,
+        .privacy-link:hover {
+            color: #0369a1 !important;
+        }
+
+        /* Form Note - Updated to blue theme */
+        .form-note {
+            background: rgba(248, 250, 252, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 15px;
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.5;
+            border-left: 4px solid #0ea5e9;
+            border: 1px solid rgba(226, 232, 240, 0.6);
+        }
+
+        /* Remember checkbox - Updated to blue theme */
+        .remember input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+            accent-color: #0ea5e9;
+        }
+    </style>
     <script>
         // Toggle password visibility
         function togglePassword(id) {
@@ -240,8 +352,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="auth-container">
         <div class="auth-form">
             <div class="logo">
-                <img src="images/icon.png" alt="TrafAnalyz Icon" class="logo-icon">
-                <div class="logo-text">TrafAnalyz</div>
+                <a href="index.php" style="text-decoration: none; display: flex; align-items: center;">
+                    <img src="images/logo2.png" alt="TrafAnalyz Logo" class="logo-image">
+                </a>
             </div>
 
             <h1>Create an Account</h1>
@@ -293,7 +406,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="form-group">
                     <label>
                         <input type="checkbox" id="terms" name="terms" required>
-                        I agree to the <a href="terms.php" class="terms-link"  target="_blank">Terms & Conditions</a> and <a href="privacy.php" class="privacy-link" target="_blank">Privacy Policy</a>
+                        I agree to the <a href="terms.php" class="terms-link" target="_blank">Terms & Conditions</a> and <a href="privacy.php" class="privacy-link" target="_blank">Privacy Policy</a>
                     </label>
                 </div>
 
@@ -303,9 +416,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="sign-in">
                 Already have an account? <a href="login.php">Sign In</a>
             </div>
-						<div class="sign-in" style="margin-top: 10px;">
-							<a href="index.php">Return to Home Page</a>
-						</div>
+            <div class="sign-in" style="margin-top: 10px;">
+                <a href="index.php">Return to Home Page</a>
+            </div>
         </div>
         <div class="auth-image"></div>
     </div>
