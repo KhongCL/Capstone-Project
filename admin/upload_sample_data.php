@@ -1244,8 +1244,6 @@ if ($row = $result->fetch_assoc()) {
 												fileSize.textContent = formatFileSize(file.size) + ' (Too large)';
 										} else if (!isNotEmpty) {
 												fileName.textContent = file.name + ' (Empty file)';
-										} else {
-
 										}
 										
 										console.log('Admin sample file selected:', file.name, formatFileSize(file.size), 'Valid:', isValidCSV && isValidSize && isNotEmpty);
