@@ -33,13 +33,7 @@ $active_page = "supported_formats";
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         :root {
-            --primary-blue: #0ea5e9;
             --light-blue: #e0f2fe;
-            --pastel-blue: #bae6fd;
-            --dark-blue: #0369a1;
-            --emerald: #10b981;
-            --amber: #f59e0b;
-            --white: #ffffff;
             --gray-50: #f8fafc;
             --gray-100: #f1f5f9;
             --gray-200: #e2e8f0;
@@ -140,7 +134,7 @@ $active_page = "supported_formats";
             background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(16, 185, 129, 0.2);
-            border-left: 4px solid var(--emerald);
+            border-left: 4px solid var(--success);
             border-radius: 0.75rem;
             padding: 2rem;
             margin-bottom: 2rem;
@@ -230,7 +224,7 @@ $active_page = "supported_formats";
             width: 1.25rem;
             height: 1.25rem;
             background: var(--light-blue);
-            color: var(--dark-blue);
+            color: var(--primary-dark);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -273,7 +267,7 @@ $active_page = "supported_formats";
             padding: 0.5rem;
             background: var(--light-blue);
             border-radius: 0.5rem;
-            color: var(--primary-blue);
+            color: var(--primary-color);
         }
 
         .section-description {
@@ -386,7 +380,7 @@ $active_page = "supported_formats";
         .detection-info {
             background: rgba(224, 242, 254, 0.5);
             border: 1px solid rgba(59, 130, 246, 0.2);
-            border-left: 4px solid var(--primary-blue);
+            border-left: 4px solid var(--primary-color);
             padding: 1rem;
             margin-bottom: 1.5rem;
             border-radius: 0.5rem;
@@ -394,7 +388,7 @@ $active_page = "supported_formats";
 
         .detection-info h4 {
             margin: 0 0 0.75rem 0;
-            color: var(--dark-blue);
+            color: var(--primary-dark);
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -414,7 +408,7 @@ $active_page = "supported_formats";
         }
 
         .detection-tag {
-            background: var(--primary-blue);
+            background: var(--primary-color);
             color: white;
             padding: 0.25rem 0.75rem;
             border-radius: 1rem;
@@ -572,7 +566,7 @@ $active_page = "supported_formats";
             padding: 0.5rem;
             background: #fef3c7;
             border-radius: 0.5rem;
-            color: var(--amber);
+            color: var(--warning);
         }
 
         /* Fix for tip icons - ensure they're all visible and properly colored */
@@ -580,7 +574,7 @@ $active_page = "supported_formats";
             padding: 0.5rem !important;
             background: #fef3c7 !important;
             border-radius: 0.5rem !important;
-            color: var(--amber) !important;
+            color: var(--warning) !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -590,7 +584,7 @@ $active_page = "supported_formats";
         }
 
         .tip-icon i {
-            color: var(--amber) !important;
+            color: var(--warning) !important;
             font-size: 1rem !important;
             display: block !important;
             visibility: visible !important;
@@ -620,7 +614,7 @@ $active_page = "supported_formats";
         }
 
         .check-icon {
-            color: var(--emerald);
+            color: var(--success);
             margin-top: 0.125rem;
             flex-shrink: 0;
         }
@@ -707,7 +701,7 @@ $active_page = "supported_formats";
 .stat-number {
     font-size: 2rem;
     font-weight: 700;
-    color: var(--primary-blue);
+    color: var(--primary-color);
     display: block;
 }
 
@@ -719,7 +713,7 @@ $active_page = "supported_formats";
 
 .visual-separator {
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--primary-blue), transparent);
+    background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
     margin: 2rem 0;
     border-radius: 1px;
 }
@@ -786,11 +780,11 @@ $active_page = "supported_formats";
     content: '';
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, transparent, var(--primary-blue), transparent);
+    background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
 }
 
 .section-divider-icon {
-    background: var(--primary-blue);
+    background: var(--primary-color);
     color: white;
     padding: 0.5rem;
     border-radius: 50%;
@@ -1086,7 +1080,7 @@ $active_page = "supported_formats";
                             </li>
                             <li>
                                 <i class="fas fa-check-circle check-icon"></i>
-                                <span>Check our <a href="../faq.php" style="color: var(--primary-blue);">FAQ section</a> for common issues</span>
+                                <span>Check our <a href="../faq.php" style="color: var(--primary-color);">FAQ section</a> for common issues</span>
                             </li>
                             <li>
                                 <i class="fas fa-check-circle check-icon"></i>

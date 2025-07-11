@@ -627,11 +627,32 @@ if ($row = $result->fetch_assoc()) {
                     <div class="card" style="margin-bottom: 30px;">
                         <h3><i class="fas fa-upload"></i> Upload New Sample File</h3>
                         <form action="upload_sample.php" method="post" enctype="multipart/form-data" id="sampleUploadForm">
-                            <div class="form-group">
-                                <label for="sampleCsv">Select CSV File:</label>
-                                <input type="file" name="sampleCsv" id="sampleCsv" accept=".csv" required>
-                                <small class="help-text">Only CSV files up to 5MB are allowed</small>
-                            </div>
+												<div class="form-group file-input-group">
+														<label for="sampleCsv">
+																<i class="fas fa-file-csv"></i>
+																Select CSV File:
+														</label>
+														<div class="file-input-container">
+																<input type="file" name="sampleCsv" id="sampleCsv" accept=".csv" required>
+																<label for="sampleCsv" class="file-input-button">
+																		<i class="fas fa-upload"></i>
+																		Choose CSV File
+																</label>
+																<div class="file-info" id="fileInfo">
+																		<div class="file-details">
+																				<div class="file-detail-item">
+																						<i class="fas fa-file-csv"></i>
+																						<span class="file-name" id="fileName">-</span>
+																				</div>
+																				<div class="file-detail-item">
+																						<i class="fas fa-weight-hanging"></i>
+																						<span class="file-size" id="fileSize">-</span>
+																				</div>
+																		</div>
+																</div>
+														</div>
+														<small class="help-text">Only CSV files up to 5MB are allowed</small>
+												</div>
                             
                             <div class="form-group">
                                 <label for="reportType">Report Type:</label>
@@ -1188,6 +1209,96 @@ if ($row = $result->fetch_assoc()) {
             
             return true;
         }
+
+				// File input handling for admin sample upload - matching user/index.php
+				document.addEventListener('DOMContentLoaded', function() {
+						const fileInput = document.getElementById('sampleCsv');
+						const fileInfo = document.getElementById('fileInfo');
+						const fileName = document.getElementById('fileName');
+						const fileSize = document.getElementById('fileSize');
+						const fileButton = document.querySelector('.file-input-button');
+						
+						if (fileInput) {
+								fileInput.addEventListener('change', function() {
+										handleFileSelection(this);
+								});
+						}
+						
+						function handleFileSelection(input) {
+								if (input.files.length > 0) {
+										const file = input.files[0];
+										
+										// Update file info display
+										fileName.textContent = file.name;
+										fileSize.textContent = formatFileSize(file.size);
+										fileInfo.classList.add('show');
+										fileInfo.style.display = 'flex';
+										
+										// Update button appearance
+										fileButton.classList.add('file-selected');
+										fileButton.innerHTML = '<i class="fas fa-check-circle"></i> File Selected';
+										
+										// File validation with visual feedback
+										const isValidCSV = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+										const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
+										const isNotEmpty = file.size > 0;
+										
+										if (!isValidCSV) {
+												fileName.style.color = '#dc3545';
+												fileName.textContent = file.name + ' (⚠️ Not a CSV file)';
+												fileButton.classList.remove('file-selected');
+												fileButton.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Invalid File Type';
+												fileButton.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+										} else if (!isValidSize) {
+												fileSize.style.color = '#dc3545';
+												fileSize.textContent = formatFileSize(file.size) + ' (⚠️ Too large)';
+												fileButton.classList.remove('file-selected');
+												fileButton.innerHTML = '<i class="fas fa-exclamation-triangle"></i> File Too Large';
+												fileButton.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+										} else if (!isNotEmpty) {
+												fileName.style.color = '#dc3545';
+												fileName.textContent = file.name + ' (⚠️ Empty file)';
+												fileButton.classList.remove('file-selected');
+												fileButton.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Empty File';
+												fileButton.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+										} else {
+												// Valid file - reset colors and styles
+												fileName.style.color = '#155724';
+												fileSize.style.color = '#155724';
+												fileButton.style.background = ''; // Reset to default
+										}
+										
+										console.log('Admin sample file selected:', file.name, formatFileSize(file.size), 'Valid:', isValidCSV && isValidSize && isNotEmpty);
+										
+								} else {
+										// Reset to default state
+										fileName.textContent = '-';
+										fileSize.textContent = '-';
+										fileInfo.classList.remove('show');
+										fileInfo.style.display = 'none';
+										
+										// Reset button appearance
+										fileButton.classList.remove('file-selected');
+										fileButton.innerHTML = '<i class="fas fa-upload"></i> Choose CSV File';
+										fileButton.style.background = ''; // Reset to default
+										
+										// Reset colors
+										fileName.style.color = '';
+										fileSize.style.color = '';
+								}
+						}
+						
+						function formatFileSize(bytes) {
+								if (bytes === 0) return '0 Bytes';
+								const k = 1024;
+								const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+								const i = Math.floor(Math.log(bytes) / Math.log(k));
+								return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+						}
+						
+						// ... rest of your existing JavaScript code ...
+				});
+				
         </script>
 </body>
 </html>
