@@ -1210,26 +1210,32 @@ function handleCsvUploadForComparison($conn, $file) {
     // CRITICAL FIX: Set comparison context flag BEFORE calling handleCsvUpload
     $_POST['comparison_context'] = true;
     
-    // Also ensure session comparison context exists
-    if (!isset($_SESSION['compare_files'])) {
-        $_SESSION['compare_files'] = [];
-    }
-    
-    // CRITICAL FIX: Store original filename before processing
+    // CRITICAL FIX: Store original filename and create unique identifier for comparison context
     $originalFileName = $file['name'];
-    error_log("COMPARISON: Processing file with original name: $originalFileName");
+    $comparisonFileId = uniqid('comp_', true); // Create unique ID for this comparison file
+    
+    error_log("COMPARISON: Processing file with original name: $originalFileName, ID: $comparisonFileId");
+    
+    // CRITICAL FIX: Store comparison context in session before processing
+    if (!isset($_SESSION['comparison_context'])) {
+        $_SESSION['comparison_context'] = [];
+    }
+    $_SESSION['comparison_context'][$comparisonFileId] = [
+        'original_name' => $originalFileName,
+        'processed' => false
+    ];
     
     // Use the same logic as handleCsvUpload but with comparison context
     $result = handleCsvUpload($conn, $file);
     
-    // CRITICAL FIX: Ensure clean filename is preserved in result
-    if (!isset($result['original_filename']) || empty($result['original_filename'])) {
-        $result['original_filename'] = $originalFileName;
-        error_log("COMPARISON: Added original filename to result: $originalFileName");
-    }
+    // CRITICAL FIX: Update comparison context after processing
+    $_SESSION['comparison_context'][$comparisonFileId]['processed'] = true;
+    $_SESSION['comparison_context'][$comparisonFileId]['result'] = $result;
     
-    // CRITICAL FIX: Store clean filename without hash
+    // CRITICAL FIX: Ensure clean filename is preserved in result
+    $result['original_filename'] = $originalFileName;
     $result['clean_filename'] = $originalFileName;
+    $result['comparison_id'] = $comparisonFileId;
     
     // Make sure we return the upload_id if available
     if (isset($_SESSION['latest_upload_id'])) {

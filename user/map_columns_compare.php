@@ -29,8 +29,37 @@ error_log("Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
 if (!isset($_SESSION['compare_files'])) {
     error_log("CRITICAL: compare_files not found in session, attempting to restore...");
     
-    // Try to restore from uploaded files if we have them
-    if (isset($_SESSION['uploaded_csv']) && isset($_SESSION['mapping_result'])) {
+    // Try to restore from comparison context if available
+    if (isset($_SESSION['comparison_context'])) {
+        error_log("Found comparison_context, attempting restoration");
+        
+        $currentFileIndex = $_GET['file'] ?? 1;
+        
+        // Find the corresponding file in comparison context
+        foreach ($_SESSION['comparison_context'] as $compId => $compData) {
+            if ($compData['processed'] && isset($compData['result'])) {
+                $result = $compData['result'];
+                if ($result['type'] === 'needs_mapping') {
+                    $_SESSION['compare_files'] = [
+                        $currentFileIndex => [
+                            'name' => $compData['original_name'],
+                            'path' => $result['file_path'] ?? ($_SESSION['uploaded_csv'] ?? null),
+                            'upload_id' => $result['upload_id'] ?? null,
+                            'needs_mapping' => true,
+                            'mapped' => false,
+                            'result' => $result
+                        ]
+                    ];
+                    
+                    error_log("Successfully restored compare_files from comparison_context");
+                    break;
+                }
+            }
+        }
+    }
+    
+    // Fallback to existing restoration logic if comparison_context doesn't work
+    if (!isset($_SESSION['compare_files']) && isset($_SESSION['uploaded_csv']) && isset($_SESSION['mapping_result'])) {
         error_log("Found uploaded_csv and mapping_result in session, attempting manual restoration");
         
         // Get the file number from URL
