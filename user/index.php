@@ -295,31 +295,32 @@ error_log("=== END INDEX.PHP DEBUG ===");
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="../scripts.js"></script>
     <style>
-				#uploadBtn {
-				    display: none;
-				    opacity: 0;
-				    transform: translateY(10px);
-				    transition: all 0.3s ease;
-				}
+        /* ==================== UPLOAD BUTTON ANIMATIONS ==================== */
+        #uploadBtn {
+            display: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
 
-				/* Show upload button when file is selected */
-				#uploadBtn.show {
-				    display: inline-block;
-				    opacity: 1;
-				    transform: translateY(0);
-				}
+        /* Show upload button when file is selected */
+        #uploadBtn.show {
+            display: inline-block;
+            opacity: 1;
+            transform: translateY(0);
+        }
 
-				/* Enhanced button container styling */
-				.button-container {
-				    margin-top: 15px;
-				    display: flex;
-				    gap: 10px;
-				    align-items: center;
-				}
-				
+        /* Enhanced button container styling */
+        .button-container {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
         /* ==================== SAMPLE DATA STATUS STYLES ==================== */
         .sample-data-status {
-            background-color:var(--primary-color);
+            background-color: var(--primary-color);
             padding: 15px 20px;
             margin: 20px 0;
             border-radius: 8px;
@@ -656,7 +657,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             line-height: 1.4;
         }
 
-        /* FIXED: Enhanced suggestions styling with proper yellow highlighting for ALL sources */
+        /* Enhanced suggestions styling with proper yellow highlighting for ALL sources */
         .error-suggestions,
         .error-item strong + span {
             background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
@@ -671,7 +672,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             display: block !important;
         }
 
-        /* FIXED: Target the specific pattern from map_columns.php suggestions */
+        /* Target the specific pattern from map_columns.php suggestions */
         .error-item br + strong {
             margin-top: 10px;
             display: block;
@@ -679,7 +680,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             font-weight: 600 !important;
         }
 
-        /* FIXED: Style the text after "💡 Suggestions:" from map_columns.php */
+        /* Style the text after "💡 Suggestions:" from map_columns.php */
         .error-item strong:contains("💡 Suggestions:") + * {
             background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
             border: 1px solid #ffeaa7 !important;
@@ -800,7 +801,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
         /* ==================== FILE INFO BOX STYLING - FIXED FOR MAP_COLUMNS.PHP ==================== */
         
-        /* FIXED: Enhanced file info styling within error container AND standalone */
+        /* Enhanced file info styling within error container AND standalone */
         .error-container .file-info-box,
         .file-info-box,
         .error-container div[style*="margin: 15px 0"] {
@@ -814,7 +815,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             color: #721c24 !important;
         }
 
-        /* FIXED: Target the specific inline style from map_columns.php */
+        /* Target the specific inline style from map_columns.php */
         .error-container div[style*="background: rgba(0,0,0,0.05)"] {
             background: linear-gradient(135deg, rgba(220, 53, 69, 0.05) 0%, rgba(220, 53, 69, 0.1) 100%) !important;
             border: 1px solid rgba(220, 53, 69, 0.2) !important;
@@ -890,15 +891,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
         }
 
         /* ==================== UPLOAD PROGRESS.JS ERROR COMPATIBILITY ==================== */
-        
-        /* Ensure upload_progress.js generated elements use consistent styling */
-        .upload-section .error-container {
-            /* Same styling as above */
-        }
-
-        .upload-section .error-item .error-message {
-            /* Same styling as above */
-        }
 
         .upload-section .error-item .error-suggestions {
             /* Enhanced styling for suggestions from upload_progress.js */
@@ -1167,7 +1159,47 @@ error_log("=== END INDEX.PHP DEBUG ===");
             <script>
                 // CRITICAL: Hide sample data UI immediately if upload was just completed
                 document.addEventListener('DOMContentLoaded', function() {
-                    // Check if we're on a post-upload page load
+                    console.log('=== INDEX.PHP DOM CONTENT LOADED ===');
+                    
+                    const uploadBtn = document.getElementById('uploadBtn');
+                    const csvFileInput = document.getElementById('csvFile');
+                    const fileInfo = document.getElementById('fileInfo');
+                    
+                    console.log('Elements found:', {
+                        uploadBtn: !!uploadBtn,
+                        csvFileInput: !!csvFileInput,
+                        fileInfo: !!fileInfo
+                    });
+                    
+                    // CRITICAL: Ensure upload button is in correct initial state
+                    if (uploadBtn) {
+                        // FIXED: Clear all inline styles first
+                        uploadBtn.style.cssText = '';
+                        uploadBtn.classList.remove('show');
+                        uploadBtn.disabled = false;
+                        
+                        // Set proper initial state
+                        uploadBtn.style.display = 'none';
+                        uploadBtn.style.opacity = '0';
+                        uploadBtn.style.transform = 'translateY(10px)';
+                        uploadBtn.style.transition = 'all 0.3s ease';
+                        
+                        console.log('Upload button reset to initial state');
+                    }
+                    
+                    // CRITICAL: Ensure file input is clean
+                    if (csvFileInput) {
+                        csvFileInput.value = '';
+                        console.log('File input cleared');
+                    }
+                    
+                    // CRITICAL: Ensure file info is hidden
+                    if (fileInfo) {
+                        fileInfo.style.display = 'none';
+                        console.log('File info hidden');
+                    }
+                    
+                    // Check if we're on a post-upload page load and handle sample data UI
                     const urlParams = new URLSearchParams(window.location.search);
                     const uploadSuccess = urlParams.get('upload_success');
                     
@@ -1179,6 +1211,8 @@ error_log("=== END INDEX.PHP DEBUG ===");
                             console.log('Sample data UI hidden immediately after upload success');
                         }
                     }
+                    
+                    console.log('=== INDEX.PHP DOM CONTENT LOADED COMPLETE ===');
                 });
             </script>
             
@@ -1429,35 +1463,145 @@ error_log("=== END INDEX.PHP DEBUG ===");
     <script src="upload_progress.js"></script>
     <script>
         // CRITICAL: Set global variables for upload_progress.js to use
-        window.sessionHasExistingData = <?php echo (isset($_SESSION['latest_upload_id']) || isset($_SESSION['using_sample_data'])) ? 'true' : 'false'; ?>;
-        window.sessionIsUsingSampleData = <?php echo (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data']) ? 'true' : 'false'; ?>;
+        window.sessionHasExistingData = <?php 
+            // Check if user has actual data (not just session variables)
+            $hasData = false;
+            if (isset($_SESSION['latest_upload_id'])) {
+                $uploadId = $_SESSION['latest_upload_id'];
+                // FIX: Use correct table name 'processed_data_point' instead of 'analytics_data'
+                $stmt = $conn->prepare("SELECT COUNT(*) as count FROM processed_data_point WHERE UploadID = ?");
+                $stmt->bind_param("i", $uploadId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                $row = $result->fetch_assoc();
+                $hasData = ($row['count'] > 0);
+                error_log("GLOBAL VARS DEBUG: Checking upload ID $uploadId, found {$row['count']} records, hasData = " . ($hasData ? 'true' : 'false'));
+            } else {
+                error_log("GLOBAL VARS DEBUG: No latest_upload_id in session");
+            }
+            echo $hasData ? 'true' : 'false'; 
+        ?>;
+        window.sessionIsUsingSampleData = <?php 
+            $isSample = (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data']);
+            error_log("GLOBAL VARS DEBUG: using_sample_data = " . ($isSample ? 'true' : 'false'));
+            echo $isSample ? 'true' : 'false'; 
+        ?>;
+        
+        // NEW: Add debug logging for global variables
+        console.log('=== GLOBAL VARIABLES SET ===');
+        console.log('window.sessionHasExistingData:', window.sessionHasExistingData);
+        console.log('window.sessionIsUsingSampleData:', window.sessionIsUsingSampleData);
+        console.log('Current session latest_upload_id:', '<?php echo $_SESSION['latest_upload_id'] ?? 'not set'; ?>');
+        console.log('Current session using_sample_data:', '<?php echo isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'; ?>');
+        console.log('=============================');
         
         // File info display
-				document.getElementById('csvFile').addEventListener('change', function() {
-				    const fileInfo = document.getElementById('fileInfo');
-				    const fileName = fileInfo.querySelector('.file-name');
-				    const fileSize = fileInfo.querySelector('.file-size');
-				    const uploadBtn = document.getElementById('uploadBtn'); // Add this line
-				
-				    if (this.files.length > 0) {
-				        const file = this.files[0];
-				        fileName.textContent = file.name;
-				        fileSize.textContent = formatFileSize(file.size);
-				        fileInfo.style.display = 'block';
-						
-				        // Show upload button when file is selected
-				        uploadBtn.classList.add('show');
-				        uploadBtn.style.display = 'inline-block';
-						
-				        // DON'T clear error messages here - let them remain visible
-				        // Error messages will be cleared when upload actually starts
-				    } else {
-				        // Hide upload button when no file is selected
-				        fileInfo.style.display = 'none';
-				        uploadBtn.classList.remove('show');
-				        uploadBtn.style.display = 'none';
-				    }
-				});
+        document.getElementById('csvFile').addEventListener('change', function() {
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = fileInfo.querySelector('.file-name');
+            const fileSize = fileInfo.querySelector('.file-size');
+            const uploadBtn = document.getElementById('uploadBtn');
+
+            console.log('=== FILE INPUT CHANGE EVENT ===');
+            console.log('Files selected:', this.files.length);
+            console.log('File info element found:', !!fileInfo);
+            console.log('Upload button found:', !!uploadBtn);
+            console.log('Upload button current state:', {
+                display: uploadBtn ? uploadBtn.style.display : 'not found',
+                classList: uploadBtn ? Array.from(uploadBtn.classList) : 'not found'
+            });
+
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                console.log('Selected file:', file.name, 'Size:', file.size);
+                
+                // Update file info display
+                if (fileName && fileSize) {
+                    fileName.textContent = file.name;
+                    fileSize.textContent = formatFileSize(file.size);
+                }
+                
+                if (fileInfo) {
+                    fileInfo.style.display = 'block';
+                    console.log('File info displayed');
+                }
+                
+                // FIXED: Ensure upload button is properly shown
+                if (uploadBtn) {
+                    // CRITICAL: Clear all previous styles and classes first
+                    uploadBtn.style.cssText = '';
+                    uploadBtn.classList.remove('show');
+                    uploadBtn.disabled = false;
+                    
+                    // FIXED: Apply the correct styles immediately
+                    uploadBtn.style.display = 'inline-block';
+                    uploadBtn.style.opacity = '1';
+                    uploadBtn.style.transform = 'translateY(0)';
+                    uploadBtn.style.transition = 'all 0.3s ease';
+                    
+                    // Add the show class for consistency
+                    uploadBtn.classList.add('show');
+                    
+                    console.log('Upload button shown with proper styles');
+                    console.log('Final button state:', {
+                        display: uploadBtn.style.display,
+                        opacity: uploadBtn.style.opacity,
+                        transform: uploadBtn.style.transform,
+                        disabled: uploadBtn.disabled,
+                        classList: Array.from(uploadBtn.classList)
+                    });
+                } else {
+                    console.error('Upload button not found in DOM');
+                }
+                
+                // DON'T clear error messages here - let them remain visible
+                // Error messages will be cleared when upload actually starts
+            } else {
+                console.log('No files selected, hiding elements');
+                
+                // Hide upload button when no file is selected
+                if (fileInfo) {
+                    fileInfo.style.display = 'none';
+                }
+                
+                if (uploadBtn) {
+                    uploadBtn.classList.remove('show');
+                    uploadBtn.style.display = 'none';
+                    uploadBtn.style.opacity = '0';
+                    uploadBtn.style.transform = 'translateY(10px)';
+                    console.log('Upload button hidden');
+                }
+            }
+            
+            console.log('=== END FILE INPUT CHANGE EVENT ===');
+        });
+
+        window.addEventListener('beforeunload', function(e) {
+            console.log('=== BEFOREUNLOAD EVENT TRIGGERED ===');
+            
+            const hasExistingData = window.sessionHasExistingData;
+            const isUsingSampleData = window.sessionIsUsingSampleData;
+            const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
+            
+            console.log('beforeunload - hasExistingData:', hasExistingData);
+            console.log('beforeunload - isUsingSampleData:', isUsingSampleData);
+            console.log('beforeunload - hasErrorMessages:', hasErrorMessages);
+            console.log('beforeunload - error elements found:', document.querySelectorAll('.error-container, .validation-help, .message.error').length);
+            
+            // Only show confirmation if there are error messages or existing data
+            if (hasErrorMessages || hasExistingData) {
+                console.log('Conditions met for showing beforeunload confirmation');
+                
+                // Browser will show its own message regardless
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?'; // Set a custom message
+                
+                console.log('beforeunload event prevented');
+                return 'You have unsaved changes. Are you sure you want to leave?'; // For older browsers
+            } else {
+                console.log('No conditions met, allowing navigation');
+            }
+        });
 
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
@@ -1497,18 +1641,25 @@ error_log("=== END INDEX.PHP DEBUG ===");
             console.log('Current URL:', window.location.href);
             console.log('Referrer:', document.referrer);
             
-            // CRITICAL FIX: If we just came back from map_columns.php, force a page refresh to get current session state
-            if (document.referrer && document.referrer.includes('map_columns.php')) {
-                console.log('Detected return from mapping page - session state may be stale');
-                // Don't use cached session state, force server check
-                return true; // Let the upload proceed and let server handle current state
-            }
-            
             // NEW: Check if this is a page refresh after successful upload
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('upload_success') === '1') {
                 console.log('Page loaded after successful upload - sample data should be cleared');
                 return true; // Proceed without confirmation on post-upload page loads
+            }
+            
+            // CRITICAL FIX: Check for mapping page return but STILL show confirmation if there are error messages
+            const isFromMappingPage = document.referrer && document.referrer.includes('map_columns.php');
+            if (isFromMappingPage) {
+                console.log('Detected return from mapping page');
+                // FIXED: Even if from mapping page, we should ALWAYS confirm if there are error messages
+                // Only bypass confirmation if there are NO error messages AND no existing data
+                if (!hasErrorMessages && !hasExistingData) {
+                    console.log('No error messages or existing data from mapping page - proceeding');
+                    return true;
+                }
+                console.log('Has error messages or existing data from mapping page - showing confirmation');
+                // Don't return here - fall through to show confirmation
             }
             
             console.log('Session latest_upload_id:', '<?php echo $_SESSION['latest_upload_id'] ?? 'not set'; ?>');
@@ -1523,8 +1674,17 @@ error_log("=== END INDEX.PHP DEBUG ===");
             
             let confirmMessage;
             
-            // NEW: Prioritize error message warning if present
-            if (hasErrorMessages && !hasExistingData) {
+            // NEW: Special messaging for mapping page returns with error messages
+            if (isFromMappingPage && hasErrorMessages) {
+                confirmMessage = "⚠️ Upload Different File?\n\n" +
+                            "You just came back from the column mapping page with validation errors displayed.\n\n" +
+                            "The current error messages contain helpful suggestions for fixing your previous CSV file:\n" +
+                            "• 💡 Data fix suggestions\n" +
+                            "• 🔧 Quick fix guide\n" +
+                            "• 📋 Detailed error explanations\n\n" +
+                            "Uploading a new file will clear these helpful messages.\n\n" +
+                            "Do you want to continue with the upload?";
+            } else if (hasErrorMessages && !hasExistingData) {
                 confirmMessage = "⚠️ Clear Error Messages?\n\n" +
                             "You have validation error messages displayed that contain helpful suggestions for fixing your CSV file:\n" +
                             "• 💡 Data fix suggestions\n" +
@@ -1607,29 +1767,38 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
         // Fallback handler for non-AJAX form submission (if JS fails)
         document.addEventListener('DOMContentLoaded', function() {
-            const uploadForm = document.getElementById('uploadForm');
-            
-            // Add a fallback listener that only triggers if upload_progress.js fails to load
-            setTimeout(function() {
-                // Check if UploadProgressTracker is handling the form
-                if (!uploadForm.dataset.handledByTracker) {
-                    console.log('Adding fallback form submission handler');
+            // Wait for upload_progress.js to load and initialize
+            setTimeout(() => {
+                const uploadForm = document.getElementById('uploadForm');
+                const uploadBtn = document.getElementById('uploadBtn');
+                
+                // FIXED: Ensure the upload button state is properly managed after upload_progress.js
+                if (uploadBtn && !uploadBtn.dataset.stateManaged) {
+                    console.log('Managing upload button state after upload_progress.js initialization');
                     
-                    uploadForm.addEventListener('submit', function(e) {
-                        const hasExistingData = window.sessionHasExistingData;
-                        
-                        if (hasExistingData && !confirmDataReplacement()) {
-                            e.preventDefault(); // Stop the form submission
-                            return false;
-                        }
-                        // If confirmed or no existing data, let form submit normally
-                    });
+                    // Mark as managed to avoid duplicate handlers
+                    uploadBtn.dataset.stateManaged = 'true';
+                    
+                    // CRITICAL: Don't override the button state if it's already properly set
+                    // Just ensure it's not disabled and has proper initial styling
+                    if (!uploadBtn.classList.contains('show')) {
+                        uploadBtn.style.display = 'none';
+                        uploadBtn.style.opacity = '0';
+                        uploadBtn.style.transform = 'translateY(10px)';
+                    }
+                    uploadBtn.disabled = false;
+                    
+                    console.log('Upload button state properly managed');
                 }
-            }, 500); // Give upload_progress.js time to load
+                
+                // Verify that upload_progress.js is properly loaded
+                if (window.UploadProgressTracker || uploadForm.dataset.handledByTracker) {
+                    console.log('UploadProgressTracker is active');
+                } else {
+                    console.log('UploadProgressTracker not detected, fallback handlers will be used');
+                }
+            }, 600); // Give upload_progress.js time to initialize
         });
     </script>
-    
-    <!-- Sample Data Transitions Script -->
-    <script src="sample_data_transitions.js"></script>
 </body>
 </html>
