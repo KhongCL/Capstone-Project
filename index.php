@@ -21,6 +21,7 @@ if (isset($_SESSION['user_id'])) {
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="spotlight-cards.css">
     <link rel="stylesheet" href="animated-squares.css">
+    <link rel="stylesheet" href="pie-chart-3d.css"> <!-- Add this line -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="page-with-squares">
@@ -83,9 +84,38 @@ if (isset($_SESSION['user_id'])) {
         </div>
     </section>
 
+    <section class="visualization-showcase">
+        <div class="container">
+            <h2>Transform Your Data Into Visual Stories</h2>
+            <p>Turn your raw CSV analytics into stunning, interactive charts that reveal powerful insights about your website performance</p>
+            
+            <div class="showcase-grid">
+                <div class="showcase-content">
+                    <h3>Powerful Data Visualization</h3>
+                    <ul>
+                        <li><i class="fas fa-check"></i> Comprehensive and detailed charts</li>
+                        <li><i class="fas fa-check"></i> Real-time data processing</li>
+                        <li><i class="fas fa-check"></i> Multiple chart formats</li>
+                        <li><i class="fas fa-check"></i> Export ready</li>
+                        <li><i class="fas fa-check"></i> Mobile-optimized displays</li>
+                    </ul>
+                    <div class="showcase-cta">
+                        <a href="register.php" class="cta-button register-btn">Start Analyzing Today</a>
+                    </div>
+                </div>
+                <div class="model-viewer-container">
+                    <div id="pieChart3DViewer" style="width: 100%; height: 600px;"></div> <!-- Increased from 500px to 600px -->
+                </div>
+            </div>
+        </div>
+    </section>
+
     <?php include 'footer.php'; ?>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="spotlight-cards.js"></script>
     <script src="animated-squares.js"></script>
+    <script src="3d-pie-viewer.js"></script> <!-- This is your new file -->
 </body>
 </html>
