@@ -113,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Registration - TrafAnalyz</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="animated-squares.css">
     <style>
         /* Auth Page Specific Overrides */
         .auth-container .logo {
@@ -334,14 +335,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
     </script>
 </head>
-<body style="background-color: #1e293b; display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+<body class="auth-page-with-squares" style="display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+    <!-- Auth page background squares -->
+    <div class="squares-background">
+        <canvas id="auth-squares" class="squares-canvas"></canvas>
+    </div>
+    
     <div class="auth-container">
         <div class="auth-form">
             <div class="logo">
-                <a href="index.php" style="text-decoration: none; display: flex; align-items: center;">
-                    <img src="images/logo2.png" alt="TrafAnalyz Logo" class="logo-image">
-                    <span class="admin-badge">Admin</span>
-                </a>
+                <img src="images/logo2.png" alt="TrafAnalyz Logo" class="logo-image">
+                <span class="admin-badge">Admin</span>
             </div>
 
             <h1>Create Admin Account</h1>
@@ -424,5 +428,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <img src="images/success.png" alt="Success">
         <h2>Admin Registration Successful!<br>Redirecting to login page...</h2>
     </div>
+    <script src="animated-squares.js"></script>
 </body>
 </html>
