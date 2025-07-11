@@ -1,0 +1,104 @@
+/* Animated Squares Background - TrafAnalyz Theme */
+.squares-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.squares-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Overall page background squares */
+.page-with-squares {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 50%, #dbeafe 100%);
+}
+
+.page-with-squares .squares-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: auto;
+  opacity: 0.6;
+}
+
+/* Hero section with squares background */
+.hero-with-squares {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-with-squares .squares-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: auto;
+  opacity: 0.6;
+}
+
+.hero-with-squares .hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Remove features section squares - no longer needed */
+.features-with-squares {
+  position: relative;
+}
+
+.features-with-squares .container {
+  position: relative;
+  z-index: 1;
+}
+
+/* Auth pages background squares */
+.auth-page-with-squares {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #dbeafe 0%, #bae6fd 50%, #e0f2fe 100%) !important;
+}
+
+.auth-page-with-squares .squares-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .squares-background {
+    opacity: 0.3;
+  }
+
+  .hero-with-squares .squares-background {
+    opacity: 0.4;
+  }
+
+  .page-with-squares .squares-background {
+    opacity: 0.4;
+  }
+
+  .auth-page-with-squares .squares-background {
+    opacity: 0.3;
+  }
+}
