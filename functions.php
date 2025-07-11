@@ -153,7 +153,7 @@ function handleCsvUpload($conn, $file) {
 
                 return [
                     'type' => 'success',
-                    'message' => 'CSV file successfully uploaded and processed.'
+                    'message' => 'CSV data successfully uploaded and imported!'
                 ];
             } else {
                 // CRITICAL: Return the actual error message from saveTransformedData
@@ -197,6 +197,8 @@ function handleCsvUpload($conn, $file) {
             $_SESSION['mapping_result'] = $result;
             $_SESSION['csv_metadata'] = $metadata;
             
+            error_log("MAPPING: Stored session data for mapping page - uploaded_csv: $filePath");
+            
             // CRITICAL FIX: Clear sample data session when user uploads their own file
             if (isset($_SESSION['using_sample_data']) && !$isComparisonUpload) {
                 unset($_SESSION['using_sample_data']);
@@ -219,11 +221,16 @@ function handleCsvUpload($conn, $file) {
             // IMPROVED: More precise comparison context detection
             $isComparison = $isComparisonUpload;
 
+            // CRITICAL FIX: DON'T clear upload session data for regular uploads needing mapping
+            // The session data is needed for map_columns.php to work properly
             if (!$isComparison) {
-                // Only clear upload sessions for non-comparison uploads
-                error_log("CRITICAL: Cleared upload session data for regular upload");
-                unset($_SESSION['uploaded_csv']);
-                unset($_SESSION['mapping_result']);
+                error_log("MAPPING: Preserving session data for regular upload needing mapping");
+                // DON'T clear these - they're needed for map_columns.php:
+                // - $_SESSION['uploaded_csv']
+                // - $_SESSION['mapping_result'] 
+                // - $_SESSION['csv_metadata']
+                
+                // Only clear latest_upload_id since no data has been saved yet
                 unset($_SESSION['latest_upload_id']);
             } else {
                 error_log("COMPARISON: Preserving session data for comparison upload");
@@ -234,22 +241,16 @@ function handleCsvUpload($conn, $file) {
                 return [
                     'type' => 'needs_mapping',
                     'message' => 'Manual column mapping required.',
-                    'redirect' => $isComparison ? 'map_columns_compare.php' : 'map_columns.php'
+                    'redirect' => 'map_columns.php'
                 ];
             } else {
                 // CRITICAL FIX: Use proper comparison detection for redirects
                 if ($isComparison) {
-                    // For comparison uploads, return the result instead of redirecting
-                    return [
-                        'type' => 'needs_mapping',
-                        'message' => 'Manual column mapping required.',
-                        'original_filename' => $originalName,
-                        'clean_filename' => $originalName
-                    ];
+                    header('Location: map_columns_compare.php');
                 } else {
                     header('Location: map_columns.php');
-                    exit;
                 }
+                exit();
             }
         } else {
             // Clean up file since there was an error
@@ -258,7 +259,7 @@ function handleCsvUpload($conn, $file) {
             }
             return [
                 'type' => 'error',
-                'message' => $result['message'] ?? 'Unknown error processing CSV file.'
+                'message' => $result['message'] ?? 'Unknown error occurred during file processing.'
             ];
         }
     } catch (Exception $e) {
