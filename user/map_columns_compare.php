@@ -100,7 +100,13 @@ if (!file_exists($currentFile['path'])) {
             $_SESSION['compare_files'][$currentFileIndex]['path'] = $foundFile;
             $currentFile['path'] = $foundFile;
             
-            error_log("Updated session with correct file path");
+            // CRITICAL FIX: Extract and clean the filename
+            $extractedName = basename($foundFile);
+            $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
+            $_SESSION['compare_files'][$currentFileIndex]['name'] = $cleanName;
+            $currentFile['name'] = $cleanName;
+            
+            error_log("Updated session with correct file path and cleaned name: $cleanName");
         } else {
             error_log("RECOVERY FAILED: Could not find file with pattern: $pattern");
             $_SESSION['compare_error'] = "File not found for mapping. Please upload your files again.";
@@ -113,9 +119,18 @@ if (!file_exists($currentFile['path'])) {
         header('Location: compare.php');
         exit;
     }
+} else {
+    // File exists, but ensure we have a clean name
+    if (!isset($currentFile['name']) || $currentFile['name'] === 'Unknown file' || empty($currentFile['name'])) {
+        $extractedName = basename($currentFile['path']);
+        $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
+        $_SESSION['compare_files'][$currentFileIndex]['name'] = $cleanName;
+        $currentFile['name'] = $cleanName;
+        error_log("FIXED: Set clean filename for existing file: $cleanName");
+    }
 }
 
-error_log("Successfully found file for mapping: " . $currentFile['path']);
+error_log("Successfully found file for mapping: " . $currentFile['path'] . " with name: " . ($currentFile['name'] ?? 'STILL UNKNOWN'));
 
 $processor = new CsvProcessor();
 
@@ -529,7 +544,18 @@ function saveTransformedDataForComparison($conn, $transformedData, $fileIndex) {
                         <p><strong>Comparison Overview:</strong></p>
                         <ul style="margin: 10px 0; padding-left: 20px;">
                             <?php if (isset($compareFiles[1])): ?>
-                                <li><strong>File 1:</strong> <?php echo htmlspecialchars($compareFiles[1]['name'] ?? 'Unknown'); ?> 
+                                <li><strong>File 1:</strong> 
+                                    <?php 
+                                    $file1Name = 'Unknown';
+                                    if (!empty($compareFiles[1]['name']) && $compareFiles[1]['name'] !== 'Unknown file') {
+                                        $file1Name = $compareFiles[1]['name'];
+                                    } elseif (!empty($compareFiles[1]['path'])) {
+                                        $extractedName = basename($compareFiles[1]['path']);
+                                        $file1Name = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
+                                    }
+                                    echo htmlspecialchars($file1Name);
+                                    ?>
+                                    
                                     <?php if ($compareFiles[1]['mapped'] ?? false): ?>
                                         <span style="color: #28a745; font-weight: bold;">✓ Mapped</span>
                                     <?php elseif ($compareFiles[1]['needs_mapping'] ?? false): ?>
@@ -541,8 +567,20 @@ function saveTransformedDataForComparison($conn, $transformedData, $fileIndex) {
                                     <?php endif; ?>
                                 </li>
                             <?php endif; ?>
+                            
                             <?php if (isset($compareFiles[2])): ?>
-                                <li><strong>File 2:</strong> <?php echo htmlspecialchars($compareFiles[2]['name'] ?? 'Unknown'); ?>
+                                <li><strong>File 2:</strong> 
+                                    <?php 
+                                    $file2Name = 'Unknown';
+                                    if (!empty($compareFiles[2]['name']) && $compareFiles[2]['name'] !== 'Unknown file') {
+                                        $file2Name = $compareFiles[2]['name'];
+                                    } elseif (!empty($compareFiles[2]['path'])) {
+                                        $extractedName = basename($compareFiles[2]['path']);
+                                        $file2Name = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
+                                    }
+                                    echo htmlspecialchars($file2Name);
+                                    ?>
+                                    
                                     <?php if ($compareFiles[2]['mapped'] ?? false): ?>
                                         <span style="color: #28a745; font-weight: bold;">✓ Mapped</span>
                                     <?php elseif ($compareFiles[2]['needs_mapping'] ?? false): ?>

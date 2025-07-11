@@ -216,14 +216,15 @@ function handleCsvUpload($conn, $file) {
             $isComparison = false;
             
             // Check explicit comparison context flags first (most reliable)
-            if (isset($_POST['comparison_context']) || isset($_GET['comparison_context'])) {
-                $isComparison = true;
-                error_log("Detected comparison context from form parameter");
-            }
-            // Only check HTTP_REFERER if no explicit flag is set
-            else if (isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], 'compare.php') !== false) {
-                $isComparison = true;
-                error_log("Detected comparison context from HTTP_REFERER: " . $_SERVER['HTTP_REFERER']);
+            if (!isset($_POST['comparison_context'])) {
+                // Only clear upload sessions for non-comparison uploads
+                error_log("CRITICAL: Cleared upload session data for regular upload");
+                unset($_SESSION['uploaded_csv']);
+                unset($_SESSION['mapping_result']);
+                unset($_SESSION['latest_upload_id']);
+            } else {
+                error_log("COMPARISON: Preserving session data for comparison upload");
+                // Don't clear session data for comparison uploads
             }
             
             if ($isAjax) {
@@ -766,9 +767,17 @@ function saveTransformedData($conn, $transformedData) {
                 'total_columns' => count($csvHeaders ?? [])
             ];
             
-            // Format validation errors for display
-            $errorMessage = "Data validation errors found: " . implode('; ', $validationErrors) . ". Please correct these issues and try again.";
-            
+            // CRITICAL FIX: Format validation errors with proper separation and count
+            $uniqueErrors = array_unique($validationErrors);
+            $errorCount = count($validationErrors);
+            $uniqueCount = count($uniqueErrors);
+
+            // Create a clean, well-formatted error message - SHOW ALL ERRORS
+            $errorMessage = "Found $errorCount validation errors in your CSV file:\n\n";
+            foreach ($validationErrors as $error) {
+                $errorMessage .= $error . "\n";
+            }
+
             // DON'T clear validation errors here - let map_columns_compare.php handle them
             // IMPORTANT: Don't clear session data here - let the user see the errors and try again
             return ['type' => 'error', 'message' => $errorMessage];
