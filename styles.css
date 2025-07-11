@@ -159,16 +159,22 @@ header {
     justify-content: flex-start;
     height: auto;
 		transition: all 0.3s ease;
+		margin-bottom: 40px
 }
 
 .logo:hover {
   transform: translateY(-2px);
 }
+
 .logo-image {
     height: 60px;
     width: auto;
     object-fit: contain;
     transition: all 0.3s ease;
+}
+
+header .logo-image:hover {
+		transform: translateY(-2px);
 }
 
 /* Navigation - Enhanced */
@@ -713,10 +719,6 @@ select:focus {
   padding: 50px;
   display: flex;
   flex-direction: column;
-}
-
-.auth-form .logo {
-	margin-bottom: 40px;
 }
 
 .auth-image {

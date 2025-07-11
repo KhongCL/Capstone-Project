@@ -31,11 +31,9 @@ $imagePath = (basename(dirname($_SERVER['SCRIPT_NAME'])) === 'user') ? '../image
     <?php endif; ?>
 </head>
 <body>
-        <header>
-            <a href="index.php" class="logo">
-                <img src="<?php echo $imagePath; ?>logo2.png" alt="TrafAnalyz Logo" class="logo-image">
-            </a>
-            <nav>
+    <header>
+        <img src="<?php echo $imagePath; ?>logo2.png" alt="TrafAnalyz Logo" class="logo-image">
+        <nav>
             <ul>
                 <?php if (isset($_SESSION['user_id'])): ?>
                     <?php if ($_SESSION['role'] === 'Admin'): ?>
