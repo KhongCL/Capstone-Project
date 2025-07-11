@@ -45,19 +45,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         $_SESSION['compare_files'] = [
             1 => [
                 'name' => $file1['name'],
-                'path' => null,  // Will be set after upload
-                'upload_id' => null,  // Will be set after upload
-                'needs_mapping' => false,  // Will be updated based on results
-                'mapped' => false,
-                'result' => null  // Will be set after upload
+                'upload_id' => null,
+                'needs_mapping' => false,
+                'mapped' => false
             ],
             2 => [
                 'name' => $file2['name'],
-                'path' => null,  // Will be set after upload
-                'upload_id' => null,  // Will be set after upload
-                'needs_mapping' => false,  // Will be updated based on results
-                'mapped' => false,
-                'result' => null  // Will be set after upload
+                'upload_id' => null,
+                'needs_mapping' => false,
+                'mapped' => false
             ]
         ];
         error_log("Set initial compare_files session structure");
@@ -66,31 +62,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         $upload_result1 = handleCsvUploadForComparison($conn, $file1);
         $upload_result2 = handleCsvUploadForComparison($conn, $file2);
         
+        // ENHANCED DEBUGGING: Log detailed results
+        error_log("=== COMPARISON FILE PROCESSING RESULTS ===");
+        error_log("File 1 result: " . json_encode($upload_result1));
+        error_log("File 2 result: " . json_encode($upload_result2));
+        
         // Initialize variables for different scenarios
         $file1_valid = ($upload_result1['type'] === 'success' || $upload_result1['type'] === 'warning');
         $file2_valid = ($upload_result2['type'] === 'success' || $upload_result2['type'] === 'warning');
         $file1_needs_mapping = ($upload_result1['type'] === 'needs_mapping');
         $file2_needs_mapping = ($upload_result2['type'] === 'needs_mapping');
         
+        error_log("COMPARISON: File 1 processed - valid: " . ($file1_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file1_needs_mapping ? 'YES' : 'NO') . ", upload_id: " . ($upload_result1['upload_id'] ?? 'NULL'));
+        error_log("COMPARISON: File 2 processed - valid: " . ($file2_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file2_needs_mapping ? 'YES' : 'NO') . ", upload_id: " . ($upload_result2['upload_id'] ?? 'NULL'));
+        
+        // CRITICAL FIX: Ensure compare_files exists before updating
+        if (!isset($_SESSION['compare_files'])) {
+            $_SESSION['compare_files'] = [
+                1 => ['name' => $file1['name'], 'upload_id' => null, 'needs_mapping' => false, 'mapped' => false],
+                2 => ['name' => $file2['name'], 'upload_id' => null, 'needs_mapping' => false, 'mapped' => false]
+            ];
+            error_log("RESTORED: compare_files session structure");
+        }
+        
         // Update the session data with results
-        $compareFiles = $_SESSION['compare_files'];  // Get the structure we just created
+        $compareFiles = $_SESSION['compare_files'];  // Get the structure we just created/restored
         
         // Handle File 1 - UPDATE existing structure
         if ($file1_valid || $file1_needs_mapping) {
-            $compareFiles[1]['path'] = $upload_result1['file_path'] ?? null;
+            $compareFiles[1]['name'] = $upload_result1['original_filename'] ?? $file1['name'];
             $compareFiles[1]['upload_id'] = $upload_result1['upload_id'] ?? null;
             $compareFiles[1]['needs_mapping'] = $file1_needs_mapping;
-            $compareFiles[1]['mapped'] = $file1_valid; // Already mapped if valid
-            $compareFiles[1]['result'] = $upload_result1;
+            $compareFiles[1]['mapped'] = $file1_valid;
+            
+            // Add file path for valid uploads
+            if ($file1_valid && isset($upload_result1['file_path'])) {
+                $compareFiles[1]['path'] = $upload_result1['file_path'];
+            } else if ($file1_needs_mapping && isset($_SESSION['uploaded_csv'])) {
+                $compareFiles[1]['path'] = $_SESSION['uploaded_csv'];
+            }
+            
+            error_log("COMPARISON: File 1 processed successfully");
+        } else {
+            $compareFiles[1]['error'] = $upload_result1['message'] ?? 'Unknown error';
+            error_log("COMPARISON: File 1 failed - " . ($upload_result1['message'] ?? 'Unknown error'));
         }
-        
-        // Handle File 2 - UPDATE existing structure
+
         if ($file2_valid || $file2_needs_mapping) {
-            $compareFiles[2]['path'] = $upload_result2['file_path'] ?? null;
+            $compareFiles[2]['name'] = $upload_result2['original_filename'] ?? $file2['name'];
             $compareFiles[2]['upload_id'] = $upload_result2['upload_id'] ?? null;
             $compareFiles[2]['needs_mapping'] = $file2_needs_mapping;
-            $compareFiles[2]['mapped'] = $file2_valid; // Already mapped if valid
-            $compareFiles[2]['result'] = $upload_result2;
+            $compareFiles[2]['mapped'] = $file2_valid;
+            
+            // Add file path for valid uploads
+            if ($file2_valid && isset($upload_result2['file_path'])) {
+                $compareFiles[2]['path'] = $upload_result2['file_path'];
+            } else if ($file2_needs_mapping && isset($_SESSION['uploaded_csv'])) {
+                $compareFiles[2]['path'] = $_SESSION['uploaded_csv'];
+            }
+            
+            error_log("COMPARISON: File 2 processed successfully");
+        } else {
+            $compareFiles[2]['error'] = $upload_result2['message'] ?? 'Unknown error';
+            error_log("COMPARISON: File 2 failed - " . ($upload_result2['message'] ?? 'Unknown error'));
         }
         
         // Update session with complete information
@@ -103,80 +137,153 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         
         // Handle all 8 scenarios (4 original + 4 with mapping)
         if ($file1_valid && $file2_valid) {
-            // Scenario 1: Both files are valid - proceed with comparison
-            $file1_path = $upload_result1['file_path'] ?? null;
-            $file2_path = $upload_result2['file_path'] ?? null;
+            // CRITICAL FIX: Use upload IDs instead of file paths for comparison
+            $uploadId1 = $upload_result1['upload_id'] ?? null;
+            $uploadId2 = $upload_result2['upload_id'] ?? null;
             
-            if ($file1_path && $file2_path && file_exists($file1_path) && file_exists($file2_path)) {
-                // Perform the comparison using the saved files
-                $comparison_results = compareCSVFiles($file1_path, $file2_path);
-                
-                $warning_parts = [];
-                if ($upload_result1['type'] === 'warning') {
-                    $warning_parts[] = "File 1 had validation warnings";
-                }
-                if ($upload_result2['type'] === 'warning') {
-                    $warning_parts[] = "File 2 had validation warnings";
-                }
-                
-                if (!empty($warning_parts)) {
-                    $success_message = "Comparison completed with warnings: " . implode(", ", $warning_parts) . ". Files uploaded to database and saved to uploads directory.";
-                } else {
-                    $success_message = "Comparison completed successfully! Files uploaded to database and saved to uploads directory.";
+            error_log("COMPARISON: Upload IDs - File 1: $uploadId1, File 2: $uploadId2");
+            
+            if ($uploadId1 && $uploadId2) {
+                try {
+                    // FIXED: Pass upload IDs instead of file paths
+                    $comparison_results = compareCSVFiles($uploadId1, $uploadId2);
+                    
+                    error_log("COMPARISON: Successfully compared upload IDs $uploadId1 and $uploadId2");
+                    $success_message = "Files compared successfully!";
+                } catch (Exception $e) {
+                    error_log("COMPARISON ERROR: " . $e->getMessage());
+                    $error_message = "Error comparing files: " . $e->getMessage();
                 }
             } else {
-                $error_message = "Files were processed but could not be found for comparison.";
+                error_log("ERROR: Missing upload IDs - File 1: $uploadId1, File 2: $uploadId2");
+                $error_message = "Upload IDs not found for comparison.";
             }
-            
         } elseif ($file1_needs_mapping && $file2_valid) {
-            // Scenario 2: File 1 needs mapping, File 2 is valid
-            error_log("Scenario 2: File 1 needs mapping, File 2 is valid - redirecting to map file 1");
-            // CRITICAL FIX: Force another session write before redirect
-            session_write_close();
+            error_log("Scenario 2: File 1 needs mapping, File 2 is valid");
             header('Location: map_columns_compare.php?file=1');
             exit;
-            
         } elseif ($file1_valid && $file2_needs_mapping) {
-            // Scenario 3: File 1 is valid, File 2 needs mapping
-            error_log("Scenario 3: File 1 is valid, File 2 needs mapping - redirecting to map file 2");
-            // CRITICAL FIX: Force another session write before redirect
-            session_write_close();
+            error_log("Scenario 3: File 1 is valid, File 2 needs mapping");
             header('Location: map_columns_compare.php?file=2');
             exit;
-            
         } elseif ($file1_needs_mapping && $file2_needs_mapping) {
-            // Scenario 4: Both files need mapping - start with file 1
-            error_log("Scenario 4: Both files need mapping - redirecting to map file 1");
-            // CRITICAL FIX: Force another session write before redirect
-            session_write_close();
+            error_log("Scenario 4: Both files need mapping");
             header('Location: map_columns_compare.php?file=1');
             exit;
-            
         } elseif (($file1_valid || $file1_needs_mapping) && !$file2_valid && !$file2_needs_mapping) {
-            // Scenario 5: File 1 valid/mappable, File 2 invalid
-            $error_message = "File 1 " . ($file1_needs_mapping ? "uploaded successfully (requires mapping)" : "uploaded successfully") . 
-                           ", but File 2 failed: " . $upload_result2['message'];
+            // CRITICAL FIX: Create a clear success/failure message with icons
+            error_log("=== SCENARIO 5: File 1 SUCCESS, File 2 FAILED ===");
+            error_log("File 1 upload_id: " . ($upload_result1['upload_id'] ?? 'NULL'));
+            error_log("File 2 error: " . ($upload_result2['message'] ?? 'Unknown'));
+            
+            $file1_success_msg = "✅ First file ('" . ($upload_result1['original_filename'] ?? $file1['name']) . "') uploaded successfully";
+            $file2_failure_msg = "❌ Second file ('" . ($upload_result2['original_filename'] ?? $file2['name']) . "') failed";
+            
+            $error_message = $file1_success_msg . ", but " . $file2_failure_msg . ":\n\n" . ($upload_result2['message'] ?? 'Unknown error');
+            
+            // CRITICAL DEBUG: Log the exact error message being constructed
+            error_log("SCENARIO 5: File 1 success message: " . $file1_success_msg);
+            error_log("SCENARIO 5: File 2 failure message: " . $file2_failure_msg);
+            error_log("SCENARIO 5: Combined error message: " . $error_message);
+            error_log("SCENARIO 5: Raw file 2 error: " . ($upload_result2['message'] ?? 'Unknown error'));
+            
+            // Set flags for detailed error display
+            if (strpos($upload_result2['message'] ?? '', 'Found ') === 0 && strpos($upload_result2['message'] ?? '', 'validation errors') !== false) {
+                $show_detailed_errors = true;
+                
+                // Parse the validation errors for detailed display
+                $errorLines = explode("\n", $upload_result2['message']);
+                $compare_validation_errors = [];
+                
+                foreach ($errorLines as $line) {
+                    $line = trim($line);
+                    if (!empty($line) && strpos($line, 'Row ') === 0) {
+                        $compare_validation_errors[] = $line;
+                    }
+                }
+                
+                error_log("SCENARIO 5: Found " . count($compare_validation_errors) . " validation errors for file 2");
+                error_log("SCENARIO 5: Show detailed errors flag: " . ($show_detailed_errors ? 'true' : 'false'));
+            }
+            
+            error_log("SCENARIO 5: Final error message set: " . substr($error_message, 0, 200) . "...");
             
         } elseif (!$file1_valid && !$file1_needs_mapping && ($file2_valid || $file2_needs_mapping)) {
-            // Scenario 6: File 1 invalid, File 2 valid/mappable  
-            $error_message = "File 2 " . ($file2_needs_mapping ? "uploaded successfully (requires mapping)" : "uploaded successfully") . 
-                           ", but File 1 failed: " . $upload_result1['message'];
+            // CRITICAL FIX: Create a clear success/failure message with icons
+            error_log("=== SCENARIO 6: File 1 FAILED, File 2 SUCCESS ===");
+            error_log("File 1 error: " . ($upload_result1['message'] ?? 'Unknown'));
+            error_log("File 2 upload_id: " . ($upload_result2['upload_id'] ?? 'NULL'));
+            
+            $file1_failure_msg = "❌ First file ('" . ($upload_result1['original_filename'] ?? $file1['name']) . "') failed";
+            $file2_success_msg = "✅ Second file ('" . ($upload_result2['original_filename'] ?? $file2['name']) . "') uploaded successfully";
+            
+            $error_message = $file1_failure_msg . ", but " . $file2_success_msg . ":\n\n" . ($upload_result1['message'] ?? 'Unknown error');
+            
+            // CRITICAL DEBUG: Log the exact error message being constructed
+            error_log("SCENARIO 6: File 1 failure message: " . $file1_failure_msg);
+            error_log("SCENARIO 6: File 2 success message: " . $file2_success_msg);
+            error_log("SCENARIO 6: Combined error message: " . $error_message);
+            error_log("SCENARIO 6: Raw file 1 error: " . ($upload_result1['message'] ?? 'Unknown error'));
+            
+            // Set flags for detailed error display
+            if (strpos($upload_result1['message'] ?? '', 'Found ') === 0 && strpos($upload_result1['message'] ?? '', 'validation errors') !== false) {
+                $show_detailed_errors = true;
+                
+                // Parse the validation errors for detailed display
+                $errorLines = explode("\n", $upload_result1['message']);
+                $compare_validation_errors = [];
+                
+                foreach ($errorLines as $line) {
+                    $line = trim($line);
+                    if (!empty($line) && strpos($line, 'Row ') === 0) {
+                        $compare_validation_errors[] = $line;
+                    }
+                }
+                
+                error_log("SCENARIO 6: Found " . count($compare_validation_errors) . " validation errors for file 1");
+                error_log("SCENARIO 6: Show detailed errors flag: " . ($show_detailed_errors ? 'true' : 'false'));
+            }
+            
+            error_log("SCENARIO 6: Final error message set: " . substr($error_message, 0, 200) . "...");
             
         } else {
-            // Scenario 7 & 8: Both files invalid or other error combinations
-            $errors = [];
-            if ($upload_result1['type'] === 'error') {
-                $errors[] = "File 1: " . $upload_result1['message'];
-            }
-            if ($upload_result2['type'] === 'error') {
-                $errors[] = "File 2: " . $upload_result2['message'];
-            }
-            $error_message = implode(" | ", $errors);
+            error_log("Scenario 7/8: Both files failed");
+            $error_message = "❌ Both files failed to upload:\n\nFile 1 ('" . ($upload_result1['original_filename'] ?? $file1['name']) . "'): " . ($upload_result1['message'] ?? 'Unknown error') . "\n\nFile 2 ('" . ($upload_result2['original_filename'] ?? $file2['name']) . "'): " . ($upload_result2['message'] ?? 'Unknown error');
         }
         
     } catch (Exception $e) {
         $error_message = "Error processing files: " . $e->getMessage();
+        error_log("COMPARISON EXCEPTION: " . $e->getMessage());
     }
+}
+
+function findUploadedFile($filename) {
+    $uploadsDir = __DIR__ . '/../uploads/';
+    
+    // Try exact filename first
+    $exactPath = $uploadsDir . $filename;
+    if (file_exists($exactPath)) {
+        return $exactPath;
+    }
+
+    // Try to find with hash prefix
+    $pattern = $uploadsDir . '*_' . $filename;
+    $foundFiles = glob($pattern);
+
+    if (!empty($foundFiles)) {
+        return $foundFiles[0]; // Return the first match
+    }
+
+    // Try without extension matching
+    $nameWithoutExt = pathinfo($filename, PATHINFO_FILENAME);
+    $pattern = $uploadsDir . '*' . $nameWithoutExt . '*';
+    $foundFiles = glob($pattern);
+
+    if (!empty($foundFiles)) {
+        return $foundFiles[0];
+    }
+
+    return null;
 }
 
 // Handle failed mapping redirect with validation errors
@@ -188,21 +295,8 @@ if (isset($_GET['mapping_failed']) && $_GET['mapping_failed'] == '1') {
         $validationErrors = $_SESSION['compare_validation_errors'];
         $fileInfo = $_SESSION['failed_compare_file_info'] ?? null;
         
-        // Create detailed error message for comparison context
-        $uniqueErrors = array_unique($validationErrors);
-        $errorCount = count($validationErrors);
-        $uniqueCount = count($uniqueErrors);
-        
-        if ($uniqueCount > 15) {
-            // Too many errors - show summary
-            $sampleErrors = array_slice($uniqueErrors, 0, 5);
-            $errorMessage = "File " . ($fileInfo['file_index'] ?? 'X') . " contains " . $errorCount . " validation errors across multiple rows. " .
-                           "Sample errors: " . implode('; ', $sampleErrors) . "... " .
-                           "Please fix the data issues in your CSV file and upload again.";
-        } else {
-            $errorMessage = "File " . ($fileInfo['file_index'] ?? 'X') . " validation errors: " . implode('; ', $uniqueErrors) . 
-                           ". Please correct these issues and upload again.";
-        }
+        // Create detailed error message for comparison context - SHOW ALL ERRORS
+        $errorMessage = "File contains " . count($validationErrors) . " validation errors. Please fix the data issues and try again.";
         
         $error_message = $errorMessage;
         $show_detailed_errors = true;
@@ -218,22 +312,35 @@ if (isset($_GET['mapping_failed']) && $_GET['mapping_failed'] == '1') {
 if (isset($_SESSION['compare_ready']) && $_SESSION['compare_ready'] && isset($_SESSION['compare_files'])) {
     $compareFiles = $_SESSION['compare_files'];
     
-    // Both files should now be mapped and have upload IDs
-    if (isset($compareFiles[1]['upload_id']) && isset($compareFiles[2]['upload_id'])) {
-        try {
-            // Get file paths for comparison
-            $file1_path = $compareFiles[1]['path'];
-            $file2_path = $compareFiles[2]['path'];
+    // Verify we have the expected file structure
+    if (!isset($compareFiles[1]) || !isset($compareFiles[2])) {
+        error_log("ERROR: compare_files structure incomplete - missing file 1 or 2");
+        $_SESSION['compare_error'] = "Comparison session incomplete. Please upload your files again.";
+        unset($_SESSION['compare_ready']);
+        unset($_SESSION['compare_files']);
+        // Don't redirect here, just clear the error state
+    } else {
+        // Both files should now be mapped and have upload IDs
+        $file1Ready = isset($compareFiles[1]['upload_id']) && $compareFiles[1]['upload_id'] !== null;
+        $file2Ready = isset($compareFiles[2]['upload_id']) && $compareFiles[2]['upload_id'] !== null;
+        
+        if ($file1Ready && $file2Ready) {
+            // CRITICAL FIX: Use upload IDs instead of file paths
+            error_log("COMPARISON: Upload IDs - File 1: " . $compareFiles[1]['upload_id'] . ", File 2: " . $compareFiles[2]['upload_id']);
             
-            if ($file1_path && $file2_path && file_exists($file1_path) && file_exists($file2_path)) {
-                // Perform the comparison using the saved files
-                $comparison_results = compareCSVFiles($file1_path, $file2_path);
-                $success_message = "Comparison completed successfully after column mapping!";
-            } else {
-                $error_message = "Files were processed but could not be found for comparison.";
+            try {
+                // CRITICAL FIX: Pass upload IDs directly, not file paths
+                $comparison_results = compareCSVFiles($compareFiles[1]['upload_id'], $compareFiles[2]['upload_id']);
+                error_log("COMPARISON: Successfully compared uploads " . $compareFiles[1]['upload_id'] . " and " . $compareFiles[2]['upload_id']);
+                
+                $success_message = "Files compared successfully!";
+            } catch (Exception $e) {
+                error_log("COMPARISON EXCEPTION: " . $e->getMessage());
+                $error_message = "Error processing files: " . $e->getMessage();
             }
-        } catch (Exception $e) {
-            $error_message = "Error performing comparison: " . $e->getMessage();
+        } else {
+            error_log("ERROR: Files not ready for comparison - File 1 ready: " . ($file1Ready ? 'YES' : 'NO') . ", File 2 ready: " . ($file2Ready ? 'YES' : 'NO'));
+            $error_message = "Files are not ready for comparison. Please try uploading again.";
         }
     }
     
@@ -253,13 +360,29 @@ function handleCsvUploadForComparison($conn, $file) {
     // Add a flag to indicate this is a comparison context
     $_POST['comparison_context'] = true;
     
+    // CRITICAL FIX: Store original filename before processing
+    $originalFileName = $file['name'];
+    error_log("COMPARISON: Processing file with original name: $originalFileName");
+    
     // Use the same logic as handleCsvUpload but with comparison context
     $result = handleCsvUpload($conn, $file);
     
-    // FIXED: Make sure we return the upload_id if available
+    // CRITICAL FIX: Ensure filename is preserved in result
+    if (!isset($result['original_filename']) || empty($result['original_filename'])) {
+        $result['original_filename'] = $originalFileName;
+        error_log("COMPARISON: Added original filename to result: $originalFileName");
+    }
+    
+    // Make sure we return the upload_id if available
     if (isset($_SESSION['latest_upload_id'])) {
         $result['upload_id'] = $_SESSION['latest_upload_id'];
         error_log("Added upload_id to result: " . $_SESSION['latest_upload_id']);
+    }
+    
+    // CRITICAL FIX: Add file path to result if available
+    if (isset($_SESSION['uploaded_file_name'])) {
+        $result['file_path'] = __DIR__ . '/../uploads/' . $_SESSION['uploaded_file_name'];
+        error_log("COMPARISON: Added file_path to result: " . $result['file_path']);
     }
     
     return $result;
@@ -330,16 +453,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['load_comparison'])) {
         // Check if files exist
         if (file_exists($file1_path) && file_exists($file2_path)) {
             try {
-                // Perform the comparison using the saved files
                 $comparison_results = compareCSVFiles($file1_path, $file2_path);
-                $success_message = "Loaded comparison: " . htmlspecialchars($files[1]['FileName']) . " vs " . htmlspecialchars($files[2]['FileName']);
+                $success_message = "Saved comparison loaded successfully!";
             } catch (Exception $e) {
                 $error_message = "Error loading comparison: " . $e->getMessage();
             }
         } else {
-            $error_message = "One or both files for this saved comparison no longer exist in the uploads directory.";
-            // Debug info to help troubleshoot
-            $error_message .= "<br>Looking for: " . htmlspecialchars($file1_path) . " and " . htmlspecialchars($file2_path);
+            $error_message = "One or both files from the saved comparison could not be found.";
         }
     } else {
         $error_message = "Invalid comparison data found.";
@@ -367,41 +487,59 @@ while ($row = $result->fetch_assoc()) {
     $savedComparisons[] = $row;
 }
 
-
-
-function compareCSVFiles($file1_path, $file2_path) {
-    $data1 = parseCSV($file1_path);
-    $data2 = parseCSV($file2_path);
+function compareCSVFiles($uploadId1, $uploadId2) {
+    global $conn;
     
-    if (empty($data1) || empty($data2)) {
-        throw new Exception("One or both CSV files are empty or invalid.");
+    // CRITICAL FIX: Log the parameters we receive
+    error_log("=== COMPARE CSV FILES DEBUG ===");
+    error_log("Upload ID 1: " . var_export($uploadId1, true));
+    error_log("Upload ID 2: " . var_export($uploadId2, true));
+    
+    // CRITICAL FIX: Ensure we have valid upload IDs
+    if (!is_numeric($uploadId1) || !is_numeric($uploadId2)) {
+        error_log("ERROR: Invalid upload IDs provided - ID1: $uploadId1, ID2: $uploadId2");
+        throw new Exception("Invalid upload IDs provided for comparison.");
     }
     
-    $headers1 = array_keys($data1[0]);
-    $headers2 = array_keys($data2[0]);
+    // Get data from database using upload IDs
+    $data1 = getDataFromDatabase($uploadId1);
+    $data2 = getDataFromDatabase($uploadId2);
+    
+    error_log("Data1 count: " . count($data1));
+    error_log("Data2 count: " . count($data2));
+    
+    if (empty($data1) || empty($data2)) {
+        error_log("ERROR: One or both datasets are empty - Data1: " . count($data1) . ", Data2: " . count($data2));
+        throw new Exception("One or both datasets are empty or invalid.");
+    }
+    
+    // Get available metrics from both datasets
+    $metrics1 = array_keys($data1[0] ?? []);
+    $metrics2 = array_keys($data2[0] ?? []);
+    
+    // Calculate common headers and differences
+    $common_headers = array_intersect($metrics1, $metrics2);
+    $unique_to_file1 = array_diff($metrics1, $metrics2);
+    $unique_to_file2 = array_diff($metrics2, $metrics1);
     
     // Define analytics metrics to look for
     $analytics_metrics = [
-        'traffic_source', // Add this
-        'sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
+        'traffic_source', 'sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
         'events_per_session', 'event_count', 'key_events', 'session_key_event_rate', 'total_revenue'
     ];
     
     $comparison = [
         'basic_metrics' => [
-            'file1_rows' => count($data1),
-            'file2_rows' => count($data2),
-            'file1_columns' => count($headers1),
-            'file2_columns' => count($headers2),
-            'row_difference' => count($data1) - count($data2),
-            'column_difference' => count($headers1) - count($headers2)
+            'file1_rows' => count($data1), // CRITICAL FIX: Add row counts
+            'file2_rows' => count($data2), // CRITICAL FIX: Add row counts
+            'file1_columns' => count($metrics1), // CRITICAL FIX: Add column counts
+            'file2_columns' => count($metrics2), // CRITICAL FIX: Add column counts
+            'common_columns' => count($common_headers)
         ],
         'headers' => [
-            'file1_headers' => $headers1,
-            'file2_headers' => $headers2,
-            'common_headers' => array_intersect($headers1, $headers2),
-            'unique_to_file1' => array_diff($headers1, $headers2),
-            'unique_to_file2' => array_diff($headers2, $headers1)
+            'common_headers' => array_values($common_headers), // CRITICAL FIX: Add this line
+            'unique_to_file1' => array_values($unique_to_file1),
+            'unique_to_file2' => array_values($unique_to_file2)
         ],
         'analytics_metrics' => [],
         'summary_comparison' => [],
@@ -411,92 +549,84 @@ function compareCSVFiles($file1_path, $file2_path) {
         ]
     ];
     
-    // Analyze analytics metrics
-    $common_headers = array_merge($comparison['headers']['common_headers'], $headers1, $headers2); // Use all headers for better matching
-    $semantic_common = [];
+    // Analyze analytics metrics with IMPROVED metric detection
+    error_log("Common headers for metrics analysis: " . json_encode($common_headers));
+
     foreach ($analytics_metrics as $metric) {
-        // Find matching column (case-insensitive, flexible naming)
-        $found_column = findMetricColumn($common_headers, $metric);
+        // IMPROVED: Use the findMetricColumn function for better matching
+        $found_metric = findMetricColumn($common_headers, $metric);
         
-        if ($found_column) {
-            // Check if column exists in both files (or similar columns)
-            $col1 = findMetricColumn($headers1, $metric);
-            $col2 = findMetricColumn($headers2, $metric);
-            
-            if ($col1 && $col2) {
-                    $semantic_common[] = $metric;
-                    $values1 = array_column($data1, $col1);
-                    $values2 = array_column($data2, $col2);
-                    
-                    // Handle conversions for bounce rate vs engagement rate
-                    if (strpos($col1, '_CONVERT_FROM_') !== false) {
-                        $actualCol1 = str_replace(['_CONVERT_FROM_ENGAGEMENT', '_CONVERT_FROM_BOUNCE'], '', $col1);
-                        $values1 = array_column($data1, $actualCol1);
-                        
-                        if (strpos($col1, '_CONVERT_FROM_ENGAGEMENT') !== false) {
-                            // Convert engagement rate to bounce rate: bounce_rate = 1 - engagement_rate
-                            $values1 = array_map(function($val) { return 1 - floatval($val); }, $values1);
-                        } elseif (strpos($col1, '_CONVERT_FROM_BOUNCE') !== false) {
-                            // Convert bounce rate to engagement rate: engagement_rate = 1 - bounce_rate
-                            $values1 = array_map(function($val) { return 1 - floatval($val); }, $values1);
-                        }
-                        $col1 = $actualCol1; // Update column name for display
-                    }
-                    
-                    if (strpos($col2, '_CONVERT_FROM_') !== false) {
-                        $actualCol2 = str_replace(['_CONVERT_FROM_ENGAGEMENT', '_CONVERT_FROM_BOUNCE'], '', $col2);
-                        $values2 = array_column($data2, $actualCol2);
-                        
-                        if (strpos($col2, '_CONVERT_FROM_ENGAGEMENT') !== false) {
-                            $values2 = array_map(function($val) { return 1 - floatval($val); }, $values2);
-                        } elseif (strpos($col2, '_CONVERT_FROM_BOUNCE') !== false) {
-                            $values2 = array_map(function($val) { return 1 - floatval($val); }, $values2);
-                        }
-                        $col2 = $actualCol2;
-                    }
-                    
-                    // Clean and convert to numeric
-                    $numeric1 = cleanNumericValues($values1);
-                    $numeric2 = cleanNumericValues($values2);
-                
-                if (count($numeric1) > 0 && count($numeric2) > 0) {
-                    $stats1 = calculateStats($numeric1);
-                    $stats2 = calculateStats($numeric2);
-                    
-                    // Fixed percentage calculation
-                    $percent_change = 0;
-                    if ($stats1['sum'] != 0) {
-                        $percent_change = round((($stats2['sum'] - $stats1['sum']) / abs($stats1['sum'])) * 100, 2);
-                    } elseif ($stats2['sum'] > 0) {
-                        $percent_change = 100;
-                    } elseif ($stats2['sum'] < 0) {
-                        $percent_change = -100;
-                    }
-                    
-                    $comparison['analytics_metrics'][$metric] = [
-                        'column_name' => "$col1 vs $col2",
-                        'file1_column' => $col1,
-                        'file2_column' => $col2,
-                        'file1_stats' => $stats1,
-                        'file2_stats' => $stats2,
-                        'comparison' => [
-                            'total_diff' => $stats2['sum'] - $stats1['sum'],
-                            'avg_diff' => $stats2['mean'] - $stats1['mean'],
-                            'percent_change' => $percent_change,
-                            'improvement' => determineImprovement($metric, $stats2['mean'], $stats1['mean'])
-                        ]
-                    ];
-                }
-            }
+        if ($found_metric) {
+            $comparison['analytics_metrics'][$metric] = [
+                'column_name' => $found_metric,
+                'available' => true
+            ];
+            error_log("Found metric $metric as column $found_metric");
+        } else {
+            $comparison['analytics_metrics'][$metric] = [
+                'column_name' => null,
+                'available' => false
+            ];
+            error_log("Metric $metric not found in common headers");
         }
     }
+
+    error_log("Analytics metrics populated: " . json_encode(array_keys($comparison['analytics_metrics'])));
     
     // Calculate summary totals for key metrics
     $comparison['summary_comparison'] = calculateSummaryComparison($data1, $data2, $comparison['analytics_metrics']);
-    $comparison['headers']['semantic_common'] = $semantic_common;
-    $comparison['headers']['semantic_common_count'] = count($semantic_common);
     
+    error_log("=== END COMPARE CSV FILES DEBUG ===");
     return $comparison;
+}
+
+function getDataFromDatabase($uploadId) {
+    global $conn;
+    
+    $data = [];
+    
+    try {
+        // Get all data for this upload with metric names
+        $query = "SELECT 
+                    st.SourceName as traffic_source,
+                    mt.MetricName,
+                    pdp.Value
+                  FROM PROCESSED_DATA_POINT pdp
+                  JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
+                  JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
+                  WHERE pdp.UploadID = ?
+                  ORDER BY st.SourceName, mt.MetricName";
+                  
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $uploadId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        $grouped_data = [];
+        while ($row = $result->fetch_assoc()) {
+            $source = $row['traffic_source'];
+            $metric = $row['MetricName'];
+            $value = $row['Value'];
+            
+            if (!isset($grouped_data[$source])) {
+                $grouped_data[$source] = ['traffic_source' => $source];
+            }
+            
+            // Map metric names to consistent keys
+            $metric_key = strtolower(str_replace(' ', '_', $metric));
+            $grouped_data[$source][$metric_key] = $value;
+        }
+        
+        // Convert grouped data to array
+        $data = array_values($grouped_data);
+        
+        error_log("Retrieved " . count($data) . " records from database for upload $uploadId");
+        
+    } catch (Exception $e) {
+        error_log("Error getting data from database: " . $e->getMessage());
+    }
+    
+    return $data;
 }
 
 function findMetricColumn($headers, $metric) {
@@ -535,7 +665,7 @@ function findMetricColumn($headers, $metric) {
         foreach ($engagement_variations as $variation) {
             foreach ($headers as $header) {
                 if (strcasecmp(trim($header), trim($variation)) === 0) {
-                    return $header . '_CONVERT_FROM_ENGAGEMENT';
+                    return $header;
                 }
             }
         }
@@ -547,7 +677,7 @@ function findMetricColumn($headers, $metric) {
         foreach ($bounce_variations as $variation) {
             foreach ($headers as $header) {
                 if (strcasecmp(trim($header), trim($variation)) === 0) {
-                    return $header . '_CONVERT_FROM_BOUNCE';
+                    return $header;
                 }
             }
         }
@@ -588,17 +718,122 @@ function determineImprovement($metric, $value2, $value1) {
 }
 
 function calculateSummaryComparison($data1, $data2, $analytics_metrics) {
+    error_log("=== CALCULATE SUMMARY COMPARISON DEBUG ===");
+    error_log("Data1 count: " . count($data1));
+    error_log("Data2 count: " . count($data2));
+    error_log("Analytics metrics: " . json_encode(array_keys($analytics_metrics)));
+    
     $summary = [];
     
     foreach ($analytics_metrics as $metric => $data) {
+        // Skip if no data available for this metric
+        if (!isset($data['column_name']) || empty($data['column_name'])) {
+            continue;
+        }
+        
+        $column_name = $data['column_name'];
+        error_log("Processing metric: $metric with column: $column_name");
+        
+        // CRITICAL FIX: Handle traffic_source as a count, not sum
+        if ($metric === 'traffic_source') {
+            $count1 = count($data1);
+            $count2 = count($data2);
+            
+            $summary[$metric] = [
+                'file1_total' => $count1,
+                'file2_total' => $count2,
+                'change' => $count2 - $count1,
+                'percent_change' => $count1 != 0 ? (($count2 - $count1) / $count1) * 100 : ($count2 != 0 ? 100 : 0),
+                'status' => $count2 > $count1 ? 'improved' : ($count2 < $count1 ? 'declined' : 'unchanged'),
+                'improvement' => $count2 > $count1 ? 'improved' : ($count2 < $count1 ? 'declined' : 'unchanged'),
+                'total_diff' => $count2 - $count1,
+                'avg1' => $count1,
+                'avg2' => $count2,
+                'comparison' => [
+                    'value1' => $count1,
+                    'value2' => $count2,
+                    'difference' => $count2 - $count1,
+                    'percentage' => $count1 != 0 ? (($count2 - $count1) / $count1) * 100 : ($count2 != 0 ? 100 : 0)
+                ]
+            ];
+            
+            error_log("Traffic source count - Period 1: $count1, Period 2: $count2");
+            continue;
+        }
+        
+        // Extract values for this metric from both datasets
+        $values1 = [];
+        $values2 = [];
+        
+        foreach ($data1 as $row) {
+            if (isset($row[$column_name]) && is_numeric($row[$column_name])) {
+                $values1[] = floatval($row[$column_name]);
+            }
+        }
+        
+        foreach ($data2 as $row) {
+            if (isset($row[$column_name]) && is_numeric($row[$column_name])) {
+                $values2[] = floatval($row[$column_name]);
+            }
+        }
+        
+        error_log("Metric $metric - Values1 count: " . count($values1) . ", Values2 count: " . count($values2));
+        
+        // Calculate totals
+        $total1 = array_sum($values1);
+        $total2 = array_sum($values2);
+        
+        // Calculate percentage change
+        $percent_change = 0;
+        if ($total1 != 0) {
+            $percent_change = (($total2 - $total1) / $total1) * 100;
+        } elseif ($total2 != 0) {
+            $percent_change = 100; // If starting from 0, it's 100% increase
+        }
+        
+        // Calculate averages
+        $avg1 = count($values1) > 0 ? $total1 / count($values1) : 0;
+        $avg2 = count($values2) > 0 ? $total2 / count($values2) : 0;
+        
+        // Determine status
+        $status = determineImprovement($metric, $total2, $total1);
+        
+        // Calculate difference
+        $total_diff = $total2 - $total1;
+        
+        // Determine improvement status
+        $improvement = 'neutral';
+        if ($total_diff > 0) {
+            $improvement = in_array($metric, ['bounce_rate']) ? 'declined' : 'improved';
+        } elseif ($total_diff < 0) {
+            $improvement = in_array($metric, ['bounce_rate']) ? 'improved' : 'declined';
+        } else {
+            $improvement = 'unchanged';
+        }
+        
         $summary[$metric] = [
-            'file1_total' => $data['file1_stats']['sum'],
-            'file2_total' => $data['file2_stats']['sum'],
-            'difference' => $data['comparison']['total_diff'],
-            'percent_change' => $data['comparison']['percent_change'],
-            'status' => $data['comparison']['improvement']
+            'file1_total' => $total1,
+            'file2_total' => $total2,
+            'change' => $total_diff,
+            'percent_change' => $percent_change,
+            'status' => $status,
+            'improvement' => $improvement,
+            'total_diff' => $total_diff,
+            'avg1' => $avg1,
+            'avg2' => $avg2,
+            'comparison' => [
+                'value1' => $total1,
+                'value2' => $total2,
+                'difference' => $total_diff,
+                'percentage' => $percent_change
+            ]
         ];
+        
+        error_log("Summary for $metric: " . json_encode($summary[$metric]));
     }
+    
+    error_log("Final summary structure: " . json_encode(array_keys($summary)));
+    error_log("=== END CALCULATE SUMMARY COMPARISON DEBUG ===");
     
     return $summary;
 }
@@ -610,23 +845,15 @@ function parseCSV($file_path) {
         $row_number = 0;
         
         while (($row = fgetcsv($handle)) !== FALSE) {
-            $row_number++;
-            
-            // Skip metadata rows that start with # or are empty
-            if (empty($row[0]) || strpos($row[0], '#') === 0) {
-                continue;
-            }
-            
-            // First non-metadata row should be headers
-            if ($headers === null) {
+            if ($row_number === 0) {
                 $headers = $row;
-                continue;
+            } else {
+                // FIXED: Check if headers is not null and is an array before using it
+                if ($headers !== null && is_array($headers) && is_array($row) && count($row) === count($headers)) {
+                    $data[] = array_combine($headers, $row);
+                }
             }
-            
-            // Process data rows
-            if (count($row) === count($headers)) {
-                $data[] = array_combine($headers, $row);
-            }
+            $row_number++;
         }
         fclose($handle);
     }
@@ -636,13 +863,16 @@ function parseCSV($file_path) {
 function calculateStats($values) {
     if (empty($values)) return null;
     
+    // Convert all values to float to ensure numeric operations work
+    $values = array_map('floatval', $values);
+    
     sort($values);
     $count = count($values);
     $sum = array_sum($values);
     $mean = $sum / $count;
     
     $median = $count % 2 === 0 
-        ? ($values[$count/2 - 1] + $values[$count/2]) / 2 
+        ? ($values[intval($count/2 - 1)] + $values[intval($count/2)]) / 2 
         : $values[floor($count/2)];
     
     return [
@@ -1839,7 +2069,274 @@ function calculateStats($values) {
                 max-height: 300px !important;
             }
         }
-        </style>
+
+        /* =====================================================
+        FILE INPUT CONTAINER STYLES
+        ===================================================== */
+        .file-input-container {
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .file-input-container input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .file-input-button {
+            display: inline-block;
+            padding: 12px 20px;
+            background: #007bff;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            text-align: center;
+            border: 2px dashed transparent;
+            position: relative;
+            z-index: 1;
+        }
+
+        .file-input-button:hover {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .file-input-button i {
+            margin-right: 8px;
+        }
+
+        /* File info display styles */
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+            display: none; /* Initially hidden */
+        }
+
+        .file-details {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .file-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9em;
+            color: #495057;
+        }
+
+        .file-detail-item i {
+            color: #28a745;
+            font-size: 1.1em;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #2c3e50;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-size {
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        /* Selected state styling */
+        .file-input-container.has-file .file-input-button {
+            background: #28a745;
+            border-color: #28a745;
+        }
+
+        .file-input-container.has-file .file-input-button:hover {
+            background: #218838;
+        }
+
+        /* Compare specific file input group styling */
+        .compare-user-file-input-group {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .compare-user-file-input-group > div {
+            flex: 1;
+        }
+
+        .compare-user-file-input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .compare-user-file-input-group small {
+            color: #6c757d;
+            font-size: 0.85em;
+            margin-top: 5px;
+            display: block;
+        }
+
+        /* Responsive design for mobile */
+        @media (max-width: 768px) {
+            .compare-user-file-input-group {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .file-details {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .file-name {
+                max-width: 100%;
+            }
+        }
+
+        /* Enhanced Detailed Analytics Comparison Styles */
+        .compare-comparison-item {
+            background-color: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .compare-comparison-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .compare-comparison-item h5 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 0.95em;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .compare-detailed-vs-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .compare-detailed-period-data {
+            text-align: center;
+            flex: 1;
+        }
+
+        .compare-detailed-period-data h6 {
+            font-size: 0.75em; /* Reduced from 0.85em */
+            color: #6c757d;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .compare-detailed-period-data .period-value {
+            font-size: 1.1em; /* Reduced from 1.4em */
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .compare-period-data small {
+            color: #6c757d;
+            font-size: 0.7em; /* Reduced from 0.8em */
+        }
+
+        .compare-vs-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 15px;
+            color: #adb5bd;
+            font-weight: bold;
+            font-size: 0.8em; /* Reduced from 0.9em */
+        }
+
+        .compare-change-summary {
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.85em; /* Reduced from 0.95em */
+            border-left: 4px solid #dee2e6;
+        }
+
+        .compare-change-summary.improved {
+            border-left-color: var(--success);
+        }
+
+        .compare-change-summary.declined {
+            border-left-color: var(--danger);
+        }
+
+        .compare-change-summary.unchanged {
+            border-left-color: var(--info);
+        }
+
+        /* Grid layout for detailed comparison */
+        .compare-detailed-analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .compare-detailed-analytics-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .compare-detailed-vs-section {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .compare-vs-divider {
+                margin: 10px 0;
+                transform: rotate(90deg);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .compare-comparison-item {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            
+            .compare-detailed-period-data .period-value {
+                font-size: 1em;
+            }
+            
+            .compare-detailed-period-data h6 {
+                font-size: 0.7em;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -1855,11 +2352,44 @@ function calculateStats($values) {
                 <h3><i class="fas fa-upload"></i> Upload Analytics CSV Files</h3>
                 
                 <?php if (!empty($error_message)): ?>
+                    <?php
+                    // CRITICAL DEBUG: Log what we're about to display
+                    error_log("=== ERROR MESSAGE DISPLAY DEBUG ===");
+                    error_log("Error message to display: " . $error_message);
+                    error_log("show_detailed_errors flag: " . (isset($show_detailed_errors) ? ($show_detailed_errors ? 'true' : 'false') : 'not set'));
+                    error_log("compare_validation_errors count: " . (isset($compare_validation_errors) ? count($compare_validation_errors) : 'not set'));
+                    ?>
                     <?php if (isset($show_detailed_errors) && $show_detailed_errors && isset($compare_validation_errors)): ?>
                         <!-- Enhanced validation errors display for comparison -->
                         <div class="user-alert user-alert-danger">
+                            <?php 
+                            error_log("DISPLAY: Using detailed errors display path");
+                            
+                            // CRITICAL FIX: Parse the error message to extract just the summary
+                            $displayErrorMessage = $error_message;
+                            
+                            // Extract just the summary part using the same pattern as below
+                            $summaryPattern = '/^(.*?)(Found \d+ validation errors.*)/s';
+                            if (preg_match($summaryPattern, $displayErrorMessage, $matches)) {
+                                $summaryOnly = trim($matches[1]);
+                                // Remove any "Error processing files: " prefix
+                                $summaryOnly = str_replace("Error processing files: ", "", $summaryOnly);
+                                $displayErrorMessage = $summaryOnly;
+                                error_log("DISPLAY: Extracted summary only: " . $displayErrorMessage);
+                            } else {
+                                // Fallback: try to find the summary pattern manually
+                                if (strpos($displayErrorMessage, '✅') !== false || strpos($displayErrorMessage, '❌') !== false) {
+                                    // Find the end of the summary (before "Found X validation errors")
+                                    $foundPos = strpos($displayErrorMessage, 'Found ');
+                                    if ($foundPos !== false) {
+                                        $displayErrorMessage = trim(substr($displayErrorMessage, 0, $foundPos));
+                                    }
+                                }
+                                error_log("DISPLAY: Fallback summary extraction: " . $displayErrorMessage);
+                            }
+                            ?>
                             <h4><i class="fas fa-exclamation-triangle"></i> File Validation Failed</h4>
-                            <p><strong>One of your comparison files couldn't be processed due to data validation errors.</strong></p>
+                            <p><strong><?php echo htmlspecialchars($displayErrorMessage); ?></strong></p>
                             
                             <?php if (isset($_SESSION['failed_compare_file_info'])): ?>
                                 <?php $fileInfo = $_SESSION['failed_compare_file_info']; ?>
@@ -1870,410 +2400,280 @@ function calculateStats($values) {
                                 </div>
                             <?php endif; ?>
                             
-                            <?php 
-                            $errors = $compare_validation_errors;
-                            $uniqueErrors = array_unique($errors);
-                            $errorCount = count($errors);
-                            $uniqueCount = count($uniqueErrors);
-                            ?>
-                            
-                            <div style="margin: 15px 0;">
-                                <p><strong>Found <?php echo $errorCount; ?> validation issues<?php echo $uniqueCount != $errorCount ? " ({$uniqueCount} unique types)" : ""; ?>:</strong></p>
+                            <div class="error-container" style="margin-top: 15px;">
+                                <div class="error-summary">
+                                    <h5>Found <?php echo count($compare_validation_errors); ?> validation issues:</h5>
+                                </div>
                                 
-                                <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f9f9f9;">
-                                    <?php 
-                                    $displayErrors = $uniqueCount > 10 ? array_slice($uniqueErrors, 0, 10) : $uniqueErrors;
-                                    foreach ($displayErrors as $error): 
-                                    ?>
-                                        <div style="margin-bottom: 8px; padding: 5px; background: #fff; border-left: 3px solid #dc3545; border-radius: 3px;">
-                                            <?php echo htmlspecialchars($error); ?>
+                                <div class="error-list" style="max-height: 400px; overflow-y: auto; margin: 15px 0;">
+                                    <?php foreach ($compare_validation_errors as $index => $error): ?>
+                                        <div class="error-item" style="padding: 8px 12px; margin: 5px 0; background: #f8f9fa; border-left: 3px solid #dc3545; border-radius: 4px;">
+                                            <?php
+                                            // Parse error and suggestions
+                                            $parts = explode(' Suggestions: ', $error);
+                                            $mainError = $parts[0];
+                                            $suggestions = isset($parts[1]) ? $parts[1] : '';
+                                            ?>
+                                            <div class="error-message" style="font-family: 'Courier New', monospace; font-size: 0.9em; color: #721c24;">
+                                                <?php echo htmlspecialchars($mainError); ?>
+                                            </div>
+                                            <?php if (!empty($suggestions)): ?>
+                                                <div class="error-suggestions" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 3px; padding: 8px; font-size: 0.9em; color: #856404; margin-top: 8px;">
+                                                    <strong>💡 Suggestions:</strong> 
+                                                    <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
+                                                </div>
+                                            <?php endif; ?>
                                         </div>
                                     <?php endforeach; ?>
-                                    
-                                    <?php if ($uniqueCount > 10): ?>
-                                        <div style="font-style: italic; color: #666; text-align: center; margin-top: 10px;">
-                                            ... and <?php echo ($uniqueCount - 10); ?> more error types
-                                        </div>
-                                    <?php endif; ?>
                                 </div>
                             </div>
                             
-                            <div style="background: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 5px; padding: 15px; margin-top: 15px;">
-                                <h5><i class="fas fa-lightbulb"></i> Quick Fix Guide:</h5>
-                                <ul style="margin: 10px 0; padding-left: 20px;">
-                                    <li><strong>Numbers:</strong> Remove text, symbols from numeric columns (e.g., "1,200" → "1200")</li>
-                                    <li><strong>Percentages:</strong> Use decimal format (0.25) or with % symbol (25%)</li>
-                                    <li><strong>Empty values:</strong> Fill in missing data or use 0 for zero values</li>
-                                    <li><strong>Special characters:</strong> Remove currency symbols, commas from numbers</li>
-                                </ul>
-                                <p><strong>💡 Tip:</strong> Open your CSV in Excel/Google Sheets, fix the issues, save and upload again.</p>
+                            <!-- Keep the existing validation help and error footer sections -->
+                            <div class="validation-help" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #28a745;">
+                                <h4 style="color: #155724; margin-bottom: 10px;">💡 How to Fix These Issues</h4>
+                                <div class="fix-guide">
+                                    <div class="fix-item" style="margin-bottom: 12px;">
+                                        <strong style="color: #155724;">For Number Fields:</strong>
+                                        <ul style="margin: 5px 0 0 20px;">
+                                            <li>Remove any letters, symbols, or special characters</li>
+                                            <li>Use only digits and decimal points (e.g., "123", "45.67")</li>
+                                            <li>Convert percentages to decimals (e.g., "75%" → "0.75")</li>
+                                        </ul>
+                                    </div>
+                                    <div class="fix-item" style="margin-bottom: 12px;">
+                                        <strong style="color: #155724;">For Time Values:</strong>
+                                        <ul style="margin: 5px 0 0 20px;">
+                                            <li>Convert time formats to seconds (e.g., "5m30s" → "330")</li>
+                                            <li>Use decimal format for partial seconds (e.g., "45.5")</li>
+                                        </ul>
+                                    </div>
+                                    <div class="fix-item" style="margin-bottom: 12px;">
+                                        <strong style="color: #155724;">For Negative/Invalid Values:</strong>
+                                        <ul style="margin: 5px 0 0 20px;">
+                                            <li>Ensure all values are positive numbers</li>
+                                            <li>Check for realistic ranges (engagement rates 0-1, etc.)</li>
+                                            <li>Remove any text labels or descriptive words</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="error-footer" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; text-align: center;">
+                                <p style="color: #6c757d; margin: 0; font-size: 0.9em;">
+                                    <strong>Tip:</strong> Fix the errors in your CSV file and try uploading again.
+                                </p>
                             </div>
                         </div>
                     <?php else: ?>
-                        <!-- Check if this is a validation error with suggestions OR a data validation error -->
+                        <!-- The second section already has the correct parsing logic -->
+                        <!-- Keep the existing code as it correctly uses $errorPrefix -->
                         <?php if (strpos($error_message, 'Data validation errors') !== false || 
                                 strpos($error_message, 'No valid data to save') !== false ||
                                 strpos($error_message, 'CSV parsing error') !== false ||
-                                strpos($error_message, 'trademark symbols') !== false ||
-                                strpos($error_message, 'scientific notation') !== false ||
-                                strpos($error_message, 'non-numeric characters') !== false ||
-                                strpos($error_message, 'Empty value') !== false ||
-                                strpos($error_message, 'whitespace') !== false): ?>
+                                strpos($error_message, 'Found ') === 0 ||
+                                strpos($error_message, 'validation errors') !== false): ?>
                             
                             <?php
-                            // Enhanced error message parsing to extract suggestions (same as existing logic)
-                            $errorMessage = $error_message;
-                            $errorMessage = str_replace("Error processing files: ", "", $errorMessage);
+                                // This parsing logic is already correct - it creates $errorPrefix
+                                // which contains only the summary message
+                                $errorMessage = $error_message;
+                                $errorMessage = str_replace("Error processing files: ", "", $errorMessage);
 
-                            error_log("=== COMPARE.PHP ERROR PARSING DEBUG ===");
-                            error_log("Original error message: " . $error_message);
-                            error_log("Cleaned error message: " . $errorMessage);
+                                error_log("=== COMPARE.PHP ERROR PARSING DEBUG ===");
+                                error_log("Original error message: " . $error_message);
+                                error_log("Cleaned error message: " . $errorMessage);
 
-                            // Determine the scenario and display appropriate prefix
-                            $errorPrefix = "";
-                            $allErrorList = [];
-                            $file1ErrorCount = 0;
-                            $file2ErrorCount = 0;
+                                // Initialize variables
+                                $errorPrefix = "";
+                                $allErrorList = [];
+                                $file1ErrorCount = 0;
+                                $file2ErrorCount = 0;
+                                $file1Success = false;
+                                $file2Success = false;
 
-                            // Check for specific file failure patterns
-                            if (strpos($errorMessage, 'File 1 uploaded successfully, but File 2 failed: ') !== false) {
-                                $errorPrefix = "✅ File 1 uploaded successfully, but ❌ File 2 failed";
-                                $cleanErrorForFile2 = str_replace('File 1 uploaded successfully, but File 2 failed: ', '', $errorMessage);
-                                $cleanErrorForFile2 = str_replace("Data validation errors found: ", "", $cleanErrorForFile2);
-                                $cleanErrorForFile2 = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanErrorForFile2);
-                                
-                                error_log("File 2 failed scenario - extracting File 2 errors");
-                                error_log("Clean error for File 2: " . $cleanErrorForFile2);
-                                
-                                // FIXED ERROR PARSING - Replace the existing parsing with this robust approach
-                                if (strpos($cleanErrorForFile2, 'No valid data to save') !== false) {
-                                    $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
-                                    $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
-                                    $file2ErrorCount = 2;
-                                } else {
-                                    // Use the robust error splitting approach
-                                    if (strpos($cleanErrorForFile2, '; Row') !== false) {
-                                        // Split by '; Row' and handle properly
-                                        $parts = explode('; Row ', $cleanErrorForFile2);
-                                        
-                                        // First part contains the initial "Row X: ..." 
-                                        if (!empty(trim($parts[0]))) {
-                                            $allErrorList[] = trim($parts[0]);
-                                            $file2ErrorCount++;
-                                        }
-                                        
-                                        // Subsequent parts need "Row " prepended
-                                        for ($i = 1; $i < count($parts); $i++) {
-                                            $part = trim($parts[$i]);
-                                            if (!empty($part)) {
-                                                $allErrorList[] = 'Row ' . $part;
+                                // STEP 1: Extract the summary message and separate it from detailed errors
+                                $summaryPattern = '/^(.*?)(Found \d+ validation errors.*)/s';
+                                if (preg_match($summaryPattern, $errorMessage, $matches)) {
+                                    $summaryMessage = trim($matches[1]);
+                                    $detailedErrors = trim($matches[2]);
+                                    
+                                    error_log("PARSED: Summary message: " . $summaryMessage);
+                                    error_log("PARSED: Detailed errors start: " . substr($detailedErrors, 0, 100) . "...");
+                                    
+                                    // Use the summary as our main error message
+                                    $errorPrefix = $summaryMessage;
+                                    
+                                    // Determine file success/failure from summary
+                                    if (strpos($summaryMessage, '✅') !== false && strpos($summaryMessage, 'First file') !== false) {
+                                        $file1Success = true;
+                                    }
+                                    if (strpos($summaryMessage, '✅') !== false && strpos($summaryMessage, 'Second file') !== false) {
+                                        $file2Success = true;
+                                    }
+                                    if (strpos($summaryMessage, '❌') !== false && strpos($summaryMessage, 'First file') !== false) {
+                                        $file1Success = false;
+                                    }
+                                    if (strpos($summaryMessage, '❌') !== false && strpos($summaryMessage, 'Second file') !== false) {
+                                        $file2Success = false;
+                                    }
+                                    
+                                    // Parse the detailed errors from the "Found X validation errors" part
+                                    $lines = explode("\n", $detailedErrors);
+                                    foreach ($lines as $line) {
+                                        $line = trim($line);
+                                        if (!empty($line) && strpos($line, 'Row ') === 0) {
+                                            $allErrorList[] = $line;
+                                            
+                                            // Since we know from summary which file failed, count accordingly
+                                            if (!$file1Success && $file2Success) {
+                                                $file1ErrorCount++;
+                                            } elseif ($file1Success && !$file2Success) {
+                                                $file2ErrorCount++;
+                                            } else {
+                                                // Both files failed - count for both
+                                                $file1ErrorCount++;
                                                 $file2ErrorCount++;
                                             }
                                         }
+                                    }
+                                } else {
+                                    // Fallback parsing if regex doesn't match
+                                    error_log("FALLBACK: Regex didn't match, using fallback parsing");
+                                    
+                                    if (strpos($errorMessage, '✅ First file uploaded successfully, but ❌ second file failed') !== false) {
+                                        $file1Success = true;
+                                        $file2Success = false;
+                                        $errorPrefix = "✅ First file uploaded successfully, but ❌ second file failed";
+                                    } elseif (strpos($errorMessage, '❌ First file failed, but ✅ second file uploaded successfully') !== false) {
+                                        $file1Success = false;
+                                        $file2Success = true;
+                                        $errorPrefix = "❌ First file failed, but ✅ second file uploaded successfully";
+                                    } elseif (strpos($errorMessage, 'Both files failed') !== false) {
+                                        $file1Success = false;
+                                        $file2Success = false;
+                                        $errorPrefix = "❌ Both files failed validation";
                                     } else {
-                                        // Single error case
-                                        if (!empty(trim($cleanErrorForFile2))) {
-                                            $allErrorList[] = trim($cleanErrorForFile2);
-                                            $file2ErrorCount++;
-                                        }
+                                        // Default case
+                                        $file1Success = true;
+                                        $file2Success = false;
+                                        $errorPrefix = "✅ First file uploaded successfully, but ❌ second file failed";
                                     }
                                     
-                                    // Remove any empty entries and reindex
-                                    $allErrorList = array_filter($allErrorList, function($item) {
-                                        return !empty(trim($item));
-                                    });
-                                    $allErrorList = array_values($allErrorList);
-                                    $file2ErrorCount = count($allErrorList); // Correct count based on actual items
-                                }
-                                
-                            } elseif (strpos($errorMessage, 'File 2 uploaded successfully, but File 1 failed: ') !== false) {
-                                $errorPrefix = "❌ File 1 failed, but ✅ File 2 uploaded successfully";
-                                $cleanErrorForFile1 = str_replace('File 2 uploaded successfully, but File 1 failed: ', '', $errorMessage);
-                                $cleanErrorForFile1 = str_replace("Data validation errors found: ", "", $cleanErrorForFile1);
-                                $cleanErrorForFile1 = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanErrorForFile1);
-                                
-                                error_log("File 1 failed scenario - extracting File 1 errors");
-                                error_log("Clean error for File 1: " . $cleanErrorForFile1);
-                                
-                                // FIXED ERROR PARSING - Use the same robust approach
-                                if (strpos($cleanErrorForFile1, 'No valid data to save') !== false) {
-                                    $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
-                                    $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
-                                    $file1ErrorCount = 2;
-                                } else {
-                                    // Use the robust error splitting approach
-                                    if (strpos($cleanErrorForFile1, '; Row') !== false) {
-                                        // Split by '; Row' and handle properly
-                                        $parts = explode('; Row ', $cleanErrorForFile1);
-                                        
-                                        // First part contains the initial "Row X: ..." 
-                                        if (!empty(trim($parts[0]))) {
-                                            $allErrorList[] = trim($parts[0]);
-                                            $file1ErrorCount++;
-                                        }
-                                        
-                                        // Subsequent parts need "Row " prepended
-                                        for ($i = 1; $i < count($parts); $i++) {
-                                            $part = trim($parts[$i]);
-                                            if (!empty($part)) {
-                                                $allErrorList[] = 'Row ' . $part;
+                                    // Parse all validation errors
+                                    $lines = explode("\n", $errorMessage);
+                                    foreach ($lines as $line) {
+                                        $line = trim($line);
+                                        if (!empty($line) && strpos($line, 'Row ') === 0) {
+                                            $allErrorList[] = $line;
+                                            if (!$file2Success) {
+                                                $file2ErrorCount++;
+                                            }
+                                            if (!$file1Success) {
                                                 $file1ErrorCount++;
                                             }
                                         }
-                                    } else {
-                                        // Single error case
-                                        if (!empty(trim($cleanErrorForFile1))) {
-                                            $allErrorList[] = trim($cleanErrorForFile1);
-                                            $file1ErrorCount++;
-                                        }
-                                    }
-                                    
-                                    // Remove any empty entries and reindex
-                                    $allErrorList = array_filter($allErrorList, function($item) {
-                                        return !empty(trim($item));
-                                    });
-                                    $allErrorList = array_values($allErrorList);
-                                    $file1ErrorCount = count($allErrorList); // Correct count based on actual items
-                                }
-                                
-                            } elseif (strpos($errorMessage, ' | ') !== false) {
-                                // Both files invalid - parse separately
-                                $errorPrefix = "❌ Both files failed validation";
-                                $fileParts = explode(' | ', $errorMessage);
-                                
-                                error_log("Both files failed - parsing " . count($fileParts) . " file parts");
-                                
-                                foreach ($fileParts as $index => $part) {
-                                    $fileNumber = $index + 1;
-                                    $cleanError = $part;
-                                    
-                                    // Clean the error message
-                                    if (strpos($part, 'File 1: ') !== false) {
-                                        $cleanError = str_replace('File 1: ', '', $part);
-                                        $fileNumber = 1;
-                                    } elseif (strpos($part, 'File 2: ') !== false) {
-                                        $cleanError = str_replace('File 2: ', '', $part);
-                                        $fileNumber = 2;
-                                    }
-                                    
-                                    $cleanError = str_replace("Data validation errors found: ", "", $cleanError);
-                                    $cleanError = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanError);
-                                    
-                                    error_log("Processing File $fileNumber errors: " . $cleanError);
-                                    
-                                    // Add file separator
-                                    $allErrorList[] = "--- File $fileNumber Errors ---";
-                                    
-                                    if (strpos($cleanError, 'No valid data to save') !== false) {
-                                        $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
-                                        $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
-                                        if ($fileNumber === 1) {
-                                            $file1ErrorCount = 2;
-                                        } else {
-                                            $file2ErrorCount = 2;
-                                        }
-                                    } else {
-                                        // FIXED ERROR PARSING - Use the robust approach
-                                        if (strpos($cleanError, '; Row') !== false) {
-                                            // Split by '; Row' and handle properly
-                                            $parts = explode('; Row ', $cleanError);
-                                            
-                                            // First part contains the initial "Row X: ..." 
-                                            if (!empty(trim($parts[0]))) {
-                                                $allErrorList[] = trim($parts[0]);
-                                                if ($fileNumber === 1) {
-                                                    $file1ErrorCount++;
-                                                } else {
-                                                    $file2ErrorCount++;
-                                                }
-                                            }
-                                            
-                                            // Subsequent parts need "Row " prepended
-                                            for ($i = 1; $i < count($parts); $i++) {
-                                                $part = trim($parts[$i]);
-                                                if (!empty($part)) {
-                                                    $allErrorList[] = 'Row ' . $part;
-                                                    if ($fileNumber === 1) {
-                                                        $file1ErrorCount++;
-                                                    } else {
-                                                        $file2ErrorCount++;
-                                                    }
-                                                }
-                                            }
-                                        } else {
-                                            // Single error case
-                                            if (!empty(trim($cleanError))) {
-                                                $allErrorList[] = trim($cleanError);
-                                                if ($fileNumber === 1) {
-                                                    $file1ErrorCount++;
-                                                } else {
-                                                    $file2ErrorCount++;
-                                                }
-                                            }
-                                        }
                                     }
                                 }
-                                
-                            } else {
-                                // Single file error or generic error - should not happen in compare scenario
-                                $cleanError = $errorMessage;
-                                $cleanError = str_replace("Data validation errors found: ", "", $cleanError);
-                                $cleanError = preg_replace('/\. Please correct these issues and upload again\./', '', $cleanError);
-                                
-                                error_log("Single file/generic error scenario: " . $cleanError);
-                                
-                                if (strpos($cleanError, 'No valid data to save') !== false) {
-                                    $allErrorList[] = "No valid data found in CSV file - All rows failed validation";
-                                    $allErrorList[] = "Common causes: Invalid file format, corrupt data, or unsupported CSV structure";
-                                    $file1ErrorCount = 2; // Assume it's file 1 if not specified
-                                } else {
-                                    // FIXED ERROR PARSING - Use the robust approach
-                                    if (strpos($cleanError, '; Row') !== false) {
-                                        // Split by '; Row' and handle properly
-                                        $parts = explode('; Row ', $cleanError);
-                                        
-                                        // First part contains the initial "Row X: ..." 
-                                        if (!empty(trim($parts[0]))) {
-                                            $allErrorList[] = trim($parts[0]);
-                                            $file1ErrorCount++;
-                                        }
-                                        
-                                        // Subsequent parts need "Row " prepended
-                                        for ($i = 1; $i < count($parts); $i++) {
-                                            $part = trim($parts[$i]);
-                                            if (!empty($part)) {
-                                                $allErrorList[] = 'Row ' . $part;
-                                                $file1ErrorCount++;
-                                            }
-                                        }
-                                    } else {
-                                        // Single error case
-                                        if (!empty(trim($cleanError))) {
-                                            $allErrorList[] = trim($cleanError);
-                                            $file1ErrorCount++;
-                                        }
-                                    }
-                                    
-                                    // Remove any empty entries and reindex
-                                    $allErrorList = array_filter($allErrorList, function($item) {
-                                        return !empty(trim($item));
-                                    });
-                                    $allErrorList = array_values($allErrorList);
-                                    $file1ErrorCount = count(array_filter($allErrorList, function($item) {
-                                        return strpos($item, '--- File') === false; // Don't count file separators
-                                    }));
-                                }
-                            }
 
-                            // Calculate totals and log debug info
-                            $totalErrors = count($allErrorList);
-                            // Don't count file separators in total
-                            $separatorCount = 0;
-                            foreach ($allErrorList as $error) {
-                                if (strpos($error, '--- File') !== false) {
-                                    $separatorCount++;
-                                }
-                            }
-                            $actualErrorCount = $totalErrors - $separatorCount;
-                            ?>
+                                error_log("Final parsed results - File1 Success: " . ($file1Success ? 'YES' : 'NO') . ", File2 Success: " . ($file2Success ? 'YES' : 'NO'));
+                                error_log("Error counts - File1: $file1ErrorCount, File2: $file2ErrorCount");
+                                error_log("Total errors found: " . count($allErrorList));
+                                error_log("Error prefix: " . $errorPrefix);
+                                ?>
 
-                            <div class="user-alert user-alert-danger">
+                                <div class="user-alert user-alert-danger">
+                                            <h4><i class="fas fa-exclamation-triangle"></i> File Validation Failed</h4>
+                                            
+                                            <!-- This is correct - uses $errorPrefix which contains only the summary -->
+                                            <?php if (!empty($errorPrefix)): ?>
+                                                <p><strong><?php echo $errorPrefix; ?></strong></p>
+                                            <?php else: ?>
+                                                <p><strong>One of your comparison files couldn't be processed due to data validation errors.</strong></p>
+                                            <?php endif; ?>
+                                
                                 <div class="error-container">
-                                    <?php if (!empty($errorPrefix)): ?>
-                                        <p class="error-summary"><?php echo $errorPrefix; ?></p>
-                                        <?php if ($file1ErrorCount > 0 && $file2ErrorCount > 0): ?>
-                                            <p class="error-summary">File 1: <?php echo $file1ErrorCount; ?> errors | File 2: <?php echo $file2ErrorCount; ?> errors | Total: <?php echo $actualErrorCount; ?> validation errors</p>
-                                        <?php elseif ($file1ErrorCount > 0): ?>
-                                            <p class="error-summary">Found <?php echo $file1ErrorCount; ?> validation errors in File 1:</p>
-                                        <?php elseif ($file2ErrorCount > 0): ?>
-                                            <p class="error-summary">Found <?php echo $file2ErrorCount; ?> validation errors in File 2:</p>
-                                        <?php else: ?>
-                                            <p class="error-summary">Found <?php echo $actualErrorCount; ?> validation errors in your CSV file(s):</p>
-                                        <?php endif; ?>
+                                    <!-- IMPROVED: Show proper error summary -->
+                                    <?php if ($file1Success && !$file2Success): ?>
+                                        <p class="error-summary">Found <?php echo count($allErrorList); ?> validation errors in File 2:</p>
+                                    <?php elseif (!$file1Success && $file2Success): ?>
+                                        <p class="error-summary">Found <?php echo count($allErrorList); ?> validation errors in File 1:</p>
+                                    <?php elseif (!$file1Success && !$file2Success): ?>
+                                        <p class="error-summary">Both files failed validation with a total of <?php echo count($allErrorList); ?> errors:</p>
                                     <?php else: ?>
-                                        <p class="error-summary"><i class="fas fa-exclamation-triangle"></i> Found <?php echo $actualErrorCount; ?> validation errors in your CSV file(s):</p>
+                                        <p class="error-summary">Found <?php echo count($allErrorList); ?> validation errors:</p>
                                     <?php endif; ?>
                                     
-                                    <ul class="error-list">
+                                    <div class="error-list" style="max-height: 400px; overflow-y: auto; margin: 15px 0;">
                                         <?php foreach($allErrorList as $error): ?>
                                             <?php $error = trim($error); ?>
                                             <?php if(!empty($error)): ?>
-                                                <?php
-                                                // Check if this is a file separator
-                                                if (strpos($error, '--- File') !== false) {
-                                                    ?>
-                                                    <li class="error-item" style="background: #e9ecef !important; border-left: 3px solid #6c757d !important; font-weight: bold; text-align: center;">
-                                                        <div class="error-message" style="color: #495057 !important;"><?php echo htmlspecialchars($error); ?></div>
-                                                    </li>
+                                                <div class="error-item" style="padding: 8px 12px; margin: 5px 0; background: #f8f9fa; border-left: 3px solid #dc3545; border-radius: 4px;">
                                                     <?php
-                                                } else {
-                                                    // Parse error and suggestions - same as index.php
+                                                    // CRITICAL FIX: Parse error and suggestions properly
                                                     $parts = explode(' Suggestions: ', $error);
                                                     $mainError = $parts[0];
                                                     $suggestions = isset($parts[1]) ? $parts[1] : '';
                                                     ?>
-                                                    <li class="error-item">
-                                                        <div class="error-message"><?php echo htmlspecialchars($mainError); ?></div>
-                                                        <?php if (!empty($suggestions)): ?>
-                                                            <div class="error-suggestions">
-                                                                <strong>💡 Suggestions:</strong> 
-                                                                <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
-                                                            </div>
-                                                        <?php endif; ?>
-                                                    </li>
-                                                    <?php
-                                                }
-                                                ?>
+                                                    <div class="error-message" style="font-family: 'Courier New', monospace; font-size: 0.9em; color: #721c24;">
+                                                        <?php echo htmlspecialchars($mainError); ?>
+                                                    </div>
+                                                    <?php if (!empty($suggestions)): ?>
+                                                        <div class="error-suggestions" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 3px; padding: 8px; font-size: 0.9em; color: #856404; margin-top: 8px;">
+                                                            <strong>💡 Suggestions:</strong> 
+                                                            <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
                                             <?php endif; ?>
                                         <?php endforeach; ?>
-                                    </ul>
+                                    </div>
                                 </div>
                                                                         
-                                <div class="validation-help">
-                                    <h4>Quick Fix Guide:</h4>
+                                <div class="validation-help" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 6px; border-left: 4px solid #28a745;">
+                                    <h4 style="color: #155724; margin-bottom: 10px;">💡 How to Fix These Issues</h4>
                                     <div class="fix-guide">
-                                        <div class="fix-item">
-                                            <strong>📁 File Format Issues:</strong>
-                                            <ul>
+                                        <div class="fix-item" style="margin-bottom: 12px;">
+                                            <strong style="color: #155724;">📁 File Format Issues:</strong>
+                                            <ul style="margin: 5px 0 0 20px;">
                                                 <li>Ensure CSV has proper headers</li>
                                                 <li>Check for GA4 metadata lines starting with #</li>
                                                 <li>Verify file isn't corrupted or empty</li>
                                                 <li>Make sure data rows aren't all empty</li>
                                             </ul>
                                         </div>
-                                        <div class="fix-item">
-                                            <strong>🔢 Integer Issues:</strong>
-                                            <ul>
+                                        <div class="fix-item" style="margin-bottom: 12px;">
+                                            <strong style="color: #155724;">🔢 Integer Issues:</strong>
+                                            <ul style="margin: 5px 0 0 20px;">
                                                 <li>Remove letters: "15a" → "15"</li>
                                                 <li>Evaluate expressions: "42+3" → "45"</li>
                                                 <li>Convert Unicode: "５０" → "50"</li>
                                             </ul>
                                         </div>
-                                        <div class="fix-item">
-                                            <strong>📊 Float/Decimal Issues:</strong>
-                                            <ul>
+                                        <div class="fix-item" style="margin-bottom: 12px;">
+                                            <strong style="color: #155724;">📊 Float/Decimal Issues:</strong>
+                                            <ul style="margin: 5px 0 0 20px;">
                                                 <li>Fix multiple decimals: "8..5" → "8.5"</li>
                                                 <li>Convert scientific: "1.2e3" → "1200"</li>
                                                 <li>Remove special chars: "~5.3" → "5.3"</li>
                                             </ul>
                                         </div>
-                                        <div class="fix-item">
-                                            <strong>⏰ Time Format Issues:</strong>
-                                            <ul>
+                                        <div class="fix-item" style="margin-bottom: 12px;">
+                                            <strong style="color: #155724;">⏰ Time Format Issues:</strong>
+                                            <ul style="margin: 5px 0 0 20px;">
                                                 <li>Use proper format: "10:65:30" → "11:05:30"</li>
                                                 <li>Convert units: "12m30s" → "12:30" or "750"</li>
                                             </ul>
                                         </div>
-                                        <div class="fix-item">
-                                            <strong>💰 Currency Issues:</strong>
-                                            <ul>
+                                        <div class="fix-item" style="margin-bottom: 12px;">
+                                            <strong style="color: #155724;">💰 Currency Issues:</strong>
+                                            <ul style="margin: 5px 0 0 20px;">
                                                 <li>Remove symbols: "$1,200" → "1200"</li>
                                                 <li>Remove commas: "500.abc" → "500"</li>
                                             </ul>
                                         </div>
-                                        <div class="fix-item">
-                                            <strong>🚫 Common CSV Issues:</strong>
-                                            <ul>
+                                        <div class="fix-item" style="margin-bottom: 12px;">
+                                            <strong style="color: #155724;">🚫 Common CSV Issues:</strong>
+                                            <ul style="margin: 5px 0 0 20px;">
                                                 <li>Remove trademark symbols: ™, ®, ©</li>
                                                 <li>Fix unquoted commas in data fields</li>
                                                 <li>Remove leading/trailing whitespace</li>
@@ -2283,13 +2683,18 @@ function calculateStats($values) {
                                     </div>
                                 </div>
                                                                         
-                                <p class="error-footer">Please correct these issues and upload again.</p>
+                                <div class="error-footer" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; text-align: center;">
+                                    <p style="color: #6c757d; margin: 0; font-size: 0.9em;">
+                                        <strong>Tip:</strong> Fix the errors in your CSV file and try uploading again.
+                                    </p>
+                                </div>
                             </div>
                                                                         
                         <?php else: ?>
                             <!-- Display regular error message -->
                             <div class="user-alert user-alert-danger">
-                                <i class="fas fa-exclamation-triangle"></i> <?php echo htmlspecialchars($error_message); ?>
+                                <h4><i class="fas fa-exclamation-triangle"></i> Upload Error</h4>
+                                <p><?php echo htmlspecialchars($error_message); ?></p>
                             </div>
                         <?php endif; ?>
                     <?php endif; ?>
@@ -2343,7 +2748,7 @@ function calculateStats($values) {
 														</div>
 														<small>Upload your second analytics period data</small>
 												</div>
-</div>
+                                            </div>
                     <button type="submit" class="compare-user-btn-submit">
                         <i class="fas fa-chart-bar"></i> Compare Analytics Data
                     </button>
@@ -2466,23 +2871,56 @@ function calculateStats($values) {
             <!-- Performance Overview -->
             <?php if (!empty($comparison_results['summary_comparison'])): ?>
                 <div class="compare-metric-summary">
-                    <h3><i class="fas fa-tachometer-alt"></i> Performance Overview</h3>
+                    <h3>📊 Performance Overview</h3>
                     <div class="compare-user-stats-grid">
                         <?php 
-                        // Dynamically show all available metrics from summary_comparison
-                        foreach ($comparison_results['summary_comparison'] as $metric => $data): 
+                        // Define display metrics with proper names
+                        $display_metrics = [
+                            'traffic_source' => 'Traffic Source',
+                            'sessions' => 'Sessions', 
+                            'engaged_sessions' => 'Engaged Sessions',
+                            'engagement_rate' => 'Engagement Rate',
+                            'average_engagement_time_per_session' => 'Average Engagement Time Per Session',
+                            'events_per_session' => 'Events Per Session',
+                            'event_count' => 'Event Count',
+                            'key_events' => 'Key Events',
+                            'session_key_event_rate' => 'Session Key Event Rate',
+                            'total_revenue' => 'Total Revenue'
+                        ];
+                        
+                        foreach ($display_metrics as $metric_key => $metric_name): 
+                            if (isset($comparison_results['summary_comparison'][$metric_key])):
+                                $metric_data = $comparison_results['summary_comparison'][$metric_key];
+                                $total_value = $metric_data['file2_total'] ?? 0;
+                                $percent_change = $metric_data['percent_change'] ?? 0;
+                                $improvement = $metric_data['improvement'] ?? 'neutral';
+                                
+                                // Format the value appropriately
+                                if ($metric_key === 'engagement_rate' || $metric_key === 'session_key_event_rate') {
+                                    $formatted_value = number_format($total_value, 3);
+                                } elseif ($metric_key === 'total_revenue') {
+                                    $formatted_value = number_format($total_value, 2);
+                                } elseif ($metric_key === 'average_engagement_time_per_session' || $metric_key === 'events_per_session') {
+                                    $formatted_value = number_format($total_value, 1);
+                                } else {
+                                    $formatted_value = number_format($total_value, 0);
+                                }
+                                
+                                $improvement_class = $improvement;
+                                $change_symbol = '';
+                                if ($percent_change > 0) {
+                                    $change_symbol = '+';
+                                }
                         ?>
                             <div class="compare-user-metric-box">
-                                <h4><?php echo number_format($data['file1_total']); ?></h4>
-                                <small><?php echo ucwords(str_replace('_', ' ', $metric)); ?></small>
-                                <div style="margin-top: 5px;">
-                                    <span class="compare-<?php echo $data['status'] === 'improved' ? 'improved' : ($data['status'] === 'declined' ? 'declined' : 'unchanged'); ?>">
-                                        <?php echo $data['percent_change']; ?>%
-                                        <i class="fas <?php echo $data['percent_change'] > 0 ? 'fa-arrow-up' : ($data['percent_change'] < 0 ? 'fa-arrow-down' : 'fa-minus'); ?>"></i>
-                                    </span>
+                                <h4><?php echo $formatted_value; ?></h4>
+                                <small><?php echo htmlspecialchars($metric_name); ?></small>
+                                <div class="metric-change <?php echo $improvement_class; ?>">
+                                    <?php echo $change_symbol . number_format($percent_change, 1); ?>% 
                                 </div>
                             </div>
                         <?php 
+                            endif;
                         endforeach; 
                         ?>
                     </div>
@@ -2492,44 +2930,40 @@ function calculateStats($values) {
             <!-- Detailed Analytics Comparison -->
             <?php if (!empty($comparison_results['analytics_metrics'])): ?>
                 <div class="compare-comparison-card">
-                    <div class="compare-metric-header success">
-                        <i class="fas fa-chart-bar"></i> Detailed Analytics Comparison
-                    </div>
-                    <div class="compare-user-stats-grid">
-                        <?php foreach ($comparison_results['analytics_metrics'] as $metric => $analysis): ?>
-                            <div class="compare-comparison-item">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                                    <h5><?php echo ucwords(str_replace('_', ' ', $metric)); ?></h5>
-                                    <span class="compare-metric-percentage compare-<?php echo $analysis['comparison']['improvement']; ?>">
-                                        <?php echo $analysis['comparison']['percent_change'] > 0 ? '+' : ''; ?>
-                                        <?php echo $analysis['comparison']['percent_change']; ?>%
-                                    </span>
-                                </div>
-
-                                <div class="compare-detailed-vs-section">
-                                    <div class="compare-detailed-period-data">
-                                        <h6>Period 1</h6>
-                                        <div class="period-value"><?php echo number_format($analysis['file1_stats']['sum']); ?></div>
-                                        <div class="period-avg">Avg: <?php echo number_format($analysis['file1_stats']['mean'], 1); ?></div>
+                    <h3>📈 Detailed Analytics Comparison</h3>
+                    <div class="compare-detailed-analytics-grid">
+                        <?php foreach ($comparison_results['analytics_metrics'] as $metric => $data): ?>
+                            <?php if ($data['available'] && isset($comparison_results['summary_comparison'][$metric])): ?>
+                                <?php 
+                                $summary = $comparison_results['summary_comparison'][$metric];
+                                $improvement = $summary['improvement'] ?? 'neutral';
+                                $total_diff = $summary['total_diff'] ?? 0;
+                                $percent_change = $summary['percent_change'] ?? 0;
+                                $avg1 = $summary['avg1'] ?? 0;
+                                $avg2 = $summary['avg2'] ?? 0;
+                                
+                                $metric_name = ucwords(str_replace('_', ' ', $metric));
+                                ?>
+                                <div class="compare-comparison-item">
+                                    <h5><?php echo htmlspecialchars($metric_name); ?></h5>
+                                    <div class="compare-detailed-vs-section">
+                                        <div class="compare-detailed-period-data">
+                                            <h6>Period 1</h6>
+                                            <div class="period-value"><?php echo number_format($summary['file1_total'] ?? 0, ($metric === 'engagement_rate' || $metric === 'session_key_event_rate') ? 3 : (($metric === 'total_revenue' || $metric === 'average_engagement_time_per_session' || $metric === 'events_per_session') ? 1 : 0)); ?></div>
+                                            <small>Avg: <?php echo number_format($avg1, 1); ?></small>
+                                        </div>
+                                        <div class="compare-vs-divider">VS</div>
+                                        <div class="compare-detailed-period-data">
+                                            <h6>Period 2</h6>
+                                            <div class="period-value"><?php echo number_format($summary['file2_total'] ?? 0, ($metric === 'engagement_rate' || $metric === 'session_key_event_rate') ? 3 : (($metric === 'total_revenue' || $metric === 'average_engagement_time_per_session' || $metric === 'events_per_session') ? 1 : 0)); ?></div>
+                                            <small>Avg: <?php echo number_format($avg2, 1); ?></small>
+                                        </div>
                                     </div>
-
-                                    <div class="compare-vs-divider">VS</div>
-
-                                    <div class="compare-detailed-period-data">
-                                        <h6>Period 2</h6>
-                                        <div class="period-value"><?php echo number_format($analysis['file2_stats']['sum']); ?></div>
-                                        <div class="period-avg">Avg: <?php echo number_format($analysis['file2_stats']['mean'], 1); ?></div>
+                                    <div class="compare-change-summary <?php echo $improvement; ?>">
+                                        Change: <?php echo number_format($total_diff, ($metric === 'engagement_rate' || $metric === 'session_key_event_rate') ? 3 : (($metric === 'total_revenue') ? 2 : 0)); ?> (<?php echo number_format($percent_change, 1); ?>%)
                                     </div>
                                 </div>
-
-                                <div class="compare-change-summary compare-<?php echo $analysis['comparison']['improvement']; ?>">
-                                    <strong>
-                                        Change: <?php echo $analysis['comparison']['total_diff'] > 0 ? '+' : ''; ?>
-                                        <?php echo number_format($analysis['comparison']['total_diff']); ?>
-                                        (<?php echo $analysis['comparison']['percent_change'] > 0 ? '+' : ''; ?><?php echo $analysis['comparison']['percent_change']; ?>%)
-                                    </strong>
-                                </div>
-                            </div>
+                            <?php endif; ?>
                         <?php endforeach; ?>
                     </div>
                 </div>
@@ -2537,24 +2971,22 @@ function calculateStats($values) {
 
                 <!-- Basic File Information -->
                 <div class="compare-comparison-card">
-                    <div class="compare-metric-header primary">
-                        <i class="fas fa-info-circle"></i> File Information
-                    </div>
+                    <h3>📋 File Information</h3>
                     <div class="compare-user-stats-grid">
                         <div class="compare-user-metric-box">
-                            <h4><?php echo $comparison_results['basic_metrics']['file1_rows']; ?></h4>
+                            <h4><?php echo $comparison_results['basic_metrics']['file1_rows'] ?? 0; ?></h4>
                             <small>Period 1 Records</small>
                         </div>
                         <div class="compare-user-metric-box">
-                            <h4><?php echo $comparison_results['basic_metrics']['file2_rows']; ?></h4>
+                            <h4><?php echo $comparison_results['basic_metrics']['file2_rows'] ?? 0; ?></h4>
                             <small>Period 2 Records</small>
                         </div>
                         <div class="compare-user-metric-box">
-                            <h4><?php echo $comparison_results['basic_metrics']['file1_columns']; ?></h4>
+                            <h4><?php echo $comparison_results['basic_metrics']['common_columns'] ?? 0; ?></h4>
                             <small>Total Columns</small>
                         </div>
                         <div class="compare-user-metric-box">
-                            <h4><?php echo count($comparison_results['headers']['common_headers']); ?></h4>
+                            <h4><?php echo count($comparison_results['headers']['common'] ?? []); ?></h4>
                             <small>Common Columns</small>
                         </div>
                     </div>
@@ -3432,77 +3864,212 @@ function calculateStats($values) {
 
     window.addEventListener('resize', cleanupErrorNavigation);
 
-		// File input handling for compare page
-		document.addEventListener('DOMContentLoaded', function() {
-				// Handle first file input
-				document.getElementById('csv_file1').addEventListener('change', function() {
-						handleFileSelection(this, 'fileInfo1', 'Choose First Period CSV');
-				});
-				
-				// Handle second file input
-				document.getElementById('csv_file2').addEventListener('change', function() {
-						handleFileSelection(this, 'fileInfo2', 'Choose Second Period CSV');
-				});
-				
-				function handleFileSelection(input, fileInfoId, defaultText) {
-						const fileInfo = document.getElementById(fileInfoId);
-						const fileName = fileInfo.querySelector('.file-name');
-						const fileSize = fileInfo.querySelector('.file-size');
-						const button = document.querySelector(`label[for="${input.id}"]`);
-						
-						if (input.files.length > 0) {
-								const file = input.files[0];
-								fileName.textContent = file.name;
-								fileSize.textContent = formatFileSize(file.size);
-								fileInfo.style.display = 'flex';
-								
-								// Update button appearance
-								button.classList.add('file-selected');
-								button.innerHTML = `<i class="fas fa-check-circle"></i> File Selected`;
-								
-								// File validation
-								if (file.type !== 'text/csv' && !file.name.toLowerCase().endsWith('.csv')) {
-										fileName.style.color = '#dc3545';
-										fileName.textContent = file.name + ' (⚠️ Not a CSV file)';
-								} else {
-										fileName.style.color = '#155724';
-								}
-								
-								// Size validation
-								const maxSize = 10 * 1024 * 1024; // 10MB
-								if (file.size > maxSize) {
-										fileSize.style.color = '#dc3545';
-										fileSize.textContent = formatFileSize(file.size) + ' (⚠️ Too large)';
-								} else {
-										fileSize.style.color = '#155724';
-								}
-								
-								console.log(`File selected for ${input.id}:`, file.name, formatFileSize(file.size));
-								
-						} else {
-								// Reset to default state
-								fileName.textContent = '-';
-								fileSize.textContent = '-';
-								fileInfo.style.display = 'none';
-								
-								// Reset button appearance
-								button.classList.remove('file-selected');
-								button.innerHTML = `<i class="fas fa-upload"></i> ${defaultText}`;
-								
-								// Reset colors
-								fileName.style.color = '#6c757d';
-								fileSize.style.color = '#6c757d';
-						}
-				}
-				
-				function formatFileSize(bytes) {
-						if (bytes === 0) return '0 Bytes';
-						const k = 1024;
-						const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-						const i = Math.floor(Math.log(bytes) / Math.log(k));
-						return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-				}
-		});
+    // File selection handling for comparison uploads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle file input for csv_file1
+        const csvFile1 = document.getElementById('csv_file1');
+        const fileInfo1 = document.getElementById('fileInfo1');
+        
+        if (csvFile1 && fileInfo1) {
+            csvFile1.addEventListener('change', function() {
+                handleFileSelection(this, fileInfo1, 'csv_file1');
+            });
+        }
+        
+        // Handle file input for csv_file2
+        const csvFile2 = document.getElementById('csv_file2');
+        const fileInfo2 = document.getElementById('fileInfo2');
+        
+        if (csvFile2 && fileInfo2) {
+            csvFile2.addEventListener('change', function() {
+                handleFileSelection(this, fileInfo2, 'csv_file2');
+            });
+        }
+    });
+
+    function handleFileSelection(fileInput, fileInfoDiv, inputId) {
+        console.log(`=== FILE SELECTION HANDLER for ${inputId} ===`);
+        console.log('Files selected:', fileInput.files.length);
+        
+        const container = fileInput.closest('.file-input-container');
+        const fileNameSpan = fileInfoDiv.querySelector('.file-name');
+        const fileSizeSpan = fileInfoDiv.querySelector('.file-size');
+        
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            console.log('Selected file:', file.name, 'Size:', file.size);
+            
+            // Update file info display
+            if (fileNameSpan && fileSizeSpan) {
+                fileNameSpan.textContent = file.name;
+                fileSizeSpan.textContent = formatFileSize(file.size);
+            }
+            
+            // Show file info
+            if (fileInfoDiv) {
+                fileInfoDiv.style.display = 'block';
+                console.log('File info displayed for', inputId);
+            }
+            
+            // Add selected state to container
+            if (container) {
+                container.classList.add('has-file');
+            }
+            
+            // Update button text to show selection
+            const button = container.querySelector('.file-input-button');
+            if (button) {
+                const icon = button.querySelector('i');
+                const iconClass = icon ? icon.className : 'fas fa-check';
+                
+                if (inputId === 'csv_file1') {
+                    button.innerHTML = `<i class="${iconClass}"></i> First Period CSV Selected`;
+                } else {
+                    button.innerHTML = `<i class="${iconClass}"></i> Second Period CSV Selected`;
+                }
+            }
+            
+        } else {
+            console.log('No files selected for', inputId);
+            
+            // Hide file info
+            if (fileInfoDiv) {
+                fileInfoDiv.style.display = 'none';
+            }
+            
+            // Remove selected state from container
+            if (container) {
+                container.classList.remove('has-file');
+            }
+            
+            // Reset button text
+            const button = container.querySelector('.file-input-button');
+            if (button) {
+                if (inputId === 'csv_file1') {
+                    button.innerHTML = `<i class="fas fa-upload"></i> Choose First Period CSV`;
+                } else {
+                    button.innerHTML = `<i class="fas fa-upload"></i> Choose Second Period CSV`;
+                }
+            }
+        }
+        
+        console.log(`=== END FILE SELECTION HANDLER for ${inputId} ===`);
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    // Clear file selections when page loads (for clean state)
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInputs = ['csv_file1', 'csv_file2'];
+        
+        fileInputs.forEach(function(inputId) {
+            const input = document.getElementById(inputId);
+            const fileInfo = document.getElementById(inputId === 'csv_file1' ? 'fileInfo1' : 'fileInfo2');
+            
+            if (input) {
+                input.value = ''; // Clear any previous selections
+                
+                if (fileInfo) {
+                    fileInfo.style.display = 'none'; // Hide file info initially
+                }
+                
+                const container = input.closest('.file-input-container');
+                if (container) {
+                    container.classList.remove('has-file'); // Remove selected state
+                }
+            }
+        });
+    });
+
+    // Enhanced file upload confirmation with better state tracking
+    document.addEventListener('DOMContentLoaded', function() {
+        // Track file selection state
+        let filesSelected = {
+            file1: false,
+            file2: false
+        };
+        
+        // Track if user has made any changes
+        let hasUnsavedChanges = false;
+        
+        // Update file selection tracking
+        function updateFileSelection(fileInputId, isSelected) {
+            const fileNumber = fileInputId === 'csv_file1' ? 'file1' : 'file2';
+            filesSelected[fileNumber] = isSelected;
+            hasUnsavedChanges = filesSelected.file1 || filesSelected.file2;
+            
+            console.log('File selection updated:', filesSelected, 'hasUnsavedChanges:', hasUnsavedChanges);
+        }
+        
+        // Monitor file input changes
+        const csvFile1 = document.getElementById('csv_file1');
+        const csvFile2 = document.getElementById('csv_file2');
+        
+        if (csvFile1) {
+            csvFile1.addEventListener('change', function() {
+                updateFileSelection('csv_file1', this.files.length > 0);
+            });
+        }
+        
+        if (csvFile2) {
+            csvFile2.addEventListener('change', function() {
+                updateFileSelection('csv_file2', this.files.length > 0);
+            });
+        }
+        
+        // Monitor dropdown selections for saved comparisons
+        const savedComparisonSelect = document.querySelector('select[name="saved_comparison_id"]');
+        const upload1Select = document.querySelector('select[name="upload1"]');
+        const upload2Select = document.querySelector('select[name="upload2"]');
+        
+        [savedComparisonSelect, upload1Select, upload2Select].forEach(select => {
+            if (select) {
+                select.addEventListener('change', function() {
+                    if (this.value) {
+                        hasUnsavedChanges = true;
+                        console.log('Dropdown selection made, hasUnsavedChanges:', hasUnsavedChanges);
+                    }
+                });
+            }
+        });
+        
+        // Browser navigation confirmation
+        window.addEventListener('beforeunload', function(e) {
+            // Show confirmation if files are selected or dropdowns have selections
+            if (hasUnsavedChanges && !window.formSubmitted) {
+                const message = 'You have selected files for comparison but haven\'t submitted the form yet. Are you sure you want to leave?';
+                e.preventDefault();
+                e.returnValue = message;
+                return message;
+            }
+        });
+        
+        // Track form submission to avoid false warnings
+        window.formSubmitted = false;
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function() {
+                window.formSubmitted = true;
+                hasUnsavedChanges = false;
+                console.log('Form submitted, clearing unsaved changes flag');
+            });
+        });
+        
+        // Clear state when comparison results are loaded
+        if (window.compareHasComparisonResults) {
+            hasUnsavedChanges = false;
+            filesSelected = { file1: false, file2: false };
+            console.log('Comparison results detected, clearing unsaved changes');
+        }
+    });
     </script>    
 </body>
 </html>

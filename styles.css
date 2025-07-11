@@ -161,29 +161,30 @@ header {
   font-weight: 600;
   font-size: 1.5rem;
   transition: all 0.3s ease;
-  height: 100%;
-	margin-bottom: 40px;
+  height: auto; /* Changed from 100% */
+  margin-bottom: 0; /* Remove the 40px margin that was causing enlargement */
 }
 
-.logo-icon {
-  width: 40px;
-  height: 40px;
-  background-color: var(--primary-color);
-  border-radius: 8px;
-  margin-right: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 1.2rem;
+.logo:hover {
+  transform: translateY(-2px); /* Restore hover effect */
 }
 
 .logo-image {
-  height: calc(80px * 0.75);
+  height: 60px; /* Set a fixed height that matches your header */
   width: auto;
   object-fit: contain;
   transition: all 0.3s ease;
+}
+
+.logo:hover .logo-image {
+  transform: scale(1.05); /* Restore hover zoom effect */
+  filter: brightness(1); /* Add subtle brightness on hover */
+}
+
+/* Remove or comment out the old logo-icon styles if they still exist */
+.logo-icon {
+  /* Remove this entire block or comment it out */
+  display: none;
 }
 
 /* Navigation - Enhanced */
