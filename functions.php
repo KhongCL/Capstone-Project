@@ -214,8 +214,19 @@ function handleCsvUpload($conn, $file) {
             
             // IMPROVED: More precise comparison context detection
             $isComparison = false;
-            
+
             // Check explicit comparison context flags first (most reliable)
+            if (isset($_POST['comparison_context']) && $_POST['comparison_context'] === true) {
+                $isComparison = true;
+                error_log("COMPARISON: Detected comparison context from POST flag");
+            } else {
+                // Check if we have comparison session data
+                if (isset($_SESSION['compare_files'])) {
+                    $isComparison = true;
+                    error_log("COMPARISON: Detected comparison context from session");
+                }
+            }
+
             if (!isset($_POST['comparison_context'])) {
                 // Only clear upload sessions for non-comparison uploads
                 error_log("CRITICAL: Cleared upload session data for regular upload");
@@ -226,25 +237,35 @@ function handleCsvUpload($conn, $file) {
                 error_log("COMPARISON: Preserving session data for comparison upload");
                 // Don't clear session data for comparison uploads
             }
-            
+
             if ($isAjax) {
                 return [
                     'type' => 'needs_mapping',
-                    'message' => 'Format not automatically detected. Manual column mapping required.',
-                    'redirect' => $isComparison ? 'map_columns_compare.php' : 'map_columns.php',
-                    'file_path' => $filePath
+                    'redirect' => $isComparison ? 'map_columns_compare.php' : 'map_columns.php'
                 ];
             } else {
-                // CRITICAL FIX: For non-AJAX requests, always go to regular mapping unless explicitly in comparison
+                // CRITICAL FIX: Use proper comparison detection for redirects
                 if ($isComparison) {
-                    return [
-                        'type' => 'needs_mapping',
-                        'message' => 'Format not automatically detected. Manual column mapping required.',
-                        'redirect' => 'map_columns_compare.php',
-                        'file_path' => $filePath
-                    ];
+                    // For comparison uploads, we need to determine which file index
+                    $fileIndex = 1; // Default to file 1
+                    
+                    // Try to determine the correct file index from session
+                    if (isset($_SESSION['compare_files'])) {
+                        $compareFiles = $_SESSION['compare_files'];
+                        // Find the first file that needs mapping
+                        foreach ($compareFiles as $index => $file) {
+                            if (isset($file['needs_mapping']) && $file['needs_mapping'] === true && 
+                                (!isset($file['mapped']) || $file['mapped'] === false)) {
+                                $fileIndex = $index;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    error_log("COMPARISON: Redirecting to map_columns_compare.php?file=$fileIndex");
+                    header("Location: map_columns_compare.php?file=$fileIndex");
+                    exit;
                 } else {
-                    // Regular upload - redirect to regular mapping page
                     header('Location: map_columns.php');
                     exit;
                 }

@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         
         // Handle File 1 - UPDATE existing structure
         if ($file1_valid || $file1_needs_mapping) {
-            $compareFiles[1]['name'] = $upload_result1['original_filename'] ?? $file1['name'];
+            $compareFiles[1]['name'] = $upload_result1['clean_filename'] ?? $upload_result1['original_filename'] ?? $file1['name'];
             $compareFiles[1]['upload_id'] = $upload_result1['upload_id'] ?? null;
             $compareFiles[1]['needs_mapping'] = $file1_needs_mapping;
             $compareFiles[1]['mapped'] = $file1_valid;
@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         }
 
         if ($file2_valid || $file2_needs_mapping) {
-            $compareFiles[2]['name'] = $upload_result2['original_filename'] ?? $file2['name'];
+            $compareFiles[2]['name'] = $upload_result2['clean_filename'] ?? $upload_result2['original_filename'] ?? $file2['name'];
             $compareFiles[2]['upload_id'] = $upload_result2['upload_id'] ?? null;
             $compareFiles[2]['needs_mapping'] = $file2_needs_mapping;
             $compareFiles[2]['mapped'] = $file2_valid;
@@ -247,8 +247,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
             error_log("SCENARIO 6: Final error message set: " . substr($error_message, 0, 200) . "...");
             
         } else {
-            error_log("Scenario 7/8: Both files failed");
-            $error_message = "❌ Both files failed to upload:\n\nFile 1 ('" . ($upload_result1['original_filename'] ?? $file1['name']) . "'): " . ($upload_result1['message'] ?? 'Unknown error') . "\n\nFile 2 ('" . ($upload_result2['original_filename'] ?? $file2['name']) . "'): " . ($upload_result2['message'] ?? 'Unknown error');
+            error_log("=== SCENARIO 7/8: BOTH FILES FAILED ===");
+            error_log("File 1 error: " . ($upload_result1['message'] ?? 'Unknown'));
+            error_log("File 2 error: " . ($upload_result2['message'] ?? 'Unknown'));
+            
+            $file1_failure_msg = "❌ First file ('" . ($upload_result1['original_filename'] ?? $file1['name']) . "') failed";
+            $file2_failure_msg = "❌ Second file ('" . ($upload_result2['original_filename'] ?? $file2['name']) . "') failed";
+            
+            $error_message = "❌ Both files failed validation:\n\n" . $file1_failure_msg . ":\n" . ($upload_result1['message'] ?? 'Unknown error') . "\n\n" . $file2_failure_msg . ":\n" . ($upload_result2['message'] ?? 'Unknown error');
+            
+            // CRITICAL FIX: Set flags for detailed error display with file separation
+            $file1_has_validation_errors = (strpos($upload_result1['message'] ?? '', 'Found ') === 0 && strpos($upload_result1['message'] ?? '', 'validation errors') !== false);
+            $file2_has_validation_errors = (strpos($upload_result2['message'] ?? '', 'Found ') === 0 && strpos($upload_result2['message'] ?? '', 'validation errors') !== false);
+            
+            if ($file1_has_validation_errors || $file2_has_validation_errors) {
+                $show_detailed_errors = true;
+                $compare_validation_errors = [];
+                
+                // Process File 1 errors
+                if ($file1_has_validation_errors) {
+                    $file1ErrorLines = explode("\n", $upload_result1['message']);
+                    $compare_validation_errors[] = "--- File 1 Errors ---";
+                    foreach ($file1ErrorLines as $line) {
+                        $line = trim($line);
+                        if (!empty($line) && strpos($line, 'Row ') === 0) {
+                            $compare_validation_errors[] = $line;
+                        }
+                    }
+                }
+                
+                // Process File 2 errors
+                if ($file2_has_validation_errors) {
+                    $file2ErrorLines = explode("\n", $upload_result2['message']);
+                    $compare_validation_errors[] = "--- File 2 Errors ---";
+                    foreach ($file2ErrorLines as $line) {
+                        $line = trim($line);
+                        if (!empty($line) && strpos($line, 'Row ') === 0) {
+                            $compare_validation_errors[] = $line;
+                        }
+                    }
+                }
+                
+                error_log("SCENARIO 7/8: Found validation errors - File 1: " . ($file1_has_validation_errors ? 'YES' : 'NO') . ", File 2: " . ($file2_has_validation_errors ? 'YES' : 'NO'));
+                error_log("SCENARIO 7/8: Total parsed errors: " . count($compare_validation_errors));
+                
+                // Create summary message for both files failed scenario
+                $file1_summary = $file1_has_validation_errors ? 
+                    "❌ First file ('" . ($upload_result1['original_filename'] ?? $file1['name']) . "') failed" : 
+                    "❌ First file ('" . ($upload_result1['original_filename'] ?? $file1['name']) . "') failed";
+                $file2_summary = $file2_has_validation_errors ? 
+                    "❌ Second file ('" . ($upload_result2['original_filename'] ?? $file2['name']) . "') failed" : 
+                    "❌ Second file ('" . ($upload_result2['original_filename'] ?? $file2['name']) . "') failed";
+                
+                $error_message = $file1_summary . " and " . $file2_summary;
+            }
+            
+            error_log("SCENARIO 7/8: Final error message set: " . substr($error_message, 0, 200) . "...");
         }
         
     } catch (Exception $e) {
@@ -357,8 +411,13 @@ if (isset($_SESSION['compare_error'])) {
 
 // Add the new function for comparison upload handling
 function handleCsvUploadForComparison($conn, $file) {
-    // Add a flag to indicate this is a comparison context
+    // CRITICAL FIX: Set comparison context flag BEFORE calling handleCsvUpload
     $_POST['comparison_context'] = true;
+    
+    // Also ensure session comparison context exists
+    if (!isset($_SESSION['compare_files'])) {
+        $_SESSION['compare_files'] = [];
+    }
     
     // CRITICAL FIX: Store original filename before processing
     $originalFileName = $file['name'];
@@ -367,11 +426,14 @@ function handleCsvUploadForComparison($conn, $file) {
     // Use the same logic as handleCsvUpload but with comparison context
     $result = handleCsvUpload($conn, $file);
     
-    // CRITICAL FIX: Ensure filename is preserved in result
+    // CRITICAL FIX: Ensure clean filename is preserved in result
     if (!isset($result['original_filename']) || empty($result['original_filename'])) {
         $result['original_filename'] = $originalFileName;
         error_log("COMPARISON: Added original filename to result: $originalFileName");
     }
+    
+    // CRITICAL FIX: Store clean filename without hash
+    $result['clean_filename'] = $originalFileName;
     
     // Make sure we return the upload_id if available
     if (isset($_SESSION['latest_upload_id'])) {
@@ -381,7 +443,7 @@ function handleCsvUploadForComparison($conn, $file) {
     
     // CRITICAL FIX: Add file path to result if available
     if (isset($_SESSION['uploaded_file_name'])) {
-        $result['file_path'] = __DIR__ . '/../uploads/' . $_SESSION['uploaded_file_name'];
+        $result['file_path'] = __DIR__ . '/uploads/' . $_SESSION['uploaded_file_name'];
         error_log("COMPARISON: Added file_path to result: " . $result['file_path']);
     }
     
@@ -1256,6 +1318,16 @@ function calculateStats($values) {
             background: #1e7e34 !important;
         }
 
+        .quick-jump-btn.file1.active {
+            background: #0056b3 !important;
+            box-shadow: 0 4px 12px rgba(0, 86, 179, 0.4) !important;
+        }
+
+        .quick-jump-btn.file2.active {
+            background: #1e7e34 !important;
+            box-shadow: 0 4px 12px rgba(30, 126, 52, 0.4) !important;
+        }
+
         .user-alert-danger .error-summary {
             font-weight: bold !important;
             margin-bottom: 20px !important;
@@ -1370,7 +1442,7 @@ function calculateStats($values) {
         }
 
         .file-section-header {
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important; /* Changed to blue */
             color: white !important;
             padding: 12px 16px !important;
             margin: 20px 0 15px 0 !important;
@@ -1378,8 +1450,8 @@ function calculateStats($values) {
             font-weight: bold !important;
             font-size: 1.1em !important;
             text-align: center !important;
-            border-left: 4px solid #dc3545 !important;
-            box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3) !important;
+            border-left: 4px solid #007bff !important; /* Changed to blue */
+            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3) !important; /* Changed to blue shadow */
             position: sticky !important;
             top: 0 !important;
             z-index: 10 !important;
@@ -1400,7 +1472,7 @@ function calculateStats($values) {
 
         .file-section-header .error-count-badge {
             background: rgba(255, 255, 255, 0.9) !important;
-            color: #dc3545 !important;
+            color: #007bff !important; /* Changed to blue */
             padding: 4px 8px !important;
             border-radius: 12px !important;
             font-size: 0.85em !important;
@@ -2465,8 +2537,6 @@ function calculateStats($values) {
                             </div>
                         </div>
                     <?php else: ?>
-                        <!-- The second section already has the correct parsing logic -->
-                        <!-- Keep the existing code as it correctly uses $errorPrefix -->
                         <?php if (strpos($error_message, 'Data validation errors') !== false || 
                                 strpos($error_message, 'No valid data to save') !== false ||
                                 strpos($error_message, 'CSV parsing error') !== false ||
@@ -2491,85 +2561,115 @@ function calculateStats($values) {
                                 $file1Success = false;
                                 $file2Success = false;
 
-                                // STEP 1: Extract the summary message and separate it from detailed errors
-                                $summaryPattern = '/^(.*?)(Found \d+ validation errors.*)/s';
-                                if (preg_match($summaryPattern, $errorMessage, $matches)) {
-                                    $summaryMessage = trim($matches[1]);
-                                    $detailedErrors = trim($matches[2]);
+                                // ENHANCED: Check for "Both files failed" scenario first
+                                if (strpos($errorMessage, '❌ Both files failed validation') === 0) {
+                                    error_log("DETECTED: Both files failed scenario");
+                                    $file1Success = false;
+                                    $file2Success = false;
+                                    $errorPrefix = "❌ Both files failed validation";
                                     
-                                    error_log("PARSED: Summary message: " . $summaryMessage);
-                                    error_log("PARSED: Detailed errors start: " . substr($detailedErrors, 0, 100) . "...");
+                                    // Parse all validation errors and separate by file headers
+                                    $lines = explode("\n", $errorMessage);
+                                    $currentFileSection = null;
                                     
-                                    // Use the summary as our main error message
-                                    $errorPrefix = $summaryMessage;
-                                    
-                                    // Determine file success/failure from summary
-                                    if (strpos($summaryMessage, '✅') !== false && strpos($summaryMessage, 'First file') !== false) {
-                                        $file1Success = true;
-                                    }
-                                    if (strpos($summaryMessage, '✅') !== false && strpos($summaryMessage, 'Second file') !== false) {
-                                        $file2Success = true;
-                                    }
-                                    if (strpos($summaryMessage, '❌') !== false && strpos($summaryMessage, 'First file') !== false) {
-                                        $file1Success = false;
-                                    }
-                                    if (strpos($summaryMessage, '❌') !== false && strpos($summaryMessage, 'Second file') !== false) {
-                                        $file2Success = false;
-                                    }
-                                    
-                                    // Parse the detailed errors from the "Found X validation errors" part
-                                    $lines = explode("\n", $detailedErrors);
                                     foreach ($lines as $line) {
                                         $line = trim($line);
-                                        if (!empty($line) && strpos($line, 'Row ') === 0) {
+                                        if (strpos($line, '--- File 1 Errors ---') === 0) {
+                                            $currentFileSection = 1;
+                                            $allErrorList[] = $line; // Add the header
+                                        } elseif (strpos($line, '--- File 2 Errors ---') === 0) {
+                                            $currentFileSection = 2;
+                                            $allErrorList[] = $line; // Add the header
+                                        } elseif (!empty($line) && strpos($line, 'Row ') === 0 && $currentFileSection !== null) {
                                             $allErrorList[] = $line;
-                                            
-                                            // Since we know from summary which file failed, count accordingly
-                                            if (!$file1Success && $file2Success) {
+                                            if ($currentFileSection == 1) {
                                                 $file1ErrorCount++;
-                                            } elseif ($file1Success && !$file2Success) {
-                                                $file2ErrorCount++;
-                                            } else {
-                                                // Both files failed - count for both
-                                                $file1ErrorCount++;
+                                            } elseif ($currentFileSection == 2) {
                                                 $file2ErrorCount++;
                                             }
                                         }
                                     }
                                 } else {
-                                    // Fallback parsing if regex doesn't match
-                                    error_log("FALLBACK: Regex didn't match, using fallback parsing");
-                                    
-                                    if (strpos($errorMessage, '✅ First file uploaded successfully, but ❌ second file failed') !== false) {
-                                        $file1Success = true;
-                                        $file2Success = false;
-                                        $errorPrefix = "✅ First file uploaded successfully, but ❌ second file failed";
-                                    } elseif (strpos($errorMessage, '❌ First file failed, but ✅ second file uploaded successfully') !== false) {
-                                        $file1Success = false;
-                                        $file2Success = true;
-                                        $errorPrefix = "❌ First file failed, but ✅ second file uploaded successfully";
-                                    } elseif (strpos($errorMessage, 'Both files failed') !== false) {
-                                        $file1Success = false;
-                                        $file2Success = false;
-                                        $errorPrefix = "❌ Both files failed validation";
-                                    } else {
-                                        // Default case
-                                        $file1Success = true;
-                                        $file2Success = false;
-                                        $errorPrefix = "✅ First file uploaded successfully, but ❌ second file failed";
-                                    }
-                                    
-                                    // Parse all validation errors
-                                    $lines = explode("\n", $errorMessage);
-                                    foreach ($lines as $line) {
-                                        $line = trim($line);
-                                        if (!empty($line) && strpos($line, 'Row ') === 0) {
-                                            $allErrorList[] = $line;
-                                            if (!$file2Success) {
-                                                $file2ErrorCount++;
+                                    // STEP 1: Extract the summary message and separate it from detailed errors
+                                    $summaryPattern = '/^(.*?)(Found \d+ validation errors.*)/s';
+                                    if (preg_match($summaryPattern, $errorMessage, $matches)) {
+                                        $summaryMessage = trim($matches[1]);
+                                        $detailedErrors = trim($matches[2]);
+                                        
+                                        error_log("PARSED: Summary message: " . $summaryMessage);
+                                        error_log("PARSED: Detailed errors start: " . substr($detailedErrors, 0, 100) . "...");
+                                        
+                                        // Use the summary as our main error message
+                                        $errorPrefix = $summaryMessage;
+                                        
+                                        // Determine file success/failure from summary
+                                        if (strpos($summaryMessage, '✅') !== false && strpos($summaryMessage, 'First file') !== false) {
+                                            $file1Success = true;
+                                        }
+                                        if (strpos($summaryMessage, '✅') !== false && strpos($summaryMessage, 'Second file') !== false) {
+                                            $file2Success = true;
+                                        }
+                                        if (strpos($summaryMessage, '❌') !== false && strpos($summaryMessage, 'First file') !== false) {
+                                            $file1Success = false;
+                                        }
+                                        if (strpos($summaryMessage, '❌') !== false && strpos($summaryMessage, 'Second file') !== false) {
+                                            $file2Success = false;
+                                        }
+                                        
+                                        // Parse the detailed errors from the "Found X validation errors" part
+                                        $lines = explode("\n", $detailedErrors);
+                                        foreach ($lines as $line) {
+                                            $line = trim($line);
+                                            if (!empty($line) && strpos($line, 'Row ') === 0) {
+                                                $allErrorList[] = $line;
+                                                
+                                                // Since we know from summary which file failed, count accordingly
+                                                if (!$file1Success && $file2Success) {
+                                                    $file1ErrorCount++;
+                                                } elseif ($file1Success && !$file2Success) {
+                                                    $file2ErrorCount++;
+                                                } else {
+                                                    // Both files failed - count for both
+                                                    $file1ErrorCount++;
+                                                    $file2ErrorCount++;
+                                                }
                                             }
-                                            if (!$file1Success) {
-                                                $file1ErrorCount++;
+                                        }
+                                    } else {
+                                        // Fallback parsing if regex doesn't match
+                                        error_log("FALLBACK: Regex didn't match, using fallback parsing");
+                                        
+                                        if (strpos($errorMessage, '✅ First file uploaded successfully, but ❌ second file failed') !== false) {
+                                            $file1Success = true;
+                                            $file2Success = false;
+                                            $errorPrefix = "✅ First file uploaded successfully, but ❌ second file failed";
+                                        } elseif (strpos($errorMessage, '❌ First file failed, but ✅ second file uploaded successfully') !== false) {
+                                            $file1Success = false;
+                                            $file2Success = true;
+                                            $errorPrefix = "❌ First file failed, but ✅ second file uploaded successfully";
+                                        } elseif (strpos($errorMessage, 'Both files failed') !== false) {
+                                            $file1Success = false;
+                                            $file2Success = false;
+                                            $errorPrefix = "❌ Both files failed validation";
+                                        } else {
+                                            // Default case
+                                            $file1Success = true;
+                                            $file2Success = false;
+                                            $errorPrefix = "✅ First file uploaded successfully, but ❌ second file failed";
+                                        }
+                                        
+                                        // Parse all validation errors
+                                        $lines = explode("\n", $errorMessage);
+                                        foreach ($lines as $line) {
+                                            $line = trim($line);
+                                            if (!empty($line) && strpos($line, 'Row ') === 0) {
+                                                $allErrorList[] = $line;
+                                                if (!$file2Success) {
+                                                    $file2ErrorCount++;
+                                                }
+                                                if (!$file1Success) {
+                                                    $file1ErrorCount++;
+                                                }
                                             }
                                         }
                                     }
@@ -2598,7 +2698,21 @@ function calculateStats($values) {
                                     <?php elseif (!$file1Success && $file2Success): ?>
                                         <p class="error-summary">Found <?php echo count($allErrorList); ?> validation errors in File 1:</p>
                                     <?php elseif (!$file1Success && !$file2Success): ?>
-                                        <p class="error-summary">Both files failed validation with a total of <?php echo count($allErrorList); ?> errors:</p>
+                                        <?php 
+                                        // Check if we have file separation headers
+                                        $hasFileSeparation = false;
+                                        foreach ($allErrorList as $error) {
+                                            if (strpos($error, '--- File 1 Errors ---') === 0 || strpos($error, '--- File 2 Errors ---') === 0) {
+                                                $hasFileSeparation = true;
+                                                break;
+                                            }
+                                        }
+                                        
+                                        if ($hasFileSeparation): ?>
+                                            <p class="error-summary">Both files failed validation. Use the navigation buttons on the right to jump between file errors:</p>
+                                        <?php else: ?>
+                                            <p class="error-summary">Both files failed validation with a total of <?php echo count($allErrorList); ?> errors:</p>
+                                        <?php endif; ?>
                                     <?php else: ?>
                                         <p class="error-summary">Found <?php echo count($allErrorList); ?> validation errors:</p>
                                     <?php endif; ?>
@@ -3619,7 +3733,8 @@ function calculateStats($values) {
     });
 
     document.addEventListener('DOMContentLoaded', function() {
-        initializeErrorNavigation();
+        // Check for both files failed scenario and add navigation
+        checkForBothFilesFailedAndAddNavigation();
     });
 
     function initializeErrorNavigation() {
@@ -3638,8 +3753,29 @@ function calculateStats($values) {
         }
     }
 
+    function checkForBothFilesFailedAndAddNavigation() {
+        // Simple detection: look for both "--- File 1 Errors ---" and "--- File 2 Errors ---" in the error list
+        const errorList = document.querySelector('.user-alert-danger .error-list');
+        if (!errorList) return;
+        
+        const errorText = errorList.textContent;
+        const hasFile1Errors = errorText.includes('--- File 1 Errors ---');
+        const hasFile2Errors = errorText.includes('--- File 2 Errors ---');
+        
+        if (hasFile1Errors && hasFile2Errors) {
+            addQuickJumpButtons();
+            enhanceFileHeaders();
+        }
+    }
+
     function addQuickJumpButtons() {
-        // Only add the side navigation buttons, remove the back to top button
+        // Remove any existing quick jump container first
+        const existingContainer = document.querySelector('.quick-jump-container');
+        if (existingContainer) {
+            existingContainer.remove();
+        }
+        
+        // Add the side navigation buttons
         const jumpHTML = `
             <div class="quick-jump-container">
                 <button class="quick-jump-btn file1" onclick="scrollToFile(1)" title="Jump to File 1 errors">
@@ -3659,22 +3795,19 @@ function calculateStats($values) {
         if (!errorList) return;
         
         const errorItems = errorList.querySelectorAll('.error-item');
-        let currentFile = null;
         let fileErrorCount = {1: 0, 2: 0};
         let firstErrorElements = {1: null, 2: null};
+        let currentFileSection = null; // Track which file section we're in
         
         errorItems.forEach((item, index) => {
             const errorText = item.textContent;
             
-            // Detect file separators and apply red styling immediately
+            // Style File 1 header
             if (errorText.includes('--- File 1 Errors ---')) {
-                currentFile = 1;
+                currentFileSection = 1; // Set current section to File 1
                 item.id = 'file-1-header';
-                item.className = 'file-section-header';
-                
-                // CRITICAL FIX: Apply red styling immediately via inline styles to override any existing gray
                 item.style.cssText = `
-                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+                    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
                     color: white !important;
                     padding: 12px 16px !important;
                     margin: 20px 0 15px 0 !important;
@@ -3682,31 +3815,22 @@ function calculateStats($values) {
                     font-weight: bold !important;
                     font-size: 1.1em !important;
                     text-align: center !important;
-                    border-left: 4px solid #dc3545 !important;
-                    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3) !important;
-                    position: sticky !important;
-                    top: 0 !important;
-                    z-index: 10 !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    gap: 10px !important;
+                    border-left: 4px solid #007bff !important;
+                    box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3) !important;
                 `;
                 
                 item.innerHTML = `
-                    <i class="fas fa-file-alt file-icon" style="font-size: 1.2em !important; color: white !important;"></i>
-                    <span style="color: white !important;">File 1 Errors</span>
-                    <span class="error-count-badge" id="file1-count" style="background: rgba(255, 255, 255, 0.9) !important; color: #dc3545 !important; padding: 4px 8px !important; border-radius: 12px !important; font-size: 0.85em !important; font-weight: bold !important; margin-left: 8px !important; border: 1px solid rgba(255, 255, 255, 0.3) !important;">0</span>
+                    <i class="fas fa-file-alt" style="font-size: 1.2em; color: white; margin-right: 8px;"></i>
+                    <span style="color: white;">File 1 Errors</span>
+                    <span id="file1-count" style="background: rgba(255, 255, 255, 0.9); color: #007bff; padding: 4px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-left: 8px;">0</span>
                 `;
-                
-            } else if (errorText.includes('--- File 2 Errors ---')) {
-                currentFile = 2;
+            }
+            // Style File 2 header  
+            else if (errorText.includes('--- File 2 Errors ---')) {
+                currentFileSection = 2; // Set current section to File 2
                 item.id = 'file-2-header';
-                item.className = 'file-section-header';
-                
-                // CRITICAL FIX: Apply red styling immediately via inline styles to override any existing gray
                 item.style.cssText = `
-                    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+                    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
                     color: white !important;
                     padding: 12px 16px !important;
                     margin: 20px 0 15px 0 !important;
@@ -3714,39 +3838,32 @@ function calculateStats($values) {
                     font-weight: bold !important;
                     font-size: 1.1em !important;
                     text-align: center !important;
-                    border-left: 4px solid #dc3545 !important;
-                    box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3) !important;
-                    position: sticky !important;
-                    top: 0 !important;
-                    z-index: 10 !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    gap: 10px !important;
+                    border-left: 4px solid #28a745 !important;
+                    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3) !important;
                 `;
                 
                 item.innerHTML = `
-                    <i class="fas fa-file-alt file-icon" style="font-size: 1.2em !important; color: white !important;"></i>
-                    <span style="color: white !important;">File 2 Errors</span>
-                    <span class="error-count-badge" id="file2-count" style="background: rgba(255, 255, 255, 0.9) !important; color: #dc3545 !important; padding: 4px 8px !important; border-radius: 12px !important; font-size: 0.85em !important; font-weight: bold !important; margin-left: 8px !important; border: 1px solid rgba(255, 255, 255, 0.3) !important;">0</span>
+                    <i class="fas fa-file-alt" style="font-size: 1.2em; color: white; margin-right: 8px;"></i>
+                    <span style="color: white;">File 2 Errors</span>
+                    <span id="file2-count" style="background: rgba(255, 255, 255, 0.9); color: #28a745; padding: 4px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-left: 8px;">0</span>
                 `;
-                
-            } else if (currentFile && item.classList.contains('error-item')) {
-                // This is an actual error item
-                fileErrorCount[currentFile]++;
-                
-                // Set ID for the first actual error of each file
-                if (!firstErrorElements[currentFile]) {
-                    firstErrorElements[currentFile] = item;
-                    item.id = `file-${currentFile}-first-error`;
+            }
+            // Count actual errors for each file - FIXED LOGIC
+            else if (item.classList.contains('error-item') && errorText.includes('Row ') && currentFileSection !== null) {
+                // Count errors based on current file section
+                if (currentFileSection === 1) {
+                    fileErrorCount[1]++;
+                    if (!firstErrorElements[1]) {
+                        firstErrorElements[1] = item;
+                        item.id = 'file-1-first-error';
+                    }
+                } else if (currentFileSection === 2) {
+                    fileErrorCount[2]++;
+                    if (!firstErrorElements[2]) {
+                        firstErrorElements[2] = item;
+                        item.id = 'file-2-first-error';
+                    }
                 }
-                
-                // Add file badge to regular error items
-                const badge = document.createElement('div');
-                badge.className = `error-item-badge file${currentFile}`;
-                badge.textContent = `File ${currentFile}`;
-                item.appendChild(badge);
-                item.setAttribute('data-file', currentFile);
             }
         });
         
@@ -3755,11 +3872,19 @@ function calculateStats($values) {
         const file2CountBadge = document.getElementById('file2-count');
         if (file1CountBadge) file1CountBadge.textContent = fileErrorCount[1];
         if (file2CountBadge) file2CountBadge.textContent = fileErrorCount[2];
+        
+        // CRITICAL FIX: Update the main error summary count to exclude headers
+        const errorSummary = document.querySelector('.user-alert-danger .error-summary h5');
+        if (errorSummary) {
+            const totalActualErrors = fileErrorCount[1] + fileErrorCount[2];
+            errorSummary.textContent = `Found ${totalActualErrors} validation issues:`;
+        }
+        
+        console.log('Error counts updated - File 1:', fileErrorCount[1], 'File 2:', fileErrorCount[2]);
+        console.log('Total actual errors (excluding headers):', fileErrorCount[1] + fileErrorCount[2]);
     }
 
     function scrollToFile(fileNumber) {
-        console.log(`Attempting to scroll to file ${fileNumber}`);
-        
         // Try to scroll to the first actual error, not the header
         let target = document.getElementById(`file-${fileNumber}-first-error`);
         
@@ -3769,50 +3894,19 @@ function calculateStats($values) {
         }
         
         if (target) {
-            console.log(`Found target for file ${fileNumber}:`, target);
-            
             target.scrollIntoView({ 
                 behavior: 'smooth', 
-                block: 'start',
-                inline: 'nearest' 
+                block: 'start'
             });
-            
-            // Highlight the section temporarily
-            const originalBackground = target.style.background;
-            target.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
-            target.style.color = 'white';
-            
-            setTimeout(() => {
-                target.style.background = originalBackground;
-                target.style.color = '';
-            }, 1500);
             
             // Update active navigation button
             document.querySelectorAll('.quick-jump-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             
-            // Add active class to the clicked button
             const clickedButton = document.querySelector(`.quick-jump-btn.file${fileNumber}`);
             if (clickedButton) {
                 clickedButton.classList.add('active');
-            }
-        } else {
-            console.error(`Could not find target element for file ${fileNumber}`);
-            
-            // Enhanced fallback: try to find the section by text content
-            const errorItems = document.querySelectorAll('.error-item, .file-section-header');
-            for (let item of errorItems) {
-                if (item.textContent.includes(`--- File ${fileNumber} Errors ---`) || 
-                    item.textContent.includes(`File ${fileNumber} Errors`)) {
-                    console.log(`Found fallback target for file ${fileNumber}:`, item);
-                    item.scrollIntoView({ 
-                        behavior: 'smooth', 
-                        block: 'start',
-                        inline: 'nearest' 
-                    });
-                    break;
-                }
             }
         }
     }
