@@ -389,28 +389,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['compare'])) {
     $upload2 = $_POST['upload2'];
     $comparisonName = trim($_POST['comparisonName']);
 
-    if (!empty($comparisonName)) {
-        // Insert into saved_comparison
-        $stmt = $conn->prepare("INSERT INTO saved_comparison (UserID, ComparisonName) VALUES (?, ?)");
-        $stmt->bind_param("is", $userID, $comparisonName);
-        $stmt->execute();
-        $comparisonID = $conn->insert_id;
+    // CRITICAL FIX: Make comparison name mandatory when both files are selected
+    if (empty($upload1) || empty($upload2)) {
+        $error_message = "Please select both CSV files for comparison.";
+    } elseif (empty($comparisonName)) {
+        $error_message = "Comparison name is required. Please enter a name to save this comparison.";
+    } else {
+        try {
+            // Insert into saved_comparison
+            $stmt = $conn->prepare("INSERT INTO saved_comparison (UserID, ComparisonName) VALUES (?, ?)");
+            $stmt->bind_param("is", $userID, $comparisonName);
+            $stmt->execute();
+            $comparisonID = $conn->insert_id;
 
-        // Insert the first file into comparison_file_link
-        $stmt1 = $conn->prepare("INSERT INTO comparison_file_link (ComparisonID, UploadID, FileOrder) VALUES (?, ?, ?)");
-        $fileOrder1 = 1;
-        $stmt1->bind_param("iii", $comparisonID, $upload1, $fileOrder1);
-        $stmt1->execute();
-        
-        // Insert the second file into comparison_file_link
-        $stmt2 = $conn->prepare("INSERT INTO comparison_file_link (ComparisonID, UploadID, FileOrder) VALUES (?, ?, ?)");
-        $fileOrder2 = 2;
-        $stmt2->bind_param("iii", $comparisonID, $upload2, $fileOrder2);
-        $stmt2->execute();
+            // Insert the first file into comparison_file_link
+            $stmt1 = $conn->prepare("INSERT INTO comparison_file_link (ComparisonID, UploadID, FileOrder) VALUES (?, ?, ?)");
+            $fileOrder1 = 1;
+            $stmt1->bind_param("iii", $comparisonID, $upload1, $fileOrder1);
+            $stmt1->execute();
+            
+            // Insert the second file into comparison_file_link
+            $stmt2 = $conn->prepare("INSERT INTO comparison_file_link (ComparisonID, UploadID, FileOrder) VALUES (?, ?, ?)");
+            $fileOrder2 = 2;
+            $stmt2->bind_param("iii", $comparisonID, $upload2, $fileOrder2);
+            $stmt2->execute();
 
-        // Reset the dropdown selections after successful save
-        $upload1 = null;
-        $upload2 = null;
+            // Set success message and reset the dropdown selections after successful save
+            $success_message = "Comparison '{$comparisonName}' saved successfully!";
+            $upload1 = null;
+            $upload2 = null;
+            $comparisonName = ''; // Clear the comparison name as well
+        } catch (Exception $e) {
+            error_log("Error saving comparison: " . $e->getMessage());
+            $error_message = "Error saving comparison: " . $e->getMessage();
+        }
     }
 }
 
@@ -440,27 +452,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['load_comparison'])) {
         $upload1 = $files[1]['UploadID'];
         $upload2 = $files[2]['UploadID'];
         
-        // Construct the file paths using the FileName
-        // Files are typically stored in the uploads directory with their original filename
-        $file1_path = '../uploads/' . $files[1]['FileName'];
-        $file2_path = '../uploads/' . $files[2]['FileName'];
+        // CRITICAL FIX: Use upload IDs directly instead of file paths
+        error_log("Loading saved comparison with Upload IDs - File 1: $upload1, File 2: $upload2");
         
-        // Check if files exist
-        if (file_exists($file1_path) && file_exists($file2_path)) {
-            try {
-                $comparison_results = compareCSVFiles($file1_path, $file2_path);
-                $success_message = "Saved comparison loaded successfully!";
-            } catch (Exception $e) {
-                $error_message = "Error loading comparison: " . $e->getMessage();
-            }
-        } else {
-            $error_message = "One or both files from the saved comparison could not be found.";
+        try {
+            // FIXED: Pass upload IDs instead of file paths
+            $comparison_results = compareCSVFiles($upload1, $upload2);
+            $success_message = "Saved comparison loaded successfully!";
+            error_log("Successfully loaded saved comparison with uploads $upload1 and $upload2");
+        } catch (Exception $e) {
+            error_log("Error loading saved comparison: " . $e->getMessage());
+            $error_message = "Error loading comparison: " . $e->getMessage();
         }
     } else {
         $error_message = "Invalid comparison data found.";
+        error_log("Invalid comparison data - found " . count($files) . " files instead of 2");
     }
 }
-
 
 // Get user's uploaded CSV files for dropdown
 $csvFiles = [];
@@ -2809,7 +2817,7 @@ function calculateStats($values) {
                 <div class="compare-saved-comparisons">
                     <h4>Load Saved Comparison</h4>
                     <form method="POST">
-                        <select name="saved_comparison_id" required>
+                        <select name="saved_comparison_id" required style="margin-bottom: 15px;">
                             <option value="">Select a saved comparison...</option>
                             <?php foreach ($savedComparisons as $comparison): ?>
                                 <option value="<?php echo $comparison['ComparisonID']; ?>">
@@ -2852,8 +2860,9 @@ function calculateStats($values) {
                     </div>
                             
                     <div class="compare-comparison-name">
-                        <label>Comparison Name (optional):</label>
-                        <input type="text" name="comparisonName" placeholder="Enter a name to save this comparison">
+                        <label>Comparison Name (required):</label>
+                        <input type="text" name="comparisonName" placeholder="Enter a name to save this comparison" required 
+                            value="<?php echo isset($comparisonName) ? htmlspecialchars($comparisonName) : ''; ?>">
                     </div>
                             
                     <button type="submit" name="compare" class="btn">Save Comparison</button>
@@ -2875,45 +2884,6 @@ function calculateStats($values) {
 
             <!-- Comparison Results -->
             <?php if ($comparison_results): ?>
-                <!-- Debug Information -->
-                <div class="compare-alert compare-alert-info">
-                    <h4><i class="fas fa-bug"></i> Debug Information</h4>
-                    <p><strong>Available CSV Headers:</strong><br>
-                    <small><?php echo implode(' | ', $comparison_results['headers']['common_headers']); ?></small></p>
-
-                    <p><strong>Analytics Metrics Detection Results:</strong><br>
-                    <?php 
-                    $all_metrics = ['sessions', 'engaged_sessions', 'engagement_rate', 'average_engagement_time_per_session',
-                                   'events_per_session', 'event_count', 'key_events', 'session_key_event_rate',
-                                   'total_revenue', 'total_page_views', 'unique_visitors', 'average_session_duration',
-                                   'bounce_rate'];
-
-                    foreach ($all_metrics as $metric) {
-                        $found = isset($comparison_results['analytics_metrics'][$metric]);
-                        $color = $found ? 'green' : 'red';
-                        $status = $found ? '✓ Found' : '✗ Not Found';
-                        echo '<small style="color: ' . $color . ';">' . $metric . ': ' . $status;
-                        if ($found) {
-                            echo ' → ' . $comparison_results['analytics_metrics'][$metric]['column_name'];
-                        }
-                        echo '</small><br>';
-                    }
-                    ?>
-                    </p>
-
-                    <p><strong>Performance Overview Metrics:</strong><br>
-                    <?php 
-                    $key_metrics = ['sessions', 'engagement_rate', 'total_revenue', 'bounce_rate', 
-                                   'unique_visitors', 'total_page_views', 'average_session_duration'];
-                    foreach ($key_metrics as $metric) {
-                        $available = isset($comparison_results['summary_comparison'][$metric]);
-                        $color = $available ? 'blue' : 'orange';
-                        echo '<small style="color: ' . $color . ';">' . $metric . ': ' . ($available ? 'Available' : 'Not Available') . '</small><br>';
-                    }
-                    ?>
-                    </p>
-                </div>
-
             <!-- Performance Overview -->
             <?php if (!empty($comparison_results['summary_comparison'])): ?>
                 <div class="compare-metric-summary">
@@ -4096,6 +4066,94 @@ function calculateStats($values) {
             console.log('Comparison results detected, clearing unsaved changes');
         }
     });
+
+        // Add validation for the save comparison form
+    const saveComparisonForm = document.querySelector('form[method="POST"]:not([enctype])');
+    if (saveComparisonForm) {
+        saveComparisonForm.addEventListener('submit', function(e) {
+            const upload1 = document.querySelector('select[name="upload1"]').value;
+            const upload2 = document.querySelector('select[name="upload2"]').value;
+            const comparisonName = document.querySelector('input[name="comparisonName"]').value.trim();
+            const submitButton = e.submitter;
+            
+            // Only validate if the "Save Comparison" button was clicked (not "Load Comparison")
+            if (submitButton && submitButton.name === 'compare') {
+                if (!upload1 || !upload2) {
+                    alert('⚠️ Please select both CSV files for comparison.');
+                    e.preventDefault();
+                    return false;
+                }
+                
+                if (!comparisonName) {
+                    alert('⚠️ Comparison name is required. Please enter a name to save this comparison.');
+                    document.querySelector('input[name="comparisonName"]').focus();
+                    e.preventDefault();
+                    return false;
+                }
+                
+                // Optional: Check for duplicate comparison names
+                const existingComparisons = [
+                    <?php 
+                    if (!empty($savedComparisons)) {
+                        echo implode(',', array_map(function($comp) {
+                            return '"' . addslashes($comp['ComparisonName']) . '"';
+                        }, $savedComparisons));
+                    }
+                    ?>
+                ];
+                
+                if (existingComparisons.includes(comparisonName)) {
+                    if (!confirm(`⚠️ A comparison named "${comparisonName}" already exists. Do you want to create another one with the same name?`)) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            }
+        });
+        
+        // Real-time validation feedback
+        const comparisonNameInput = document.querySelector('input[name="comparisonName"]');
+        const upload1Select = document.querySelector('select[name="upload1"]');
+        const upload2Select = document.querySelector('select[name="upload2"]');
+        const saveButton = document.querySelector('button[name="compare"]');
+        
+        function updateSaveButtonState() {
+            const hasFiles = upload1Select.value && upload2Select.value;
+            const hasName = comparisonNameInput.value.trim();
+            
+            if (saveButton) {
+                if (hasFiles && !hasName) {
+                    saveButton.style.backgroundColor = '#ffc107';
+                    saveButton.style.color = '#212529';
+                    saveButton.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Name Required to Save';
+                    saveButton.disabled = false; // Keep enabled for form validation to show
+                } else if (hasFiles && hasName) {
+                    saveButton.style.backgroundColor = '#28a745';
+                    saveButton.style.color = 'white';
+                    saveButton.innerHTML = '<i class="fas fa-save"></i> Save Comparison';
+                    saveButton.disabled = false;
+                } else {
+                    saveButton.style.backgroundColor = '#007cba';
+                    saveButton.style.color = 'white';
+                    saveButton.innerHTML = '<i class="fas fa-save"></i> Save Comparison';
+                    saveButton.disabled = false;
+                }
+            }
+        }
+        
+        if (comparisonNameInput) {
+            comparisonNameInput.addEventListener('input', updateSaveButtonState);
+        }
+        if (upload1Select) {
+            upload1Select.addEventListener('change', updateSaveButtonState);
+        }
+        if (upload2Select) {
+            upload2Select.addEventListener('change', updateSaveButtonState);
+        }
+        
+        // Initial state update
+        updateSaveButtonState();
+    }
     </script>    
 </body>
 </html>
