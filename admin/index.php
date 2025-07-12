@@ -101,6 +101,7 @@ function getReportTypes($conn) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - TrafAnalyz</title>
+		<link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="admin_style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -225,7 +226,7 @@ function getReportTypes($conn) {
                 </div>
                 
                 <div style="margin-top: 20px;">
-                    <a href="admin_mappings.php" class="btn btn-sm btn-secondary">Manage Report Types</a>
+                    <a href="admin_mappings.php" class="btn btn-secondary">Manage Report Types</a>
                 </div>
             </section>
             

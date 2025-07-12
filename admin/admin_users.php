@@ -125,7 +125,7 @@ if ($result) {
                                 <td><?php echo htmlspecialchars($user['Email']); ?></td>
                                 <td><?php echo $user['Role']; ?></td>
                                 <td>
-                                    <span class="admin-status-badge admin-status-<?php echo strtolower($user['AccountStatus']); ?>">
+                                    <span class="badge admin-status-badge admin-status-<?php echo strtolower($user['AccountStatus']); ?>">
                                         <?php echo $user['AccountStatus']; ?>
                                     </span>
                                 </td>
@@ -135,13 +135,13 @@ if ($result) {
                                         <input type="hidden" name="user_id" value="<?php echo $user['UserID']; ?>">
                                         <?php if ($user['AccountStatus'] === 'Active'): ?>
                                             <input type="hidden" name="action" value="suspend">
-                                            <button type="submit" class="admin-btn-suspend" 
+                                            <button type="submit" class="btn btn-small btn-warning" 
                                                     onclick="return confirm('Are you sure you want to suspend this user?')">
                                                 Suspend
                                             </button>
                                         <?php else: ?>
                                             <input type="hidden" name="action" value="restore">
-                                            <button type="submit" class="admin-btn-restore">
+                                            <button type="submit" class="btn btn-small btn-success">
                                                 Restore
                                             </button>
                                         <?php endif; ?>
@@ -149,7 +149,7 @@ if ($result) {
                                     <form method="post">
                                         <input type="hidden" name="user_id" value="<?php echo $user['UserID']; ?>">
                                         <input type="hidden" name="action" value="delete">
-                                        <button type="submit" class="admin-btn-delete" 
+                                        <button type="submit" class="btn btn-small btn-danger" 
                                                 onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.')">
                                             Delete
                                         </button>

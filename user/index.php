@@ -802,8 +802,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
         /* ==================== FILE INFO BOX STYLING - FIXED FOR MAP_COLUMNS.PHP ==================== */
         
         /* Enhanced file info styling within error container AND standalone */
-        .error-container .file-info-box,
-        .file-info-box,
         .error-container div[style*="margin: 15px 0"] {
             margin: 15px 0 !important;
             padding: 15px !important;
@@ -823,8 +821,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
             color: #721c24 !important;
         }
 
-        .error-container .file-info-box strong,
-        .file-info-box strong,
         .error-container div[style*="margin: 15px 0"] strong {
             color: #721c24 !important;
             font-weight: 600 !important;
@@ -998,11 +994,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
                 font-size: 1.1em;
             }
 
-            .file-info-box {
-                padding: 12px;
-                font-size: 0.85em;
-            }
-
             .file-info-line strong {
                 min-width: 100px;
                 display: block;
@@ -1036,11 +1027,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
                 flex-direction: column;
                 text-align: center;
                 gap: 5px;
-            }
-
-            .file-info-box {
-                padding: 10px;
-                font-size: 0.8em;
             }
         }
     </style>
@@ -1324,7 +1310,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
                 <form action="" method="post" enctype="multipart/form-data" id="uploadForm" data-ajax-handler="upload_handler.php">
 									<div class="file-input-container">
 									    <input type="file" id="csvFile" name="csvFile" accept=".csv" required>
-									    <label for="csvFile" class="file-input-button">
+									    <label for="csvFile" class="btn">
 									        <i class="fas fa-upload"></i>
 									        Choose CSV File
 									    </label>

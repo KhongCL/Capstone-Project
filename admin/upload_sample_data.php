@@ -89,37 +89,10 @@ if ($row = $result->fetch_assoc()) {
     <title>Upload Sample Data - TrafAnalyz Admin</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="admin_style.css">
-    <link rel="stylesheet" href="user_style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         /* Error Display Styles - matching user/index.php */
-        .message {
-            padding: 15px 20px;
-            margin: 15px 0;
-            border-radius: 8px;
-            border-left: 4px solid;
-            background: #f8f9fa;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: slideDown 0.3s ease;
-        }
 
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border-left-color: #28a745;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border-left-color: #dc3545;
-        }
-
-        .message i {
-            font-size: 16px;
-        }
 
         .error-container {
             background-color: #f8d7da;
@@ -382,68 +355,6 @@ if ($row = $result->fetch_assoc()) {
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 10px;
             margin-top: 15px;
-        }
-
-        .preview-actions .btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 15px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            border: 1px solid transparent;
-        }
-
-        .preview-actions .btn-success {
-            background: #28a745 !important;
-            color: #fff !important;
-            border-color: #28a745 !important;
-        }
-
-        .preview-actions .btn-success:hover {
-            background: #218838 !important;
-            border-color: #1e7e34 !important;
-            color: #fff !important;
-            transform: translateY(-1px);
-        }
-
-        .preview-actions .btn-primary {
-            background: #007bff !important;
-            color: #fff !important;
-            border-color: #007bff !important;
-        }
-
-        .preview-actions .btn-primary:hover {
-            background: #0056b3 !important;
-            border-color: #004085 !important;
-            color: #fff !important;
-            transform: translateY(-1px);
-        }
-
-        .preview-actions .btn-secondary {
-            background: #6c757d !important;
-            color: #fff !important;
-            border-color: #6c757d !important;
-        }
-
-        .preview-actions .btn-secondary:hover {
-            background: #545b62 !important;
-            border-color: #4e555b !important;
-            color: #fff !important;
-            transform: translateY(-1px);
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         /* Custom scrollbar styles */

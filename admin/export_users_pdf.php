@@ -191,7 +191,7 @@ foreach ($users as $user) {
 						position: relative;
 				}
 
-				.user-table {
+				.admin-user-table {
 					border-radius: 1rem;
 				}
 
@@ -337,7 +337,7 @@ foreach ($users as $user) {
 				<div class="user-details">
 
 						<h2>User Accounts</h2>
-						<div class="user-table">
+						<div class="admin-user-table">
 							<table id="usersTable">
 									<thead>
 											<tr>

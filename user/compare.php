@@ -2102,30 +2102,6 @@ function calculateStats($values) {
             z-index: 2;
         }
 
-        .file-input-button {
-            display: inline-block;
-            padding: 12px 20px;
-            background: #007bff;
-            color: white;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 500;
-            text-align: center;
-            border: 2px dashed transparent;
-            position: relative;
-            z-index: 1;
-        }
-
-        .file-input-button:hover {
-            background: #0056b3;
-            transform: translateY(-1px);
-        }
-
-        .file-input-button i {
-            margin-right: 8px;
-        }
-
         /* File info display styles */
         .file-info {
             margin-top: 10px;
@@ -2804,8 +2780,8 @@ function calculateStats($values) {
 														</div>
 														<small>Upload your second analytics period data</small>
 												</div>
-                                            </div>
-                    <button type="submit" class="compare-user-btn-submit">
+                    </div>
+                    <button type="submit" class="btn">
                         <i class="fas fa-chart-bar"></i> Compare Analytics Data
                     </button>
                 </form>
