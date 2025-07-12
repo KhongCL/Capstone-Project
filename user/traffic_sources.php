@@ -58,7 +58,6 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
-
     .admin-notice {
         background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
         padding: 15px 20px;
@@ -71,7 +70,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     .admin-notice .btn {
         background-color: rgba(255, 255, 255, 0.2);
         border: 1px solid rgba(255, 255, 255, 0.5);
-        color: var(--admin-text);
+        color: white;
     }
 
     .admin-notice .btn:hover {
@@ -120,7 +119,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         padding: 10px 20px;
         border: none;
     		background-color: var(--primary-color);
-    		color: var(--white);
+    		color: white;
         border-radius: 8px;
         cursor: pointer;
 				font-family: inherit;
@@ -152,7 +151,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         padding: 10px;
         border: 1px solid var(--border-light);
         border-radius: 4px;
-        background-color: var(--background-white);
+        background-color: white;
     }
 
     .source-checkbox {

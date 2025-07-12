@@ -243,8 +243,8 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
       			  <canvas id="trafficChart"></canvas>
       			</div>
       			<div class="user-chart-controls">
-      			  <button class="btn btn-sm" data-interval="day">Daily</button>
-      			  <button class="btn btn-sm" data-interval="month">Monthly</button>
+      			  <button class="btn btn-small" data-interval="day">Daily</button>
+      			  <button class="btn btn-small" data-interval="month">Monthly</button>
       			</div>
       	</div>
 								
@@ -401,8 +401,8 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
                       <strong>${item.date} (${index + 1}/5)</strong>: ${item.note}
                   </div>
                   <div class="user-annotation-actions">
-                      <button class="btn btn-sm user-annotation-edit" onclick="editAnnotation(${item.id})">Edit</button>
-                      <button class="btn btn-sm user-annotation-delete" onclick="deleteAnnotation(${item.id})">Delete</button>
+                      <button class="btn btn-small user-annotation-edit" onclick="editAnnotation(${item.id})">Edit</button>
+                      <button class="btn btn-small user-annotation-delete" onclick="deleteAnnotation(${item.id})">Delete</button>
                   </div>
               `;
               list.appendChild(div);

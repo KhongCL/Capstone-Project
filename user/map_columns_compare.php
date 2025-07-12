@@ -819,8 +819,8 @@ function saveTransformedDataForComparison($conn, $transformedData, $fileIndex) {
                     </table>
                     
                     <div class="user-form-actions">
-                        <button type="submit" name="confirm_mapping" class="user-btn-primary">Confirm Mapping & Continue Comparison</button>
-                        <a href="compare.php" class="user-btn-secondary">Cancel Comparison</a>
+                        <button type="submit" name="confirm_mapping" class="btn">Confirm Mapping & Continue Comparison</button>
+                        <a href="compare.php" class="btn btn-secondary">Cancel Comparison</a>
                     </div>
                 </form>
                 

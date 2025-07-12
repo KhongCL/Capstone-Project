@@ -478,16 +478,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
 
         /* ==================== CONFIDENCE BAR STYLES ==================== */
         .user-confidence-bar {
-            position: relative;
-            width: 100%;
-            height: 25px;
-            background-color: #f8f9fa;
-            border-radius: 12px;
-            border: 1px solid #dee2e6;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: left; /* FIXED: Center the text container */
+            justify-content: left;
         }
 
         .user-confidence-fill {
@@ -497,7 +488,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             height: 100%;
             border-radius: 11px;
             transition: all 0.3s ease;
-            background-color: #dc3545; /* Default red */
+            background-color: var(--danger); /* Default red */
             transform-origin: left; /* Ensure scaling from left */
         }
 
@@ -827,8 +818,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     </table>
                     
                     <div class="user-form-actions">
-                        <button type="submit" name="confirm_mapping" class="user-btn-primary">Confirm Mapping & Import Data</button>
-                        <a href="index.php?clear_mapping=1" class="user-btn-secondary">Cancel</a>
+                        <button type="submit" name="confirm_mapping" class="btn">Confirm Mapping & Import Data</button>
+                        <a href="index.php?clear_mapping=1" class="btn btn-secondary">Cancel</a>
                     </div>
                 </form>
                 

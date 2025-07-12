@@ -5,65 +5,35 @@
    CSS CUSTOM PROPERTIES (VARIABLES)
    ===================================================== */
 :root {
-    --primary-color: #0ea5e9;
-    --primary-dark: #0369a1;
-    --text-color: #333333;
     --light-gray: #f0f2f5;
-    --medium-gray: #e1e5eb;
-    --dark-gray: #64748b;
-    --white: #ffffff;
-    --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    --success: #10b981;
-    --warning: #f5a623;
-    --danger: #dc3545;
-    --info: #17a2b8;
-		--light-blue: #e3f2fd;
     --light-green: #e8f5e8;
-    --purple-theme: #667eea;
     --pink-theme: #ffb7e5;
     --text-muted: #495057;
     --border-light: #dee2e6;
     --border-medium: #ced4da;
     --background-light: #f8f9fa;
-    --background-white: #ffffff;
     --text-primary: #1565c0;
-    --text-warning: #856404;
-    --admin-bg: #343a40;
-    --admin-text: #ffffff;
     --hover-gray: #545b62;
-    --error-text: #721c24;
-    --border-warning: #ffc107;
-    --danger-hover: #b02a5b;
-    --warning-hover: #6c5103;
 }
 
 /* =====================================================
    GLOBAL RESET AND BASE STYLES
    ===================================================== */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    color: var(--text-color);
-    background-color: var(--light-blue);
-    line-height: 1.6;
-}
 
 .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease-out forwards;
 }
 
 /* =====================================================
    HEADER AND NAVIGATION
    ===================================================== */
 header {
-    background-color: var(--white);
+    background-color: white;
     padding: 1rem 2rem;
     border-radius: 10px;
     box-shadow: var(--shadow);
@@ -86,80 +56,9 @@ nav ul {
     padding: 0;
 }
 
-nav a {
-    display: block;
-    padding: 10px 15px;
-    border-radius: 5px;
-    font-weight: 500;
-    color: var(--text-color);
-    transition: all 0.3s ease;
-    text-decoration: none;
-}
-
-nav a:hover, 
-nav a.active {
-    background-color: var(--primary-color);
-    color: var(--white);
-}
-
-nav .logout {
-		color: var(--black);
-		margin-left: auto;
-}
-
-nav .logout:hover {
-		background-color: var(--danger);
-		color: var(--white);
-}
-
-/* =====================================================
-   FOOTER STYLES
-   ===================================================== */
-footer {
-		background-color: #fff;
-		color: white;
-		padding: 2rem;
-		text-align: center;
-		margin-bottom: 0;
-		border-radius: 10px;
-		margin-top: 2rem;
-		z-index: 100;
-		box-shadow: var(--shadow);
-}
-
-.footer-content {
-		color: var(--text-color);
-		max-width: 800px;
-		margin: 0 auto;
-}
-
-.footer-links a {
-		color: var(--primary-color);
-		text-decoration: none;
-		margin: 0 1rem;
-		transition: color 0.5s;
-}
-
-.footer-links a:hover {
-		color: var(--primary-dark);
-		text-decoration: underline;
-}
-
 /* =====================================================
    MAIN CONTENT AREAS
    ===================================================== */
-main {
-    margin-bottom: 30px;
-}
-
-section {
-    background-color: var(--white);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: var(--shadow);
-}
-
 .card {
 	margin-bottom: 30px;
 	padding: 24px;
@@ -226,21 +125,12 @@ section {
 
 /* Welcome Section */
 .welcome-section {
-    background-color: var(--white);
+    background-color: white;
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 20px;
     box-shadow: var(--shadow);
     text-align: center;
-}
-
-/* Upload Section Styling */
-.upload-section {
-    background-color: var(--white);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
-    box-shadow: var(--shadow);
 }
 
 .fix-guide {
@@ -536,143 +426,27 @@ label {
 }
 
 .file-input-button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background-color: var(--primary-color);
-    color: var(--white);
-    padding: 8px 16px;
-    border: none;
-    border-radius: 8px;
-		font-family: inherit;
-    font-size: 1rem;
-    font-weight: 500;
+    display: inline-block;
+    padding: 12px 20px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
-    text-decoration: none;
+    font-weight: 500;
     text-align: center;
-    justify-content: center;
-    width: auto;
-    border: 2px solid transparent;
+    border: 2px dashed transparent;
+    position: relative;
+    z-index: 1;
 }
 
 .file-input-button:hover {
-    background-color: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
-    border-color: var(--primary-color);
+    background: var(--primary-dark);
+    transform: translateY(-1px);
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="date"],
-textarea,
-select {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid var(--medium-gray);
-    border-radius: 8px;
-    font-size: 1rem;
-    font-family: inherit;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
-input[type="date"]:focus,
-textarea:focus,
-select:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(76, 120, 208, 0.1);
-}
-
-/* =====================================================
-   BUTTONS
-   ===================================================== */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background-color: var(--primary-color);
-    color: var(--white);
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-		font-family: inherit;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    text-align: center;
-    justify-content: center;
-}
-
-.btn:hover {
-    background-color: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(76, 120, 208, 0.3);
-    color: var(--white);
-    text-decoration: none;
-}
-
-.btn:active {
-    transform: translateY(0);
-}
-
-.btn-sm {
-    padding: 8px 16px;
-    font-size: 0.875rem;
-}
-
-.btn.active {
-    background-color: var(--primary-dark);
-}
-
-/* Button Variants */
-.btn-secondary {
-    background-color: var(--dark-gray);
-}
-
-.btn-secondary:hover {
-    background-color: #545b62;
-}
-
-.btn-success {
-    background-color: var(--success);
-}
-
-.btn-success:hover {
-    background-color: #218838;
-}
-
-.btn-danger {
-    background-color: var(--danger);
-}
-
-.btn-danger:hover {
-    background-color: #c82333;
-}
-
-.btn-warning {
-    background-color: var(--warning);
-    color: #212529;
-}
-
-.btn-warning:hover {
-    background-color: #e0a800;
-    color: #212529;
-}
-
-.btn-info {
-    background-color: var(--info);
-}
-
-.btn-info:hover {
-    background-color: #138496;
+.file-input-button i {
+    margin-right: 8px;
 }
 
 /* =====================================================
@@ -821,35 +595,20 @@ select:focus {
     border-left: 4px solid var(--warning);
 }
 
-.progress-stage.warning .stage-icon {
+.progress-stage.warning .stage-icon,
+.progress-stage.error .stage-icon {
     background-color: var(--warning);
     color: #856404;
 }
 
-.progress-stage.warning .progress-fill {
+.progress-stage.warning .progress-fill,
+.progress-stage.error .progress-fill {
     background-color: var(--warning);
 }
 
-.progress-stage.warning .stage-text {
-    color: #856404;
-}
-
-/* Differentiate between error and warning */
-.progress-stage.warning {
-    border-left: 4px solid var(--warning);
-}
-
-.progress-stage.warning .stage-icon {
-    background-color: var(--warning);
-    color: #856404;
-}
-
-.progress-stage.warning .progress-fill {
-    background-color: var(--warning);
-}
-
-.progress-stage.warning .stage-text {
-    color: #856404;
+.progress-stage.warning .stage-text,
+.progress-stage.error .stage-text {
+   color: #856404;
 }
 
 .progress-fill::after {
@@ -964,7 +723,7 @@ select:focus {
    DASHBOARD CARDS
    ===================================================== */
 .dashboard-links {
-    background-color: var(--white);
+    background-color: white;
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 20px;
@@ -1251,23 +1010,6 @@ select:focus {
     animation: spin 1s linear infinite;
 }
 
-/* Keyframe animations for transitions */
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-@keyframes fadeInScale {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-    }
-}
-
 /* Enhanced sample data display states */
 .sample-data-display.transitioning {
     opacity: 0.5;
@@ -1392,7 +1134,7 @@ select:focus {
 
 /* User Annotations */
 .user-annotations-section {
-    background-color: var(--white);
+    background-color: white;
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 20px;
@@ -1502,7 +1244,7 @@ select:focus {
 
 /* User Mapping Page Styles */
 .user-mapping-section {
-    background-color: var(--white);
+    background-color: white;
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 20px;
@@ -1593,21 +1335,14 @@ select:focus {
     font-size: 0.8rem;
     font-weight: 600;
     z-index: 10;
-    /* Dynamic text color based on background */
-    color: var(--text-color) !important; /* Default dark text for gray background */
-    text-shadow: 0 1px 2px rgba(255,255,255,0.8) !important; /* Light shadow for contrast */
+    color: var(--text-color);
+    text-shadow: 0 1px 2px rgba(255,255,255,0.8);
     transition: all 0.3s ease;
 }
 
-/* Override text color when progress bar has sufficient fill */
-.user-confidence-bar .user-confidence-fill[style*="width: 5"], /* 50%+ */
-.user-confidence-bar .user-confidence-fill[style*="width: 6"], /* 60%+ */
-.user-confidence-bar .user-confidence-fill[style*="width: 7"], /* 70%+ */
-.user-confidence-bar .user-confidence-fill[style*="width: 8"], /* 80%+ */
-.user-confidence-bar .user-confidence-fill[style*="width: 9"] + span, /* 90%+ */
-.user-confidence-bar .user-confidence-fill[style*="width: 100"] + span {
-    color: #fff !important; /* White text when progress bar covers the text */
-    text-shadow: 0 1px 2px rgba(0,0,0,0.7) !important; /* Dark shadow for white text */
+.user-confidence-fill.high + span {
+    color: white;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.7);
 }
 
 /* Special handling for yellow/warning confidence bars */
@@ -1621,49 +1356,6 @@ select:focus {
     display: flex;
     gap: 15px;
     align-items: center;
-}
-
-.user-btn-primary {
-    background-color: var(--primary-color);
-    color: white;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-		font-family: inherit;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.user-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-}
-
-.user-btn-secondary {
-    background-color: #6c757d;
-    color: white;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 8px;
-		font-family: inherit;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    text-decoration: none;
-}
-
-.user-btn-secondary:hover {
-    background-color: #545b62;
-		color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
 }
 
 .user-sample-data {
@@ -1707,6 +1399,8 @@ select:focus {
 .compare-user-metric-box {
     background-color: #f8f9fa;
     border-radius: 6px;
+		justify-content: center;
+		align-content: center;
     padding: 15px;
     text-align: center;
     margin-bottom: 10px;
@@ -1732,43 +1426,6 @@ select:focus {
 .compare-user-upload-form {
 		margin-top: 20px;
     margin-bottom: 30px;
-}
-
-.compare-file-input-group {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-.compare-user-file-input-group {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-.compare-file-input-group > div,
-.compare-user-file-input-group > div {
-    flex: 1;
-}
-
-.compare-file-input-group label,
-.compare-user-file-input-group label {
-    display: block;
-    margin-bottom: 5px;
-}
-
-.compare-file-input-group input,
-.compare-user-file-input-group input {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.compare-file-input-group small,
-.compare-user-file-input-group small {
-    color: #666;
-    font-size: 12px;
 }
 
 .compare-btn-submit,
@@ -2165,12 +1822,6 @@ select:focus {
 
 /* Responsive adjustments for compare page */
 @media (max-width: 768px) {
-    .compare-file-input-group,
-    .compare-user-file-input-group {
-        flex-direction: column;
-        gap: 15px;
-    }
-    
     .compare-stats-grid,
     .compare-user-stats-grid {
         grid-template-columns: 1fr;
@@ -2222,61 +1873,9 @@ select:focus {
 }
 
 /* =====================================================
-   ANIMATIONS
-   ===================================================== */
-@keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: scale(1.05);
-        opacity: 0.8;
-    }
-}
-
-@keyframes shimmer {
-    0% {
-        transform: translateX(-100%);
-    }
-    100% {
-        transform: translateX(100%);
-    }
-}
-
-@keyframes bounce {
-    0%, 20%, 50%, 80%, 100% {
-        transform: translateY(0);
-    }
-    40% {
-        transform: translateY(-30px);
-    }
-    60% {
-        transform: translateY(-15px);
-    }
-}
-
-/* =====================================================
    RESPONSIVE DESIGN
    ===================================================== */
-@media (max-width: 768px) {
-    /* Header and Navigation */
-    header {
-        flex-direction: column;
-        gap: 15px;
-        text-align: center;
-    }
-    
-    nav ul {
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    
-    nav a {
-        padding: 8px 12px;
-        font-size: 14px;
-    }
-    
+@media (max-width: 768px) {    
     /* Dashboard Cards */
     .dashboard-cards {
         grid-template-columns: 1fr;
@@ -2312,41 +1911,10 @@ select:focus {
     }
 }
 
-@media (max-width: 480px) {
-    /* Base Adjustments */
-    .container {
-        padding: 10px;
-    }
-    
-    /* Typography */
-    h1 {
-        font-size: 1.8rem;
-    }
-    
-    h2 {
-        font-size: 1.5rem;
-    }
-    
-    /* Sections */
-    section {
-        padding: 15px;
-        margin-bottom: 15px;
-    }
-    
+@media (max-width: 480px) {    
     /* Cards */
     .card {
         padding: 15px;
-    }
-    
-    /* Buttons */
-    .btn {
-        padding: 10px 16px;
-        font-size: 0.9rem;
-    }
-    
-    .btn-sm {
-        padding: 6px 12px;
-        font-size: 0.8rem;
     }
     
     /* Charts */
@@ -2392,78 +1960,6 @@ select:focus {
 }
 
 /* =====================================================
-   UTILITY CLASSES
-   ===================================================== */
-.text-center {
-    text-align: center;
-}
-
-.text-left {
-    text-align: left;
-}
-
-.text-right {
-    text-align: right;
-}
-
-.mt-0 { margin-top: 0; }
-.mt-1 { margin-top: 0.5rem; }
-.mt-2 { margin-top: 1rem; }
-.mt-3 { margin-top: 1.5rem; }
-.mt-4 { margin-top: 2rem; }
-
-.mb-0 { margin-bottom: 0; }
-.mb-1 { margin-bottom: 0.5rem; }
-.mb-2 { margin-bottom: 1rem; }
-.mb-3 { margin-bottom: 1.5rem; }
-.mb-4 { margin-bottom: 2rem; }
-
-.p-0 { padding: 0; }
-.p-1 { padding: 0.5rem; }
-.p-2 { padding: 1rem; }
-.p-3 { padding: 1.5rem; }
-.p-4 { padding: 2rem; }
-
-.d-none { display: none; }
-.d-block { display: block; }
-.d-flex { display: flex; }
-.d-grid { display: grid; }
-
-.w-100 { width: 100%; }
-.h-100 { height: 100%; }
-
-/* =====================================================
-   PRINT STYLES
-   ===================================================== */
-@media print {
-    .no-print {
-        display: none !important;
-    }
-    
-    body {
-        background-color: white;
-        color: black;
-    }
-    
-    .container {
-        max-width: none;
-        padding: 0;
-    }
-    
-    header,
-    footer,
-    nav {
-        display: none;
-    }
-    
-    section {
-        box-shadow: none;
-        border: 1px solid #ddd;
-        break-inside: avoid;
-    }
-}
-
-/* =====================================================
    ACCESSIBILITY ENHANCEMENTS
    ===================================================== */
 /* Focus indicators */
@@ -2471,80 +1967,6 @@ select:focus {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
 }
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-    
-    .user-chart-container,
-    .user-sources-chart-container {
-        height: 300px;
-    }
-    
-    .user-chart-type-toggle {
-        flex-wrap: wrap;
-        gap: 5px;
-    }
-    
-    .user-chart-type-toggle .btn {
-        font-size: 12px;
-        padding: 6px 12px;
-    }
-    
-    .user-export-controls {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .user-export-btn {
-        justify-content: center;
-        width: 100%;
-    }
-    
-    .user-data-table {
-        font-size: 14px;
-    }
-    
-    .user-data-table th,
-    .user-data-table td {
-        padding: 8px;
-    }
-    
-    .user-sources-table-container {
-        overflow-x: scroll;
-    }
-}
-
-@media (max-width: 480px) {
-    .user-chart-container,
-    .user-sources-chart-container {
-        height: 250px;
-    }
-    
-    .user-data-table {
-        font-size: 12px;
-    }
-    
-    .user-data-table th,
-    .user-data-table td {
-        padding: 6px;
-    }
-    
-    .user-export-btn {
-        font-size: 0.8rem;
-        padding: 0.5rem 1rem;
-    }
-}
-
-/* =====================================================
-   ACCESSIBILITY ENHANCEMENTS
-   ===================================================== */
 
 /* Chart Legend Positioning */
 .user-chart-legend-right {
