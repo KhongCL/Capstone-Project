@@ -238,8 +238,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         $error_message = "Please map at least one column before proceeding.";
         error_log("ERROR: No columns mapped");
     } else {
+        $mappedFields = array_values($columnMapping);
+        $hasTrafficSource = in_array('traffic_source', $mappedFields);
+        $hasMetric = array_intersect(['visits', 'sessions', 'users', 'pageviews', 'events_per_session', 'key_events', 'total_revenue'], $mappedFields);
+
+        if (!$hasTrafficSource) {
+            $error_message = "Please map at least one 'Traffic Source' column for meaningful analytics. This helps identify where your visitors are coming from.";
+            error_log("ERROR: No traffic source mapped");
+        } elseif (empty($hasMetric)) {
+            $error_message = "Please map at least one metric column (Visits, Sessions, Users, Events, Revenue, etc.) to analyze your data properly.";
+            error_log("ERROR: No metrics mapped");
+        } else {
+
         error_log("Starting data transformation for comparison file...");
-        
+
         // For manual mapping cases, we need to determine the format
         $format = null;
         if (isset($mappingResult['format']) && $mappingResult['format']) {
@@ -471,6 +483,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             $error_message = 'Error processing data: ' . $e->getMessage();
         }
     }
+}
     
     error_log("=== END FORM PROCESSING ===");
 }
