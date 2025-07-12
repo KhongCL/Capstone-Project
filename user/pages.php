@@ -119,27 +119,19 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
       		  </div>
       		<?php endif; ?>
 								
-      		<?php if ($dataQuality['source_type'] === 'estimated'): ?>
-      		  <div class="data-quality-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; 		margin-bottom: 20px; border-radius: 5px;">
-      		    <h4 class="data-quality-title">📊 Data Quality Notice</h4>
-      		    <p class="data-quality-text">
-      		      <?php if ($dataQuality['estimation_method'] === 'sessions_70_percent_rule'): ?>
-      		        <strong>Estimated Unique Visitors:</strong> Your CSV doesn't contain unique visitor data. We've 		estimated it as 70% of sessions based on industry averages.
-      		      <?php elseif ($dataQuality['estimation_method'] === 'sessions_60_percent_rule'): ?>
-      		        <strong>Rough Estimate:</strong> Limited data available. Unique visitors estimated as 60% of 		available session data.
-      		      <?php endif ?>
-      		      <br><>💡 For more accurate data, upload a CSV with both page views and unique visitor metrics.</		small>
-      		    </p>
-      		  </div>
-      		  <?php elseif ($dataQuality['estimation_method'] === 'sessions_as_page_views'): ?>
-      		  <div class="data-quality-notice" style="background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; 		margin-bottom: 20px; border-radius: 5px;">
-      		    <h4 class="data-source-title">ℹ️ Data Source Information</h4>
-      		    <p class="data-source-text">
-      		      <strong>Using Sessions as Page Views:</strong> Your CSV contains session data which we're using as 		page view metrics.
-      		      <br><small>This provides accurate relative comparisons between traffic sources.</small>
-      		    </p>
-      		  </div>
-      		<?php endif ?>
+          <?php if ($dataQuality['source_type'] === 'estimated'): ?>
+            <div class="data-quality-notice" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+              <h4 class="data-quality-title">📊 Data Quality Notice</h4>
+              <p class="data-quality-text">
+                <?php if ($dataQuality['estimation_method'] === 'proportional_distribution'): ?>
+                  <strong>Proportionally Distributed Visitors:</strong> Your CSV doesn't contain unique visitor data. We've distributed the estimated total visitors proportionally across pages based on session volume.
+                <?php elseif ($dataQuality['estimation_method'] === 'sessions_70_percent_rule'): ?>
+                  <strong>Estimated Unique Visitors:</strong> Your CSV doesn't contain unique visitor data. We've estimated it as 70% of sessions based on industry averages.
+                <?php endif ?>
+                <br><small>💡 For more accurate data, upload a CSV with both page views and unique visitor metrics.</small>
+              </p>
+            </div>
+          <?php endif ?>
 						
       		<div class="user-chart-section">
       		  <h3><i class="fas fa-chart-bar"></i> Most Visited Pages</h3>

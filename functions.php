@@ -666,7 +666,6 @@ function getTopVisitedPages($conn, $limit = 10) {
     ];
     
     try {
-        // Get current upload ID using sample-aware function
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
@@ -685,12 +684,14 @@ function getTopVisitedPages($conn, $limit = 10) {
         
         error_log("Getting pages data for upload ID: $latestUpload");
         
-        // Strategy 1: Try Sessions + estimate visitors from sessions
+        // Get total unique visitors from overview metrics to maintain consistency
+        $overviewMetrics = getKeyMetrics($conn, $latestUpload);
+        $totalEstimatedVisitors = $overviewMetrics['unique_visitors'];
+        
+        // Get sessions data (same as before)
         $query = "SELECT 
                     st.SourceName as page_url,
-                    SUM(pdp.Value) as page_views,
-                    ROUND(SUM(pdp.Value) * 0.7) as unique_visitors,
-                    'estimated' as visitor_type
+                    SUM(pdp.Value) as page_views
                   FROM PROCESSED_DATA_POINT pdp
                   JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
                   JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
@@ -707,33 +708,101 @@ function getTopVisitedPages($conn, $limit = 10) {
         $result = $stmt->get_result();
         
         if ($result && $result->num_rows > 0) {
+            $totalSessions = 0;
+            $tempData = [];
+            
+            // First pass: collect data and calculate totals
             while ($row = $result->fetch_assoc()) {
-                // Make sure we have at least 1 visitor to avoid division by zero
-                if ($row['unique_visitors'] < 1) {
-                    $row['unique_visitors'] = 1;
-                }
-                $data[] = $row;
-                error_log("Found page: " . $row['page_url'] . " with " . $row['page_views'] . " views");
+                $tempData[] = $row;
+                $totalSessions += $row['page_views'];
             }
-            $dataQuality = [
-                'source_type' => 'estimated',
-                'estimation_method' => 'sessions_70_percent_rule',
-                'confidence_level' => 'medium'
-            ];
+            
+            // Second pass: distribute estimated visitors proportionally
+            if ($totalEstimatedVisitors !== 'N/A' && $totalSessions > 0) {
+                $distributedVisitors = 0;
+                $processedPages = [];
+                
+                // Calculate proportional visitors for each page (except the last one)
+                for ($i = 0; $i < count($tempData) - 1; $i++) {
+                    $row = $tempData[$i];
+                    $proportionalVisitors = round(($row['page_views'] / $totalSessions) * $totalEstimatedVisitors);
+                    
+                    // Ensure at least 1 visitor per page
+                    if ($proportionalVisitors < 1) {
+                        $proportionalVisitors = 1;
+                    }
+                    
+                    $processedPages[] = [
+                        'page_url' => $row['page_url'],
+                        'page_views' => $row['page_views'],
+                        'unique_visitors' => $proportionalVisitors
+                    ];
+                    
+                    $distributedVisitors += $proportionalVisitors;
+                }
+                
+                // For the last page, assign the remainder to ensure exact total
+                if (count($tempData) > 0) {
+                    $lastRow = $tempData[count($tempData) - 1];
+                    $remainingVisitors = $totalEstimatedVisitors - $distributedVisitors;
+                    
+                    // Ensure at least 1 visitor for the last page
+                    if ($remainingVisitors < 1) {
+                        $remainingVisitors = 1;
+                        // Adjust one of the previous pages to maintain total
+                        if (count($processedPages) > 0 && $processedPages[0]['unique_visitors'] > 1) {
+                            $processedPages[0]['unique_visitors']--;
+                        }
+                    }
+                    
+                    $processedPages[] = [
+                        'page_url' => $lastRow['page_url'],
+                        'page_views' => $lastRow['page_views'],
+                        'unique_visitors' => $remainingVisitors
+                    ];
+                }
+                
+                $data = $processedPages;
+                
+                // Verify total for logging
+                $actualTotal = array_sum(array_column($data, 'unique_visitors'));
+                error_log("Proportional distribution: Target=$totalEstimatedVisitors, Actual=$actualTotal");
+                
+                $dataQuality = [
+                    'source_type' => 'estimated',
+                    'estimation_method' => 'proportional_distribution',
+                    'confidence_level' => 'medium'
+                ];
+            } else {
+                // Fallback to individual estimation if overview data unavailable
+                foreach ($tempData as $row) {
+                    $estimatedVisitors = round($row['page_views'] * 0.7);
+                    if ($estimatedVisitors < 1) {
+                        $estimatedVisitors = 1;
+                    }
+                    
+                    $data[] = [
+                        'page_url' => $row['page_url'],
+                        'page_views' => $row['page_views'],
+                        'unique_visitors' => $estimatedVisitors
+                    ];
+                }
+                
+                $dataQuality = [
+                    'source_type' => 'estimated',
+                    'estimation_method' => 'sessions_70_percent_rule',
+                    'confidence_level' => 'low'
+                ];
+            }
+            
+            error_log("Pages data processed with " . count($data) . " pages");
         }
-        
-        // Store data quality info in session for UI display
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
-        $_SESSION['pages_data_quality'] = $dataQuality;
-        
-        error_log("Data quality: " . json_encode($dataQuality));
-        error_log("Found " . count($data) . " page records for upload $latestUpload");
-        
     } catch (Exception $e) {
-        error_log("Error getting page data: " . $e->getMessage());
+        error_log("Error getting pages data: " . $e->getMessage());
     }
+    
+    // Store data quality info
+    $_SESSION['pages_data_quality'] = $dataQuality;
     
     return $data;
 }
