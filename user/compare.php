@@ -2347,7 +2347,7 @@ function calculateStats($values) {
         <?php include 'user_header.php'; ?>
 
         <main>
-			<section class="user-section">
+						<section class="user-section">
             		<h2>Analytics CSV Comparison</h2>
             		<p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
 

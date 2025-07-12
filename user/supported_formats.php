@@ -38,79 +38,33 @@ $active_page = "supported_formats";
             --gray-100: #f1f5f9;
             --gray-200: #e2e8f0;
         }
-
-        body {
-            background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 50%, #bae6fd 100%);
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
+				
         .formats-content {
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem 1rem;
             opacity: 0;
             transform: translateY(20px);
-            animation: fadeInUp 0.8s ease-out forwards;
         }
 
-        @keyframes fadeInUp {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .hero-section {
-    background: #0ea5e9;
-    color: white;
-    padding: 3rem 2rem;
-    border-radius: 1rem;
-    margin-bottom: 2rem;
-    text-align: center;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    backdrop-filter: blur(10px);
-    animation: slideInDown 0.8s ease-out 0.2s both;
-    position: relative;
-    overflow: hidden;
-}
-
-.hero-section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.05)"/><circle cx="20" cy="80" r="0.5" fill="rgba(255,255,255,0.05)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-    opacity: 0.3;
-    pointer-events: none;
-}
-
-.hero-section > * {
-    position: relative;
-    z-index: 1;
-}
+					.hero-section {
+						background: #0ea5e9;
+						color: white;
+						text-align: center;
+						backdrop-filter: blur(10px);
+						position: relative;
+						overflow: hidden;
+						border-radius: 1rem;
+						padding: 2rem;
+						margin-bottom: 2rem;
+						box-shadow: var(--shadow);
+						border: 1px solid rgba(226, 232, 240, 0.6);
+				}
 
         .hero-section h1 {
-            margin: 0 0 1rem 0;
+						color: white;
             font-size: 2.5rem;
             font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.75rem;
-        }
-
-        .formats-content .hero-section h1 {
-            color: white;
-        }
-
-        :root {
-            --hero-text-color: white;
-        }
-        .hero-section h1 {
-            color: var(--hero-text-color);
         }
 
         .hero-section p {
@@ -139,22 +93,9 @@ $active_page = "supported_formats";
             padding: 2rem;
             margin-bottom: 2rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            animation: slideInLeft 0.8s ease-out 0.4s both;
-        }
-
-        @keyframes slideInLeft {
-            from {
-                opacity: 0;
-                transform: translateX(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
         }
 
         .export-guide h2 {
-            color: #065f46;
             margin-top: 0;
             margin-bottom: 1rem;
             display: flex;
@@ -165,7 +106,6 @@ $active_page = "supported_formats";
         }
 
         .export-guide > p {
-            color: #047857;
             margin-bottom: 1.5rem;
             font-size: 1.1rem;
         }
@@ -193,7 +133,6 @@ $active_page = "supported_formats";
         }
 
         .platform-card h3 {
-            color: var(--dark-gray);
             margin-top: 0;
             margin-bottom: 1rem;
             display: flex;
@@ -232,21 +171,6 @@ $active_page = "supported_formats";
             font-size: 0.75rem;
             font-weight: 600;
             margin-top: 0.125rem;
-        }
-
-        .formats-section {
-            animation: slideInUp 0.8s ease-out 0.6s both;
-        }
-
-        @keyframes slideInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .section-header {
@@ -289,26 +213,13 @@ $active_page = "supported_formats";
             overflow: hidden;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
-            opacity: 0;
-            transform: translateY(20px);
-            animation: staggerIn 0.6s ease-out forwards;
+            opacity: 1;
+            transform: translateY(2px);
         }
 
-        .format-card:nth-child(1) { animation-delay: 0.1s; }
-        .format-card:nth-child(2) { animation-delay: 0.2s; }
-        .format-card:nth-child(3) { animation-delay: 0.3s; }
-        .format-card:nth-child(4) { animation-delay: 0.4s; }
-        .format-card:nth-child(5) { animation-delay: 0.5s; }
 
-        @keyframes staggerIn {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .format-header {
-    background: #0369a1;
+.format-header {
+    background: var(--primary-dark);
     color: white;
     padding: 1.5rem;
     cursor: pointer;
@@ -320,24 +231,9 @@ $active_page = "supported_formats";
     overflow: hidden;
 }
 
-.format-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-    transition: left 0.5s ease;
-}
-
-.format-header:hover::before {
-    left: 100%;
-}
 
 .format-header:hover {
-    background: #1e40af;
-    transform: translateY(-1px);
+    background: var(--primary-color);
 }
 
 .format-header h3 {
@@ -353,9 +249,9 @@ $active_page = "supported_formats";
     color: white;
 }
 
-        .format-toggle {
+  .format-toggle {
     font-size: 1.25rem;
-    transition: transform 0.3s ease;
+    transition: all 0.3s ease;
     color: white;
 }
 
@@ -508,22 +404,9 @@ $active_page = "supported_formats";
             padding: 2rem;
             margin-top: 2rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            animation: slideInRight 0.8s ease-out 0.8s both;
-        }
-
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
         }
 
         .tips-section h2 {
-            color: #92400e;
             margin-top: 0;
             margin-bottom: 1.5rem;
             display: flex;
@@ -662,19 +545,6 @@ $active_page = "supported_formats";
             }
         }
 
-/* Add visual interest elements */
-.format-card:nth-child(even) {
-    transform: translateX(10px);
-}
-
-.format-card:nth-child(odd) {
-    transform: translateX(-10px);
-}
-
-.format-card:hover {
-    transform: translateY(-2px) translateX(0) scale(1.02);
-}
-
 .stats-highlight {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -694,7 +564,7 @@ $active_page = "supported_formats";
 }
 
 .stat-card:hover {
-    transform: translateY(-4px) rotate(1deg);
+    transform: translateY(-4px);
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
@@ -711,99 +581,20 @@ $active_page = "supported_formats";
     margin-top: 0.5rem;
 }
 
-.visual-separator {
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+.divider {
+    height: 1.5px;
+    background: var(--primary-color);
     margin: 2rem 0;
     border-radius: 1px;
 }
 
-.floating-elements {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.floating-icon {
-    position: absolute;
-    color: rgba(14, 165, 233, 0.1);
-    font-size: 2rem;
-    animation: float 6s ease-in-out infinite;
-}
-
-.floating-icon:nth-child(1) {
-    top: 10%;
-    left: 10%;
-    animation-delay: 0s;
-}
-
-.floating-icon:nth-child(2) {
-    top: 20%;
-    right: 15%;
-    animation-delay: 2s;
-}
-
-.floating-icon:nth-child(3) {
-    bottom: 30%;
-    left: 20%;
-    animation-delay: 4s;
-}
-
-.floating-icon:nth-child(4) {
-    bottom: 10%;
-    right: 10%;
-    animation-delay: 1s;
-}
-
-@keyframes float {
-    0%, 100% {
-        transform: translateY(0px) rotate(0deg);
-    }
-    50% {
-        transform: translateY(-20px) rotate(5deg);
-    }
-}
-
-.section-divider {
-    display: flex;
-    align-items: center;
-    margin: 2rem 0;
-    gap: 1rem;
-}
-
-.section-divider::before,
-.section-divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
-}
-
-.section-divider-icon {
-    background: var(--primary-color);
-    color: white;
-    padding: 0.5rem;
-    border-radius: 50%;
-    font-size: 1rem;
-}
     </style>
 </head>
 <body>
-    <?php include '../header.php'; ?>
+		<div class="container">
+    		<?php include 'user_header.php'; ?>
 
-    <main class="content-page">
-        <div class="formats-content">
-            <!-- Add this as the first child of formats-content div -->
-            <div class="floating-elements">
-                <i class="fas fa-chart-line floating-icon"></i>
-                <i class="fas fa-database floating-icon"></i>
-                <i class="fas fa-file-csv floating-icon"></i>
-                <i class="fas fa-analytics floating-icon"></i>
-            </div>
+    		<main>
             <!-- Hero Section -->
             <div class="hero-section">
                 <h1>
@@ -844,7 +635,7 @@ $active_page = "supported_formats";
                 <div class="platform-steps">
                     <div class="platform-card">
                         <h3>
-                            <span style="font-size: 1.2em;">🔍</span>
+                            <i class="fas fa-magnifying-glass"></i>
                             Google Analytics 4 (GA4)
                         </h3>
                         <ol>
@@ -889,11 +680,7 @@ $active_page = "supported_formats";
                 </div>
             </div>
 
-            <div class="section-divider">
-                <div class="section-divider-icon">
-                    <i class="fas fa-cogs"></i>
-                </div>
-            </div>
+            <div class="divider"></div>
 
             <!-- Supported Formats -->
             <div class="formats-section">
@@ -985,7 +772,8 @@ $active_page = "supported_formats";
             </div>
             
             <!-- Add this before the tips-section div -->
-            <div class="visual-separator"></div>
+            <div class="divider"></div>
+
             <!-- Tips Section -->
             <div class="tips-section">
                 <h2>
@@ -1090,10 +878,13 @@ $active_page = "supported_formats";
                     </div>
                 </div>
             </div>
-        </div>
-    </main>
+ 
+    		</main>
+		
+				<?php include 'user_footer.php'; ?>
+		</div>
 
-    <?php include '../footer.php'; ?>
+		
     
     <script>
         function toggleFormat(formatKey) {

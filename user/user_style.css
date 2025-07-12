@@ -1268,17 +1268,6 @@ select:focus {
     }
 }
 
-@keyframes slideInRight {
-    from {
-        opacity: 0;
-        transform: translateX(100%);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
 /* Enhanced sample data display states */
 .sample-data-display.transitioning {
     opacity: 0.5;
