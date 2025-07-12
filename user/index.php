@@ -1271,15 +1271,33 @@ error_log("=== END INDEX.PHP DEBUG ===");
                                     <ul class="error-list">
                                         <?php foreach ($uniqueErrors as $error): ?>
                                             <?php
-                                            // Parse error message and suggestions
-                                            $parts = explode(' Suggestions: ', $error);
-                                            $errorMessage = $parts[0];
-                                            $suggestions = isset($parts[1]) ? $parts[1] : '';
+                                            // ENHANCED: Parse error message and suggestions more robustly
+                                            $errorMessage = $error;
+                                            $suggestions = '';
+                                            
+                                            // Handle multiple suggestion patterns
+                                            if (strpos($error, ' Suggestions: ') !== false) {
+                                                $parts = explode(' Suggestions: ', $error, 2);
+                                                $errorMessage = trim($parts[0]);
+                                                $suggestions = trim($parts[1]);
+                                            } elseif (strpos($error, 'Suggestions:') !== false) {
+                                                $parts = explode('Suggestions:', $error, 2);
+                                                $errorMessage = trim($parts[0]);
+                                                $suggestions = trim($parts[1]);
+                                            } elseif (preg_match('/^(.+?)(\s*💡.*$)/s', $error, $matches)) {
+                                                $errorMessage = trim($matches[1]);
+                                                $suggestions = trim(str_replace('💡 Suggestions:', '', $matches[2]));
+                                            }
                                             ?>
                                             <li class="error-item">
-                                                <?php echo htmlspecialchars($errorMessage); ?>
+                                                <div class="error-message">
+                                                    <?php echo htmlspecialchars($errorMessage); ?>
+                                                </div>
                                                 <?php if (!empty($suggestions)): ?>
-                                                    <br><strong>💡 Suggestions:</strong> <?php echo htmlspecialchars($suggestions); ?>
+                                                    <div class="error-suggestions">
+                                                        <strong>💡 Suggestions:</strong>
+                                                        <span class="suggestions-text"><?php echo htmlspecialchars($suggestions); ?></span>
+                                                    </div>
                                                 <?php endif; ?>
                                             </li>
                                         <?php endforeach; ?>
@@ -1806,6 +1824,98 @@ error_log("=== END INDEX.PHP DEBUG ===");
                     console.log('UploadProgressTracker not detected, fallback handlers will be used');
                 }
             }, 600); // Give upload_progress.js time to initialize
+        });
+
+        function parseErrorMessageWithSuggestions(errorText) {
+            let errorMessage = errorText;
+            let suggestions = '';
+            
+            // Handle multiple suggestion patterns
+            if (errorText.includes(' Suggestions: ')) {
+                const parts = errorText.split(' Suggestions: ');
+                errorMessage = parts[0].trim();
+                suggestions = parts[1].trim();
+            } else if (errorText.includes('Suggestions:')) {
+                const parts = errorText.split('Suggestions:');
+                errorMessage = parts[0].trim();
+                suggestions = parts[1].trim();
+            } else if (errorText.match(/^(.+?)(\s*💡.*$)/s)) {
+                const matches = errorText.match(/^(.+?)(\s*💡.*$)/s);
+                errorMessage = matches[1].trim();
+                suggestions = matches[2].replace('💡 Suggestions:', '').trim();
+            }
+            
+            return { errorMessage, suggestions };
+        }
+
+        // Enhanced DOM observer for dynamically added error messages
+        const errorObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) { // Element node
+                        // Check if this is an error container
+                        if (node.classList && node.classList.contains('error-container')) {
+                            processErrorContainer(node);
+                        }
+                        
+                        // Check for error containers within added content
+                        const errorContainers = node.querySelectorAll && node.querySelectorAll('.error-container');
+                        if (errorContainers) {
+                            errorContainers.forEach(processErrorContainer);
+                        }
+                    }
+                });
+            });
+        });
+
+        function processErrorContainer(container) {
+            const errorItems = container.querySelectorAll('.error-item');
+            errorItems.forEach(function(item) {
+                // Check if suggestions are already properly formatted
+                if (item.querySelector('.error-suggestions')) {
+                    return; // Already processed
+                }
+                
+                // Look for inline suggestions in the error message
+                const messageElement = item.querySelector('.error-message');
+                if (messageElement) {
+                    const fullText = messageElement.textContent;
+                    const parsed = parseErrorMessageWithSuggestions(fullText);
+                    
+                    if (parsed.suggestions) {
+                        // Update error message to only show the error part
+                        messageElement.textContent = parsed.errorMessage;
+                        
+                        // Create suggestions container
+                        const suggestionsDiv = document.createElement('div');
+                        suggestionsDiv.className = 'error-suggestions';
+                        
+                        const suggestionLabel = document.createElement('strong');
+                        suggestionLabel.textContent = '💡 Suggestions: ';
+                        suggestionsDiv.appendChild(suggestionLabel);
+                        
+                        const suggestionText = document.createElement('span');
+                        suggestionText.className = 'suggestions-text';
+                        suggestionText.textContent = parsed.suggestions;
+                        suggestionsDiv.appendChild(suggestionText);
+                        
+                        // Add suggestions after the error message
+                        item.appendChild(suggestionsDiv);
+                    }
+                }
+            });
+        }
+
+        // Start observing
+        errorObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // Process any existing error containers on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const existingErrorContainers = document.querySelectorAll('.error-container');
+            existingErrorContainers.forEach(processErrorContainer);
         });
     </script>
 </body>

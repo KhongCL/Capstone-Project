@@ -1375,11 +1375,11 @@ class UploadProgressTracker {
 
     showDetailedErrors(response) {
         const uploadSection = document.querySelector('.upload-section');
-        
+
         // Remove any existing error displays
         const existingErrors = uploadSection.querySelectorAll('.error-container, .validation-help');
         existingErrors.forEach(el => el.remove());
-        
+
         if (response.errors && response.errors.length > 0) {
             // Create detailed error display for errors array
             const errorContainer = document.createElement('div');
@@ -1387,7 +1387,7 @@ class UploadProgressTracker {
             
             const errorSummary = document.createElement('p');
             errorSummary.className = 'error-summary';
-            errorSummary.textContent = `Found ${response.errors.length} validation errors in your CSV file:`;
+            errorSummary.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Found ${response.errors.length} validation errors in your CSV file:`;
             errorContainer.appendChild(errorSummary);
             
             const errorList = document.createElement('ul');
@@ -1397,41 +1397,51 @@ class UploadProgressTracker {
                 const errorItem = document.createElement('li');
                 errorItem.className = 'error-item';
                 
-                const errorMessage = document.createElement('div');
-                errorMessage.className = 'error-message';
+                let errorMessage = '';
+                let suggestions = '';
                 
                 // Handle both string and object error formats
                 if (typeof error === 'object' && error.message) {
-                    errorMessage.textContent = error.message;
+                    errorMessage = error.message;
+                    suggestions = error.suggestions || '';
                 } else if (typeof error === 'string') {
-                    // For backward compatibility, split string if it contains suggestions
+                    // ENHANCED: Handle multiple suggestion patterns
                     if (error.includes(' Suggestions: ')) {
                         const parts = error.split(' Suggestions: ');
-                        errorMessage.textContent = parts[0];
-                        error = { message: parts[0], suggestions: parts[1] };
+                        errorMessage = parts[0];
+                        suggestions = parts[1];
+                    } else if (error.includes('Suggestions:')) {
+                        const parts = error.split('Suggestions:');
+                        errorMessage = parts[0].trim();
+                        suggestions = parts[1].trim();
                     } else {
-                        errorMessage.textContent = error;
-                        error = { message: error, suggestions: '' };
+                        errorMessage = error;
+                        suggestions = '';
                     }
                 }
                 
-                errorItem.appendChild(errorMessage);
+                // Create error message element
+                const errorMessageDiv = document.createElement('div');
+                errorMessageDiv.className = 'error-message';
+                errorMessageDiv.textContent = errorMessage.trim();
+                errorItem.appendChild(errorMessageDiv);
                 
-                // Add suggestions if they exist
-                if (error.suggestions && error.suggestions.trim() !== '') {
-                    const suggestions = document.createElement('div');
-                    suggestions.className = 'error-suggestions';
+                // CRITICAL FIX: Add suggestions in yellow container if they exist
+                if (suggestions && suggestions.trim() !== '') {
+                    const suggestionsDiv = document.createElement('div');
+                    suggestionsDiv.className = 'error-suggestions';
                     
                     const suggestionLabel = document.createElement('strong');
                     suggestionLabel.textContent = '💡 Suggestions: ';
-                    suggestions.appendChild(suggestionLabel);
+                    suggestionsDiv.appendChild(suggestionLabel);
                     
                     const suggestionText = document.createElement('span');
                     suggestionText.className = 'suggestions-text';
-                    suggestionText.textContent = error.suggestions;
-                    suggestions.appendChild(suggestionText);
+                    suggestionText.textContent = suggestions.trim();
+                    suggestionsDiv.appendChild(suggestionText);
                     
-                    errorItem.appendChild(suggestions);
+                    errorItem.appendChild(suggestionsDiv);
+                    console.log('Added suggestion container for:', suggestions);
                 }
                 
                 errorList.appendChild(errorItem);
@@ -1454,7 +1464,7 @@ class UploadProgressTracker {
             if (response.message.includes('\n')) {
                 const errorSummary = document.createElement('p');
                 errorSummary.className = 'error-summary';
-                errorSummary.textContent = 'CSV Structure Errors Detected:';
+                errorSummary.innerHTML = '<i class="fas fa-exclamation-triangle"></i> CSV Structure Errors Detected:';
                 errorContainer.appendChild(errorSummary);
                 
                 const errorList = document.createElement('ul');
@@ -1472,21 +1482,83 @@ class UploadProgressTracker {
                     const errorItem = document.createElement('li');
                     errorItem.className = 'error-item';
                     
-                    const errorMessage = document.createElement('div');
-                    errorMessage.className = 'error-message';
-                    errorMessage.textContent = errorLine.trim();
+                    let errorMessage = errorLine.trim();
+                    let suggestions = '';
                     
-                    errorItem.appendChild(errorMessage);
+                    // ENHANCED: Parse suggestions from individual error lines
+                    if (errorMessage.includes(' Suggestions: ')) {
+                        const parts = errorMessage.split(' Suggestions: ');
+                        errorMessage = parts[0];
+                        suggestions = parts[1];
+                    } else if (errorMessage.includes('Suggestions:')) {
+                        const parts = errorMessage.split('Suggestions:');
+                        errorMessage = parts[0].trim();
+                        suggestions = parts[1].trim();
+                    }
+                    
+                    // Create error message element
+                    const errorMessageDiv = document.createElement('div');
+                    errorMessageDiv.className = 'error-message';
+                    errorMessageDiv.textContent = errorMessage;
+                    errorItem.appendChild(errorMessageDiv);
+                    
+                    // Add suggestions if they exist
+                    if (suggestions && suggestions.trim() !== '') {
+                        const suggestionsDiv = document.createElement('div');
+                        suggestionsDiv.className = 'error-suggestions';
+                        
+                        const suggestionLabel = document.createElement('strong');
+                        suggestionLabel.textContent = '💡 Suggestions: ';
+                        suggestionsDiv.appendChild(suggestionLabel);
+                        
+                        const suggestionText = document.createElement('span');
+                        suggestionText.className = 'suggestions-text';
+                        suggestionText.textContent = suggestions;
+                        suggestionsDiv.appendChild(suggestionText);
+                        
+                        errorItem.appendChild(suggestionsDiv);
+                    }
+                    
                     errorList.appendChild(errorItem);
                 });
                 
                 errorContainer.appendChild(errorList);
             } else {
-                // Single line error message
+                // Single line error message - also check for suggestions
+                let errorMessage = response.message;
+                let suggestions = '';
+                
+                if (errorMessage.includes(' Suggestions: ')) {
+                    const parts = errorMessage.split(' Suggestions: ');
+                    errorMessage = parts[0];
+                    suggestions = parts[1];
+                } else if (errorMessage.includes('Suggestions:')) {
+                    const parts = errorMessage.split('Suggestions:');
+                    errorMessage = parts[0].trim();
+                    suggestions = parts[1].trim();
+                }
+                
                 const errorDiv = document.createElement('div');
                 errorDiv.className = 'error-message';
-                errorDiv.textContent = response.message;
+                errorDiv.textContent = errorMessage;
                 errorContainer.appendChild(errorDiv);
+                
+                // Add suggestions if they exist
+                if (suggestions && suggestions.trim() !== '') {
+                    const suggestionsDiv = document.createElement('div');
+                    suggestionsDiv.className = 'error-suggestions';
+                    
+                    const suggestionLabel = document.createElement('strong');
+                    suggestionLabel.textContent = '💡 Suggestions: ';
+                    suggestionsDiv.appendChild(suggestionLabel);
+                    
+                    const suggestionText = document.createElement('span');
+                    suggestionText.className = 'suggestions-text';
+                    suggestionText.textContent = suggestions;
+                    suggestionsDiv.appendChild(suggestionText);
+                    
+                    errorContainer.appendChild(suggestionsDiv);
+                }
             }
             
             // Insert after the form
@@ -1495,12 +1567,12 @@ class UploadProgressTracker {
                 form.parentNode.insertBefore(errorContainer, form.nextSibling);
             }
         }
-        
+
         // Add the validation help section for structure errors
         const validationHelp = document.createElement('div');
         validationHelp.className = 'validation-help';
         validationHelp.innerHTML = `
-            <h4>Quick Fix Guide:</h4>
+            <h4><i class="fas fa-lightbulb"></i> Quick Fix Guide:</h4>
             <div class="fix-guide">
                 <div class="fix-item">
                     <strong>💰 CSV Structure Issues:</strong>
@@ -1544,7 +1616,7 @@ class UploadProgressTracker {
                 </div>
             </div>
         `;
-        
+
         // Insert validation help
         const form = uploadSection.querySelector('form');
         if (form && form.parentNode) {
@@ -1555,11 +1627,11 @@ class UploadProgressTracker {
                 form.parentNode.insertBefore(validationHelp, form.nextSibling);
             }
         }
-        
+
         // Add error footer
         const errorFooter = document.createElement('p');
         errorFooter.className = 'error-footer';
-        errorFooter.textContent = 'Please correct these issues and upload again.';
+        errorFooter.innerHTML = '<strong>Please correct these issues and upload again.</strong>';
         validationHelp.appendChild(errorFooter);
     }
 
