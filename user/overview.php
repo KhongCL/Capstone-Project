@@ -425,6 +425,11 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     }
 
     async function deleteAnnotation(id) {
+        // Show confirmation dialog before deleting
+        if (!confirm('Are you sure you want to delete this annotation? This action cannot be undone.')) {
+            return; // User cancelled, don't proceed with deletion
+        }
+        
         try {
             const response = await fetch('delete_annotation.php', {
                 method: 'POST',

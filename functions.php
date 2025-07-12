@@ -153,7 +153,7 @@ function handleCsvUpload($conn, $file) {
 
                 return [
                     'type' => 'success',
-                    'message' => 'CSV data successfully uploaded and imported!'
+                    'message' => 'CSV file successfully uploaded and processed.'
                 ];
             } else {
                 // CRITICAL: Return the actual error message from saveTransformedData
@@ -211,9 +211,13 @@ function handleCsvUpload($conn, $file) {
                 unset($_SESSION['compare_files']);
                 unset($_SESSION['compare_ready']);
                 unset($_SESSION['compare_error']);
+                unset($_SESSION['compare_file_1_upload_id']);
+                unset($_SESSION['compare_file_2_upload_id']);
                 error_log("CRITICAL: Cleared comparison session data for regular upload needing mapping");
+            } else {
+                error_log("COMPARISON: Preserving session data for comparison upload");
             }
-            
+
             // Check if this is an AJAX request
             $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
@@ -221,36 +225,48 @@ function handleCsvUpload($conn, $file) {
             // IMPROVED: More precise comparison context detection
             $isComparison = $isComparisonUpload;
 
-            // CRITICAL FIX: DON'T clear upload session data for regular uploads needing mapping
-            // The session data is needed for map_columns.php to work properly
+            // CRITICAL FIX: Handle session clearing differently based on context
             if (!$isComparison) {
-                error_log("MAPPING: Preserving session data for regular upload needing mapping");
-                // DON'T clear these - they're needed for map_columns.php:
-                // - $_SESSION['uploaded_csv']
-                // - $_SESSION['mapping_result'] 
-                // - $_SESSION['csv_metadata']
+                // CRITICAL FIX: For regular uploads, preserve mapping session data
+                // These variables are needed by map_columns.php:
+                // - $_SESSION['uploaded_csv'] (file path)
+                // - $_SESSION['mapping_result'] (mapping analysis)
+                // - $_SESSION['csv_metadata'] (file metadata)
                 
-                // Only clear latest_upload_id since no data has been saved yet
+                // Only clear latest_upload_id since no upload record was created yet
                 unset($_SESSION['latest_upload_id']);
+                error_log("MAPPING: Preserved session data for regular mapping page, cleared only latest_upload_id");
             } else {
-                error_log("COMPARISON: Preserving session data for comparison upload");
-                // Don't clear session data for comparison uploads
+                // CRITICAL FIX: For comparison uploads, don't clear session data
+                // The session data will be handled by compare.php
+                error_log("COMPARISON: Preserving all session data for comparison upload");
             }
 
             if ($isAjax) {
                 return [
                     'type' => 'needs_mapping',
                     'message' => 'Manual column mapping required.',
-                    'redirect' => 'map_columns.php'
+                    'redirect' => $isComparison ? 'map_columns_compare.php?file=1' : 'map_columns.php'
                 ];
             } else {
-                // CRITICAL FIX: Use proper comparison detection for redirects
+                // CRITICAL FIX: Different handling for comparison vs regular uploads
                 if ($isComparison) {
-                    header('Location: map_columns_compare.php');
+                    // CRITICAL FIX: For comparison uploads, return result instead of redirecting
+                    // Let compare.php handle the redirect logic
+                    return [
+                        'type' => 'needs_mapping',
+                        'message' => 'Manual column mapping required.',
+                        'original_filename' => $originalName,
+                        'clean_filename' => $originalName,
+                        'file_path' => $filePath,
+                        'needs_mapping' => true
+                    ];
                 } else {
+                    // For regular uploads, redirect to mapping page
+                    error_log("REGULAR UPLOAD REDIRECT: Redirecting to map_columns.php");
                     header('Location: map_columns.php');
+                    exit();
                 }
-                exit();
             }
         } else {
             // Clean up file since there was an error
@@ -259,7 +275,7 @@ function handleCsvUpload($conn, $file) {
             }
             return [
                 'type' => 'error',
-                'message' => $result['message'] ?? 'Unknown error occurred during file processing.'
+                'message' => $result['message'] ?? 'Unknown error processing CSV file.'
             ];
         }
     } catch (Exception $e) {
@@ -650,7 +666,6 @@ function getTopVisitedPages($conn, $limit = 10) {
     ];
     
     try {
-        // Get current upload ID using sample-aware function
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
@@ -669,12 +684,14 @@ function getTopVisitedPages($conn, $limit = 10) {
         
         error_log("Getting pages data for upload ID: $latestUpload");
         
-        // Strategy 1: Try Sessions + estimate visitors from sessions
+        // Get total unique visitors from overview metrics to maintain consistency
+        $overviewMetrics = getKeyMetrics($conn, $latestUpload);
+        $totalEstimatedVisitors = $overviewMetrics['unique_visitors'];
+        
+        // Get sessions data (same as before)
         $query = "SELECT 
                     st.SourceName as page_url,
-                    SUM(pdp.Value) as page_views,
-                    ROUND(SUM(pdp.Value) * 0.7) as unique_visitors,
-                    'estimated' as visitor_type
+                    SUM(pdp.Value) as page_views
                   FROM PROCESSED_DATA_POINT pdp
                   JOIN SOURCE_TYPE st ON pdp.SourceTypeID = st.SourceTypeID
                   JOIN METRIC_TYPE mt ON pdp.MetricTypeID = mt.MetricTypeID
@@ -691,33 +708,101 @@ function getTopVisitedPages($conn, $limit = 10) {
         $result = $stmt->get_result();
         
         if ($result && $result->num_rows > 0) {
+            $totalSessions = 0;
+            $tempData = [];
+            
+            // First pass: collect data and calculate totals
             while ($row = $result->fetch_assoc()) {
-                // Make sure we have at least 1 visitor to avoid division by zero
-                if ($row['unique_visitors'] < 1) {
-                    $row['unique_visitors'] = 1;
-                }
-                $data[] = $row;
-                error_log("Found page: " . $row['page_url'] . " with " . $row['page_views'] . " views");
+                $tempData[] = $row;
+                $totalSessions += $row['page_views'];
             }
-            $dataQuality = [
-                'source_type' => 'estimated',
-                'estimation_method' => 'sessions_70_percent_rule',
-                'confidence_level' => 'medium'
-            ];
+            
+            // Second pass: distribute estimated visitors proportionally
+            if ($totalEstimatedVisitors !== 'N/A' && $totalSessions > 0) {
+                $distributedVisitors = 0;
+                $processedPages = [];
+                
+                // Calculate proportional visitors for each page (except the last one)
+                for ($i = 0; $i < count($tempData) - 1; $i++) {
+                    $row = $tempData[$i];
+                    $proportionalVisitors = round(($row['page_views'] / $totalSessions) * $totalEstimatedVisitors);
+                    
+                    // Ensure at least 1 visitor per page
+                    if ($proportionalVisitors < 1) {
+                        $proportionalVisitors = 1;
+                    }
+                    
+                    $processedPages[] = [
+                        'page_url' => $row['page_url'],
+                        'page_views' => $row['page_views'],
+                        'unique_visitors' => $proportionalVisitors
+                    ];
+                    
+                    $distributedVisitors += $proportionalVisitors;
+                }
+                
+                // For the last page, assign the remainder to ensure exact total
+                if (count($tempData) > 0) {
+                    $lastRow = $tempData[count($tempData) - 1];
+                    $remainingVisitors = $totalEstimatedVisitors - $distributedVisitors;
+                    
+                    // Ensure at least 1 visitor for the last page
+                    if ($remainingVisitors < 1) {
+                        $remainingVisitors = 1;
+                        // Adjust one of the previous pages to maintain total
+                        if (count($processedPages) > 0 && $processedPages[0]['unique_visitors'] > 1) {
+                            $processedPages[0]['unique_visitors']--;
+                        }
+                    }
+                    
+                    $processedPages[] = [
+                        'page_url' => $lastRow['page_url'],
+                        'page_views' => $lastRow['page_views'],
+                        'unique_visitors' => $remainingVisitors
+                    ];
+                }
+                
+                $data = $processedPages;
+                
+                // Verify total for logging
+                $actualTotal = array_sum(array_column($data, 'unique_visitors'));
+                error_log("Proportional distribution: Target=$totalEstimatedVisitors, Actual=$actualTotal");
+                
+                $dataQuality = [
+                    'source_type' => 'estimated',
+                    'estimation_method' => 'proportional_distribution',
+                    'confidence_level' => 'medium'
+                ];
+            } else {
+                // Fallback to individual estimation if overview data unavailable
+                foreach ($tempData as $row) {
+                    $estimatedVisitors = round($row['page_views'] * 0.7);
+                    if ($estimatedVisitors < 1) {
+                        $estimatedVisitors = 1;
+                    }
+                    
+                    $data[] = [
+                        'page_url' => $row['page_url'],
+                        'page_views' => $row['page_views'],
+                        'unique_visitors' => $estimatedVisitors
+                    ];
+                }
+                
+                $dataQuality = [
+                    'source_type' => 'estimated',
+                    'estimation_method' => 'sessions_70_percent_rule',
+                    'confidence_level' => 'low'
+                ];
+            }
+            
+            error_log("Pages data processed with " . count($data) . " pages");
         }
-        
-        // Store data quality info in session for UI display
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
-        $_SESSION['pages_data_quality'] = $dataQuality;
-        
-        error_log("Data quality: " . json_encode($dataQuality));
-        error_log("Found " . count($data) . " page records for upload $latestUpload");
-        
     } catch (Exception $e) {
-        error_log("Error getting page data: " . $e->getMessage());
+        error_log("Error getting pages data: " . $e->getMessage());
     }
+    
+    // Store data quality info
+    $_SESSION['pages_data_quality'] = $dataQuality;
     
     return $data;
 }
