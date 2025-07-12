@@ -97,14 +97,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 $transformedData = $processor->transformData($filePath, $result['mapping'], $result['format']);
                             } else {
                                 // Use suggestions as mapping for unrecognized format
+                                // Build mapping from suggestions with higher confidence threshold
                                 $mapping = [];
                                 foreach ($result['suggestions'] as $column => $suggestion) {
-                                    if ($suggestion['confidence'] > 50) { // Lower threshold for sample data
-                                        $mapping[$column] = $suggestion['suggested_mapping'];
+                                    // Fix: use 'mapping' instead of 'suggested_mapping'
+                                    if ($suggestion['confidence'] > 70 && isset($suggestion['mapping'])) {
+                                        $mapping[$column] = $suggestion['mapping'];
                                     }
                                 }
-                                error_log("Using suggested mapping: " . json_encode($mapping));
-                                $transformedData = $processor->transformData($filePath, $mapping);
+                                
+                                // If we have good suggestions, use them automatically
+                                if (count($mapping) >= 3) { // Need at least 3 good mappings
+                                    error_log("Using suggested mapping with high confidence: " . json_encode($mapping));
+                                    $transformedData = $processor->transformData($filePath, $mapping);
+                                } else {
+                                    // Not enough confident mappings - this is where we redirect to mappings page
+                                    $response['success'] = false;
+                                    $response['message'] = "CSV format not recognized and automatic mapping failed. " .
+                                                        "As an administrator, please visit the CSV Mappings page to add support for this format before uploading sample data.";
+                                    $response['redirect_to_mappings'] = true;
+                                    
+                                    // Clean up file
+                                    if (file_exists($filePath)) {
+                                        unlink($filePath);
+                                        error_log("Cleaned up unrecognized format file: " . $filePath);
+                                    }
+                                    
+                                    // Return early - don't try to process further
+                                    if ($isAjax) {
+                                        echo json_encode($response);
+                                    } else {
+                                        $_SESSION['sample_upload_message'] = $response;
+                                        header('Location: upload_sample_data.php');
+                                    }
+                                    exit;
+                                }
                             }
                             
                             error_log("Transformed data count: " . count($transformedData));

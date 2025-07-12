@@ -756,11 +756,13 @@ if ($row = $result->fetch_assoc()) {
                                 window.location.reload();
                             }, 2000);
                         } else {
-                            // Enhanced error handling like user/index.php
-                            if (data.errors && data.errors.length > 0) {
+                            // Handle redirect to mappings page
+                            if (data.redirect_to_mappings) {
+                                showMappingsRedirectMessage(data.message);
+                            } else if (data.errors && data.errors.length > 0) {
                                 showDetailedErrors(data);
                             } else if (data.message) {
-                                // Handle validation error messages with suggestions
+                                // Handle other validation errors...
                                 if (data.message.includes('Data validation errors') || 
                                     data.message.includes('No valid data') ||
                                     data.message.includes('CSV parsing error') ||
@@ -816,6 +818,31 @@ if ($row = $result->fetch_assoc()) {
                 });
             }
         });
+
+        function showMappingsRedirectMessage(message) {
+            // Remove existing messages
+            removeExistingMessages();
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message error';
+            messageDiv.innerHTML = `
+                <div style="margin-bottom: 15px;">
+                    <i class="fas fa-exclamation-triangle"></i> ${message}
+                </div>
+                <div style="margin-top: 15px;">
+                    <a href="admin_mappings.php" class="btn btn-primary" style="margin-right: 10px;">
+                        <i class="fas fa-cogs"></i> Go to CSV Mappings
+                    </a>
+                    <span style="color: #666; font-size: 0.9em;">Configure supported CSV formats first</span>
+                </div>
+            `;
+            
+            // Insert after the h2 title
+            const title = document.querySelector('h2');
+            if (title && title.parentNode) {
+                title.parentNode.insertBefore(messageDiv, title.nextSibling);
+            }
+        }
 
         // CRITICAL: Toggle data preview function - copied from user/index.php
         function toggleDataPreview() {
