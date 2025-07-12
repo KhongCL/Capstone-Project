@@ -153,7 +153,7 @@ function handleCsvUpload($conn, $file) {
 
                 return [
                     'type' => 'success',
-                    'message' => 'CSV data successfully uploaded and imported!'
+                    'message' => 'CSV file successfully uploaded and processed.'
                 ];
             } else {
                 // CRITICAL: Return the actual error message from saveTransformedData
@@ -211,9 +211,13 @@ function handleCsvUpload($conn, $file) {
                 unset($_SESSION['compare_files']);
                 unset($_SESSION['compare_ready']);
                 unset($_SESSION['compare_error']);
+                unset($_SESSION['compare_file_1_upload_id']);
+                unset($_SESSION['compare_file_2_upload_id']);
                 error_log("CRITICAL: Cleared comparison session data for regular upload needing mapping");
+            } else {
+                error_log("COMPARISON: Preserving session data for comparison upload");
             }
-            
+
             // Check if this is an AJAX request
             $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
@@ -221,36 +225,48 @@ function handleCsvUpload($conn, $file) {
             // IMPROVED: More precise comparison context detection
             $isComparison = $isComparisonUpload;
 
-            // CRITICAL FIX: DON'T clear upload session data for regular uploads needing mapping
-            // The session data is needed for map_columns.php to work properly
+            // CRITICAL FIX: Handle session clearing differently based on context
             if (!$isComparison) {
-                error_log("MAPPING: Preserving session data for regular upload needing mapping");
-                // DON'T clear these - they're needed for map_columns.php:
-                // - $_SESSION['uploaded_csv']
-                // - $_SESSION['mapping_result'] 
-                // - $_SESSION['csv_metadata']
+                // CRITICAL FIX: For regular uploads, preserve mapping session data
+                // These variables are needed by map_columns.php:
+                // - $_SESSION['uploaded_csv'] (file path)
+                // - $_SESSION['mapping_result'] (mapping analysis)
+                // - $_SESSION['csv_metadata'] (file metadata)
                 
-                // Only clear latest_upload_id since no data has been saved yet
+                // Only clear latest_upload_id since no upload record was created yet
                 unset($_SESSION['latest_upload_id']);
+                error_log("MAPPING: Preserved session data for regular mapping page, cleared only latest_upload_id");
             } else {
-                error_log("COMPARISON: Preserving session data for comparison upload");
-                // Don't clear session data for comparison uploads
+                // CRITICAL FIX: For comparison uploads, don't clear session data
+                // The session data will be handled by compare.php
+                error_log("COMPARISON: Preserving all session data for comparison upload");
             }
 
             if ($isAjax) {
                 return [
                     'type' => 'needs_mapping',
                     'message' => 'Manual column mapping required.',
-                    'redirect' => 'map_columns.php'
+                    'redirect' => $isComparison ? 'map_columns_compare.php?file=1' : 'map_columns.php'
                 ];
             } else {
-                // CRITICAL FIX: Use proper comparison detection for redirects
+                // CRITICAL FIX: Different handling for comparison vs regular uploads
                 if ($isComparison) {
-                    header('Location: map_columns_compare.php');
+                    // CRITICAL FIX: For comparison uploads, return result instead of redirecting
+                    // Let compare.php handle the redirect logic
+                    return [
+                        'type' => 'needs_mapping',
+                        'message' => 'Manual column mapping required.',
+                        'original_filename' => $originalName,
+                        'clean_filename' => $originalName,
+                        'file_path' => $filePath,
+                        'needs_mapping' => true
+                    ];
                 } else {
+                    // For regular uploads, redirect to mapping page
+                    error_log("REGULAR UPLOAD REDIRECT: Redirecting to map_columns.php");
                     header('Location: map_columns.php');
+                    exit();
                 }
-                exit();
             }
         } else {
             // Clean up file since there was an error
@@ -259,7 +275,7 @@ function handleCsvUpload($conn, $file) {
             }
             return [
                 'type' => 'error',
-                'message' => $result['message'] ?? 'Unknown error occurred during file processing.'
+                'message' => $result['message'] ?? 'Unknown error processing CSV file.'
             ];
         }
     } catch (Exception $e) {

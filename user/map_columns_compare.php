@@ -372,12 +372,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
 
                     error_log("Checking next file (index $nextFileIndex): " . json_encode($nextFile));
 
-                    // CRITICAL FIX: Better logic to determine if next file needs mapping
+                    // FIXED: Better logic to determine if next file needs mapping
                     $nextFileNeedsMapping = false;
-                    $nextFileExists = false;
-
                     if ($nextFile) {
-                        $nextFileExists = true;
                         // Check multiple conditions to determine if mapping is needed
                         $nextFileNeedsMapping = (
                             isset($nextFile['needs_mapping']) && $nextFile['needs_mapping'] === true &&
@@ -389,80 +386,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                                 ", mapped=" . ($nextFile['mapped'] ?? 'not set') . 
                                 ", result=" . ($nextFileNeedsMapping ? 'YES' : 'NO'));
                     } else {
-                        // CRITICAL FIX: Check if this is a valid + mapping scenario where second file was already processed
-                        error_log("No next file found - checking if this is a valid + mapping scenario");
-                        
-                        // In a valid + mapping scenario, one file is already valid and stored with upload ID
-                        // We need to check session data or reconstruct the comparison
-                        if (isset($_SESSION['compare_file_1_upload_id']) || isset($_SESSION['compare_file_2_upload_id'])) {
-                            error_log("Found comparison upload IDs in session - this appears to be valid + mapping scenario");
-                            $nextFileExists = true;
-                            $nextFileNeedsMapping = false;
-                            
-                            // CRITICAL FIX: Reconstruct the missing file info from session
-                            if ($currentFileIndex == 1 && isset($_SESSION['compare_file_2_upload_id'])) {
-                                // File 1 was mapped, file 2 was already valid
-                                $uploadId2 = $_SESSION['compare_file_2_upload_id'];
-                                error_log("Reconstructing file 2 info from session upload ID: $uploadId2");
-                                
-                                // Get file info from database
-                                $stmt = $conn->prepare("SELECT FileName FROM csv_upload WHERE UploadID = ?");
-                                $stmt->bind_param("i", $uploadId2);
-                                $stmt->execute();
-                                $result = $stmt->get_result();
-                                $fileInfo = $result->fetch_assoc();
-                                
-                                if ($fileInfo) {
-                                    // Clean the filename (remove hash prefix)
-                                    $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $fileInfo['FileName']);
-                                    
-                                    $_SESSION['compare_files'][2] = [
-                                        'name' => $cleanName,
-                                        'upload_id' => $uploadId2,
-                                        'needs_mapping' => false,
-                                        'mapped' => true,
-                                        'path' => null // Not needed for already processed files
-                                    ];
-                                    error_log("Reconstructed file 2 info: name=$cleanName, upload_id=$uploadId2");
-                                }
-                                
-                            } elseif ($currentFileIndex == 2 && isset($_SESSION['compare_file_1_upload_id'])) {
-                                // File 2 was mapped, file 1 was already valid
-                                $uploadId1 = $_SESSION['compare_file_1_upload_id'];
-                                error_log("Reconstructing file 1 info from session upload ID: $uploadId1");
-                                
-                                // Get file info from database
-                                $stmt = $conn->prepare("SELECT FileName FROM csv_upload WHERE UploadID = ?");
-                                $stmt->bind_param("i", $uploadId1);
-                                $stmt->execute();
-                                $result = $stmt->get_result();
-                                $fileInfo = $result->fetch_assoc();
-                                
-                                if ($fileInfo) {
-                                    // Clean the filename (remove hash prefix)
-                                    $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $fileInfo['FileName']);
-                                    
-                                    $_SESSION['compare_files'][1] = [
-                                        'name' => $cleanName,
-                                        'upload_id' => $uploadId1,
-                                        'needs_mapping' => false,
-                                        'mapped' => true,
-                                        'path' => null // Not needed for already processed files
-                                    ];
-                                    error_log("Reconstructed file 1 info: name=$cleanName, upload_id=$uploadId1");
-                                }
-                            }
-                            
-                            // CRITICAL FIX: Update the $updatedCompareFiles variable with reconstructed data
-                            $updatedCompareFiles = $_SESSION['compare_files'];
-                            error_log("Updated compare files after reconstruction: " . json_encode($updatedCompareFiles));
-                        } else {
-                            // BACKWARD COMPATIBILITY: Fallback to original logic for non-valid+mapping scenarios
-                            error_log("No comparison upload IDs found - using original single file detection logic");
-                        }
+                        // CRITICAL FIX: If there's no second file, we're in single-file comparison mode
+                        error_log("No next file found - this appears to be a single file upload");
                     }
 
-                    if ($nextFileNeedsMapping && $nextFileExists) {
+                    if ($nextFileNeedsMapping) {
                         // CRITICAL FIX: Verify the next file exists before redirecting
                         $nextFilePath = $nextFile['path'] ?? null;
                         
@@ -482,8 +410,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                                 
                                 if (!empty($foundFiles)) {
                                     $foundFile = $foundFiles[0];
-                                    error_log("RECOVERY: Found next file at: $foundFile");
                                     $_SESSION['compare_files'][$nextFileIndex]['path'] = $foundFile;
+                                    error_log("RECOVERY: Found next file at: $foundFile");
                                     header("Location: map_columns_compare.php?file=$nextFileIndex");
                                     exit;
                                 }
@@ -495,41 +423,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                             exit;
                         }
                     } else {
-                        // CRITICAL FIX: Handle the case where we have both files ready OR this is a single file completion
-                        if ($nextFileExists) {
-                            // Both files exist - check if both are ready for comparison
-                            $file1Ready = isset($_SESSION['compare_files'][1]['upload_id']) && $_SESSION['compare_files'][1]['upload_id'] !== null;
-                            $file2Ready = isset($_SESSION['compare_files'][2]['upload_id']) && $_SESSION['compare_files'][2]['upload_id'] !== null;
-                            
-                            error_log("File readiness check - File 1: " . ($file1Ready ? 'READY' : 'NOT READY') . ", File 2: " . ($file2Ready ? 'READY' : 'NOT READY'));
-                            
-                            if ($file1Ready && $file2Ready) {
-                                error_log("Both files ready - proceeding to comparison");
-                                
-                                // CRITICAL FIX: Set comparison ready flag and ensure proper session data
-                                $_SESSION['compare_ready'] = true;
-                                
-                                // Store upload IDs for comparison page
-                                if (!isset($_SESSION['compare_file_1_upload_id'])) {
-                                    $_SESSION['compare_file_1_upload_id'] = $_SESSION['compare_files'][1]['upload_id'];
-                                }
-                                if (!isset($_SESSION['compare_file_2_upload_id'])) {
-                                    $_SESSION['compare_file_2_upload_id'] = $_SESSION['compare_files'][2]['upload_id'];
-                                }
-                                
-                                error_log("Redirecting to compare.php with upload IDs: " . $_SESSION['compare_file_1_upload_id'] . " and " . $_SESSION['compare_file_2_upload_id']);
-                                header('Location: compare.php');
-                                exit;
-                            } else {
-                                error_log("ERROR: Not all files have upload IDs - File 1: " . ($_SESSION['compare_files'][1]['upload_id'] ?? 'NULL') . ", File 2: " . ($_SESSION['compare_files'][2]['upload_id'] ?? 'NULL'));
-                                $_SESSION['compare_error'] = "File processing incomplete. Please try uploading again.";
-                                header('Location: compare.php');
-                                exit;
-                            }
+                        // CRITICAL FIX: Only proceed if we actually have a second file
+                        if ($nextFile === null) {
+                            // Single file scenario - this shouldn't happen in comparison mode
+                            error_log("CRITICAL ERROR: Single file in comparison mode");
+                            $_SESSION['compare_error'] = "Comparison requires two files. Please upload both files again.";
+                            header('Location: compare.php');
+                            exit;
+                        }
+                        
+                        // All files are ready, proceed with comparison
+                        error_log("All files ready for comparison");
+                        
+                        // Verify both files have upload IDs
+                        $file1Ready = isset($updatedCompareFiles[1]['upload_id']) && $updatedCompareFiles[1]['upload_id'] !== null;
+                        $file2Ready = isset($updatedCompareFiles[2]['upload_id']) && $updatedCompareFiles[2]['upload_id'] !== null;
+                        
+                        error_log("File readiness check - File 1: " . ($file1Ready ? 'READY' : 'NOT READY') . 
+                                ", File 2: " . ($file2Ready ? 'READY' : 'NOT READY'));
+                        
+                        if ($file1Ready && $file2Ready) {
+                            $_SESSION['compare_ready'] = true;
+                            error_log("Both files ready, setting compare_ready flag and redirecting");
+                            header('Location: compare.php');
+                            exit;
                         } else {
-                            // Single file scenario (shouldn't happen in comparison mode)
-                            error_log("Single file scenario detected - redirecting to regular upload flow");
-                            header('Location: ../index.php');
+                            error_log("ERROR: Not all files have upload IDs - File 1: " . 
+                                    ($updatedCompareFiles[1]['upload_id'] ?? 'NULL') . 
+                                    ", File 2: " . ($updatedCompareFiles[2]['upload_id'] ?? 'NULL'));
+                            $_SESSION['compare_error'] = "File processing incomplete. Please try uploading again.";
+                            header('Location: compare.php');
                             exit;
                         }
                     }
@@ -562,14 +485,6 @@ function saveTransformedDataForComparison($conn, $transformedData, $fileIndex) {
         if (isset($_SESSION['latest_upload_id'])) {
             $_SESSION["compare_file_{$fileIndex}_upload_id"] = $_SESSION['latest_upload_id'];
             error_log("Stored upload ID for comparison file $fileIndex: " . $_SESSION['latest_upload_id']);
-            
-            // CRITICAL FIX: Also store in compare_files structure for immediate access
-            if (isset($_SESSION['compare_files'][$fileIndex])) {
-                $_SESSION['compare_files'][$fileIndex]['upload_id'] = $_SESSION['latest_upload_id'];
-                $_SESSION['compare_files'][$fileIndex]['mapped'] = true;
-                $_SESSION['compare_files'][$fileIndex]['needs_mapping'] = false;
-            }
-            
             return true;
         }
     } else {

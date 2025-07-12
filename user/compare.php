@@ -42,12 +42,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         unset($_SESSION['compare_error']);
         unset($_SESSION['comparison_context']); // CRITICAL FIX: Clear comparison context
         
-        // CRITICAL FIX: Process files separately and preserve session state for comparison
+        // CRITICAL FIX: Process files separately without session interference
         error_log("=== PROCESSING FILE 1 ===");
         $upload_result1 = handleCsvUploadForComparison($conn, $file1);
         
-        // CRITICAL FIX: Store file 1 state before processing file 2
-        $file1_state = [
+        // CRITICAL FIX: Clear any session state that might interfere with second file
+        $file1_session_state = [
             'uploaded_csv' => $_SESSION['uploaded_csv'] ?? null,
             'latest_upload_id' => $_SESSION['latest_upload_id'] ?? null,
             'uploaded_file_name' => $_SESSION['uploaded_file_name'] ?? null
@@ -75,35 +75,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         error_log("COMPARISON: File 1 processed - valid: " . ($file1_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file1_needs_mapping ? 'YES' : 'NO') . ", upload_id: " . ($upload_result1['upload_id'] ?? 'NULL'));
         error_log("COMPARISON: File 2 processed - valid: " . ($file2_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file2_needs_mapping ? 'YES' : 'NO') . ", upload_id: " . ($upload_result2['upload_id'] ?? 'NULL'));
         
-        // CRITICAL FIX: Build comparison session structure properly and preserve upload IDs
+        // CRITICAL FIX: Build comparison session structure properly
         $_SESSION['compare_files'] = [
             1 => [
-                'name' => $upload_result1['clean_filename'] ?? $upload_result1['original_filename'] ?? $file1['name'],
-                'upload_id' => $file1_valid ? ($file1_state['latest_upload_id'] ?? $upload_result1['upload_id']) : null,
+                'name' => $upload_result1['clean_filename'] ?? $file1['name'],
+                'upload_id' => $upload_result1['upload_id'] ?? null,
                 'needs_mapping' => $file1_needs_mapping,
                 'mapped' => $file1_valid,
-                'path' => $file1_state['uploaded_csv'] ?? ($upload_result1['file_path'] ?? null),
+                'path' => $file1_session_state['uploaded_csv'] ?? ($upload_result1['file_path'] ?? null),
                 'result' => $file1_needs_mapping ? $upload_result1 : null
             ],
             2 => [
-                'name' => $upload_result2['clean_filename'] ?? $upload_result2['original_filename'] ?? $file2['name'],
-                'upload_id' => $file2_valid ? ($_SESSION['latest_upload_id'] ?? $upload_result2['upload_id']) : null,
+                'name' => $upload_result2['clean_filename'] ?? $file2['name'],
+                'upload_id' => $upload_result2['upload_id'] ?? null,
                 'needs_mapping' => $file2_needs_mapping,
                 'mapped' => $file2_valid,
                 'path' => $_SESSION['uploaded_csv'] ?? ($upload_result2['file_path'] ?? null),
                 'result' => $file2_needs_mapping ? $upload_result2 : null
             ]
         ];
-        
-        // CRITICAL FIX: Store upload IDs in separate session variables for comparison
-        if ($file1_valid && isset($file1_state['latest_upload_id'])) {
-            $_SESSION['compare_file_1_upload_id'] = $file1_state['latest_upload_id'];
-            error_log("Stored file 1 upload ID: " . $file1_state['latest_upload_id']);
-        }
-        if ($file2_valid && isset($_SESSION['latest_upload_id'])) {
-            $_SESSION['compare_file_2_upload_id'] = $_SESSION['latest_upload_id'];
-            error_log("Stored file 2 upload ID: " . $_SESSION['latest_upload_id']);
-        }
         
         // Handle errors for failed files
         if (!$file1_valid && !$file1_needs_mapping) {
@@ -121,9 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         
         // Handle all 8 scenarios (4 original + 4 with mapping)
         if ($file1_valid && $file2_valid) {
-            // CRITICAL FIX: Use upload IDs from stored session variables
-            $uploadId1 = $_SESSION['compare_file_1_upload_id'] ?? ($upload_result1['upload_id'] ?? null);
-            $uploadId2 = $_SESSION['compare_file_2_upload_id'] ?? ($upload_result2['upload_id'] ?? null);
+            // CRITICAL FIX: Use upload IDs instead of file paths for comparison
+            $uploadId1 = $upload_result1['upload_id'] ?? null;
+            $uploadId2 = $upload_result2['upload_id'] ?? null;
             
             error_log("COMPARISON: Upload IDs - File 1: $uploadId1, File 2: $uploadId2");
             
@@ -2357,7 +2347,7 @@ function calculateStats($values) {
         <?php include 'user_header.php'; ?>
 
         <main>
-						<section class="user-section">
+			<section class="user-section">
             		<h2>Analytics CSV Comparison</h2>
             		<p>Compare two analytics CSV files to analyze performance metrics including sessions, engagement, revenue, and more.</p>
 
