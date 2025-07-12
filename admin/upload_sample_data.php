@@ -89,7 +89,7 @@ if ($row = $result->fetch_assoc()) {
     <title>Upload Sample Data - TrafAnalyz Admin</title>
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="admin_style.css">
-    <link rel="stylesheet" href="user_style.css">
+    <link rel="stylesheet" href="../user/user_style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         /* Error Display Styles - matching user/index.php */
@@ -509,7 +509,51 @@ if ($row = $result->fetch_assoc()) {
                 max-height: 300px;
             }
         }
-        </style>
+
+        /* Enhanced validation message styles */
+        .validation-message {
+            border-left-color: #dc3545 !important;
+        }
+
+        .validation-message ul {
+            background: rgba(248, 215, 218, 0.3);
+            border: 1px solid rgba(220, 53, 69, 0.2);
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+
+        .validation-message li {
+            color: #721c24;
+            font-size: 0.95em;
+        }
+
+        /* File input validation states */
+        .file-input-button.valid {
+            background: #d4edda !important;
+            color: #155724 !important;
+            border-color: #c3e6cb !important;
+        }
+
+        .file-input-button.invalid {
+            background: #f8d7da !important;
+            color: #721c24 !important;
+            border-color: #f5c6cb !important;
+        }
+
+        /* Form field highlight for validation errors */
+        .form-group.error input,
+        .form-group.error select {
+            border-color: #dc3545;
+            box-shadow: 0 0 5px rgba(220, 53, 69, 0.3);
+        }
+
+        .form-group.success input,
+        .form-group.success select {
+            border-color: #28a745;
+            box-shadow: 0 0 5px rgba(40, 167, 69, 0.3);
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -691,618 +735,853 @@ if ($row = $result->fetch_assoc()) {
         <?php include 'admin_footer.php'; ?>
     </div>
     
-    <script>
-        // CRITICAL: Set global variables for confirmation logic
-        window.adminHasExistingSampleData = <?php echo $hasExistingSampleData ? 'true' : 'false'; ?>;
+<script>
+// CRITICAL: Set global variables for confirmation logic
+window.adminHasExistingSampleData = <?php echo $hasExistingSampleData ? 'true' : 'false'; ?>;
+
+// Utility function for file size formatting - MOVED TO TOP
+function formatFileSize(bytes) {
+    console.log('formatFileSize called with:', bytes);
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Form validation function - MOVED TO TOP
+function validateSampleFile() {
+    console.log('=== VALIDATE SAMPLE FILE START ===');
+    
+    const fileInput = document.getElementById('sampleCsv');
+    const reportType = document.getElementById('reportType');
+    const newReportType = document.getElementById('newReportType');
+    
+    console.log('File input element:', fileInput);
+    console.log('Report type element:', reportType);
+    console.log('New report type element:', newReportType);
+    
+    // Clear any existing validation messages
+    clearValidationMessages();
+    
+    let hasErrors = false;
+    let errorMessages = [];
+    
+    console.log('Checking file input...');
+    // File validation
+    if (!fileInput || fileInput.files.length === 0) {
+        console.log('No file selected');
+        errorMessages.push({
+            field: 'file',
+            message: 'Please select a CSV file to upload',
+            icon: 'fas fa-file-csv'
+        });
+        hasErrors = true;
+    } else {
+        const file = fileInput.files[0];
+        console.log('File selected:', file.name, 'Size:', file.size, 'Type:', file.type);
         
-        document.addEventListener('DOMContentLoaded', function() {
-            // Report Type Selection Logic
-            const reportTypeSelect = document.getElementById('reportType');
-            const newReportTypeField = document.getElementById('newReportTypeField');
-            
-            if (reportTypeSelect) {
-                reportTypeSelect.addEventListener('change', function() {
-                    if (this.value === 'new') {
-                        newReportTypeField.style.display = 'block';
-                    } else {
-                        newReportTypeField.style.display = 'none';
-                    }
-                });
-            }
-            
-            // Enhanced form submission with confirmation and validation error handling
-            const uploadForm = document.getElementById('sampleUploadForm');
-            if (uploadForm) {
-                uploadForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    
-                    if (!validateSampleFile()) {
-                        return false;
-                    }
-
-                    // CRITICAL: Show confirmation before upload
-                    if (!confirmSampleDataUpload()) {
-                        return false;
-                    }
-                    
-                    // Show loading state
-                    showUploadProgress();
-                    
-                    // Create FormData and submit via AJAX
-                    const formData = new FormData(this);
-                    
-                    fetch('upload_sample.php', {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        hideUploadProgress();
-                        
-                        if (data.success) {
-                            showSuccessMessage(data.message);
-                            // Reset form
-                            uploadForm.reset();
-                            newReportTypeField.style.display = 'none';
-                            
-                            // Update global state
-                            window.adminHasExistingSampleData = true;
-                            
-                            // Refresh page after 2 seconds to show updated existing data info
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 2000);
-                        } else {
-                            // Handle redirect to mappings page
-                            if (data.redirect_to_mappings) {
-                                showMappingsRedirectMessage(data.message);
-                            } else if (data.errors && data.errors.length > 0) {
-                                showDetailedErrors(data);
-                            } else if (data.message) {
-                                // Handle other validation errors...
-                                if (data.message.includes('Data validation errors') || 
-                                    data.message.includes('No valid data') ||
-                                    data.message.includes('CSV parsing error') ||
-                                    data.message.includes('validation')) {
-                                    showValidationErrors(data.message);
-                                } else {
-                                    showErrorMessage(data.message);
-                                }
-                            } else {
-                                showErrorMessage('An unknown error occurred during upload.');
-                            }
-                        }
-                    })
-                    .catch(error => {
-                        hideUploadProgress();
-                        console.error('Upload error:', error);
-                        showErrorMessage('An error occurred during upload. Please try again.');
-                    });
-                });
-            }
-            
-            // Clear Sample Data Button with confirmation
-            const clearSampleDataBtn = document.getElementById('clearSampleDataBtn');
-            if (clearSampleDataBtn) {
-                clearSampleDataBtn.addEventListener('click', function() {
-                    if (confirm('Are you sure you want to clear all sample data? This action cannot be undone and will affect all users currently viewing sample data.')) {
-                        fetch('clear_sample_data.php', {
-                            method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                showSuccessMessage(data.message);
-                                // Update global state
-                                window.adminHasExistingSampleData = false;
-                                
-                                // Refresh page after 2 seconds to hide existing data info
-                                setTimeout(() => {
-                                    window.location.reload();
-                                }, 2000);
-                            } else {
-                                showErrorMessage(data.message);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            showErrorMessage('An error occurred while clearing sample data.');
-                        });
-                    }
-                });
-            }
+        // Check file extension
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            console.log('Invalid file type');
+            errorMessages.push({
+                field: 'file',
+                message: 'Only CSV files are allowed. Please select a .csv file.',
+                icon: 'fas fa-exclamation-triangle'
+            });
+            hasErrors = true;
+        }
+        
+        // Check file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+            console.log('File too large:', file.size);
+            errorMessages.push({
+                field: 'file',
+                message: `File size (${formatFileSize(file.size)}) exceeds the 5MB limit. Please choose a smaller file.`,
+                icon: 'fas fa-exclamation-triangle'
+            });
+            hasErrors = true;
+        }
+        
+        // Check if file is empty
+        if (file.size === 0) {
+            console.log('File is empty');
+            errorMessages.push({
+                field: 'file',
+                message: 'The selected file is empty. Please choose a valid CSV file with data.',
+                icon: 'fas fa-exclamation-triangle'
+            });
+            hasErrors = true;
+        }
+    }
+    
+    console.log('Checking report type...');
+    // Report type validation
+    if (!reportType || reportType.value === '') {
+        console.log('No report type selected');
+        errorMessages.push({
+            field: 'reportType',
+            message: 'Please select a report type from the dropdown',
+            icon: 'fas fa-list'
         });
-
-        function showMappingsRedirectMessage(message) {
-            // Remove existing messages
-            removeExistingMessages();
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message error';
-            messageDiv.innerHTML = `
-                <div style="margin-bottom: 15px;">
-                    <i class="fas fa-exclamation-triangle"></i> ${message}
-                </div>
-                <div style="margin-top: 15px;">
-                    <a href="admin_mappings.php" class="btn btn-primary" style="margin-right: 10px;">
-                        <i class="fas fa-cogs"></i> Go to CSV Mappings
-                    </a>
-                    <span style="color: #666; font-size: 0.9em;">Configure supported CSV formats first</span>
-                </div>
-            `;
-            
-            // Insert after the h2 title
-            const title = document.querySelector('h2');
-            if (title && title.parentNode) {
-                title.parentNode.insertBefore(messageDiv, title.nextSibling);
-            }
-        }
-
-        // CRITICAL: Toggle data preview function - copied from user/index.php
-        function toggleDataPreview() {
-            const content = document.getElementById('previewContent');
-            const toggle = document.getElementById('previewToggle');
-            
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
-                toggle.classList.add('rotated');
-            } else {
-                content.style.display = 'none';
-                toggle.classList.remove('rotated');
-            }
-        }
-
-        // CRITICAL: Upload confirmation function similar to user/index.php
-        function confirmSampleDataUpload() {
-            const hasExistingSampleData = window.adminHasExistingSampleData;
-            const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
-            
-            console.log('=== ADMIN SAMPLE UPLOAD CONFIRMATION ===');
-            console.log('hasExistingSampleData:', hasExistingSampleData);
-            console.log('hasErrorMessages:', hasErrorMessages);
-            
-            // Show confirmation if there's existing sample data OR error messages
-            if (!hasExistingSampleData && !hasErrorMessages) {
-                console.log('No existing data or error messages - proceeding without confirmation');
-                return true; 
-            }
-            
-            let confirmMessage;
-            
-            // Prioritize error message warning if present
-            if (hasErrorMessages && !hasExistingSampleData) {
-                confirmMessage = "⚠️ Clear Error Messages?\n\n" +
-                               "You have validation error messages displayed that contain helpful suggestions for fixing your CSV file:\n" +
-                               "• 💡 Data fix suggestions\n" +
-                               "• 🔧 Quick fix guide\n" +
-                               "• 📋 Detailed error explanations\n\n" +
-                               "Uploading a new file will clear these helpful messages.\n\n" +
-                               "Do you want to continue with the upload?";
-            } else if (hasErrorMessages && hasExistingSampleData) {
-                confirmMessage = "⚠️ Replace Sample Data & Clear Error Messages?\n\n" +
-                               "You have existing sample data AND validation error messages displayed.\n\n" +
-                               "Uploading a new file will:\n" +
-                               "• Replace the current sample data completely\n" +
-                               "• Clear all sample analytics and metrics\n" +
-                               "• Affect all users currently viewing sample data\n" +
-                               "• Remove the helpful error messages and fix suggestions\n\n" +
-                               "This action cannot be undone. Do you want to continue?";
-            } else if (hasExistingSampleData) {
-                confirmMessage = "⚠️ Replace Existing Sample Data?\n\n" +
-                               "There is already sample data in the system. Uploading a new file will:\n" +
-                               "• Replace the current sample data completely\n" +
-                               "• Clear all sample analytics and metrics\n" +
-                               "• Affect all users currently viewing sample data\n" +
-                               "• Reset all sample dashboard results\n\n" +
-                               "This action cannot be undone. Do you want to continue?";
-            }
-            
-            console.log('Showing confirmation dialog:', confirmMessage);
-            const result = confirm(confirmMessage);
-            console.log('Confirmation result:', result);
-            return result;
-        }
-
-        // CRITICAL: Browser refresh/navigation confirmation for error messages (like user/index.php)
-        window.addEventListener('beforeunload', function(e) {
-            console.log('=== ADMIN BEFOREUNLOAD EVENT TRIGGERED ===');
-            
-            const hasExistingSampleData = window.adminHasExistingSampleData;
-            const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
-            
-            console.log('hasExistingSampleData:', hasExistingSampleData);
-            console.log('hasErrorMessages:', hasErrorMessages);
-            
-            // Only show confirmation if there are error messages with helpful content
-            if (hasErrorMessages) {
-                console.log('Error messages found - showing beforeunload confirmation');
-                
-                // Browser will show its own message regardless
-                e.preventDefault();
-                e.returnValue = ''; // Empty string is sufficient
-                
-                console.log('beforeunload event prevented');
-                return ''; // For older browsers
-            } else {
-                console.log('No error messages, allowing navigation');
-            }
+        hasErrors = true;
+    }
+    
+    console.log('Checking new report type...');
+    // New report type validation
+    if (reportType && reportType.value === 'new' && (!newReportType || !newReportType.value.trim())) {
+        console.log('New report type required but not provided');
+        errorMessages.push({
+            field: 'newReportType',
+            message: 'Please enter a name for the new report type',
+            icon: 'fas fa-edit'
         });
+        hasErrors = true;
+    }
+    
+    console.log('Total errors found:', errorMessages.length);
+    console.log('Error messages:', errorMessages);
+    
+    // Show validation errors if any
+    if (hasErrors) {
+        console.log('Showing validation messages...');
+        showValidationMessages(errorMessages);
+        console.log('=== VALIDATE SAMPLE FILE END (FALSE) ===');
+        return false;
+    }
+    
+    console.log('=== VALIDATE SAMPLE FILE END (TRUE) ===');
+    return true;
+}
 
-        function showUploadProgress() {
-            const submitBtn = document.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-            }
-        }
-
-        function hideUploadProgress() {
-            const submitBtn = document.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Upload Sample';
-            }
-        }
-
-        function showSuccessMessage(message) {
-            // Remove existing messages
-            removeExistingMessages();
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message success';
-            messageDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
-            
-            // Insert after the h2 title
-            const title = document.querySelector('h2');
-            if (title && title.parentNode) {
-                title.parentNode.insertBefore(messageDiv, title.nextSibling);
-            }
-            
-            // Auto-hide after 5 seconds
+// Show validation messages function - MOVED TO TOP
+function showValidationMessages(errorMessages) {
+    console.log('=== SHOW VALIDATION MESSAGES START ===');
+    console.log('Error messages to show:', errorMessages);
+    
+    // Remove existing messages
+    removeExistingMessages();
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message error validation-message';
+    messageDiv.id = 'validationErrorMessage';
+    
+    let messageContent = `
+        <div style="margin-bottom: 15px;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Please correct the following ${errorMessages.length > 1 ? 'issues' : 'issue'} before uploading:</strong>
+        </div>
+        <ul style="margin: 0; padding-left: 20px; list-style: none;">
+    `;
+    
+    errorMessages.forEach(error => {
+        messageContent += `
+            <li style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <i class="${error.icon}" style="color: #dc3545; font-size: 14px; min-width: 16px;"></i>
+                <span>${error.message}</span>
+            </li>
+        `;
+    });
+    
+    messageContent += '</ul>';
+    messageDiv.innerHTML = messageContent;
+    
+    console.log('Message div created:', messageDiv);
+    
+    // Insert after the h2 title
+    const title = document.querySelector('h2');
+    console.log('Title element found:', title);
+    
+    if (title && title.parentNode) {
+        title.parentNode.insertBefore(messageDiv, title.nextSibling);
+        console.log('Message div inserted into DOM');
+        
+        // Scroll to the message
+        messageDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        console.log('Scrolled to message');
+    } else {
+        console.error('Could not find title element to insert message');
+    }
+    
+    // Auto-hide after 8 seconds
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.style.transition = 'opacity 0.5s ease';
+            messageDiv.style.opacity = '0';
             setTimeout(() => {
                 if (messageDiv.parentNode) {
                     messageDiv.parentNode.removeChild(messageDiv);
+                    console.log('Message div auto-removed');
                 }
-            }, 5000);
+            }, 500);
         }
+    }, 8000);
+    
+    console.log('=== SHOW VALIDATION MESSAGES END ===');
+}
 
-        function showErrorMessage(message) {
-            // Remove existing messages
-            removeExistingMessages();
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message error';
-            messageDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
-            
-            // Insert after the h2 title
-            const title = document.querySelector('h2');
-            if (title && title.parentNode) {
-                title.parentNode.insertBefore(messageDiv, title.nextSibling);
-            }
+function clearValidationMessages() {
+    console.log('=== CLEAR VALIDATION MESSAGES ===');
+    const existingValidationMsg = document.getElementById('validationErrorMessage');
+    if (existingValidationMsg && existingValidationMsg.parentNode) {
+        existingValidationMsg.parentNode.removeChild(existingValidationMsg);
+        console.log('Existing validation message cleared');
+    } else {
+        console.log('No existing validation message to clear');
+    }
+}
+
+function removeExistingMessages() {
+    console.log('=== REMOVE EXISTING MESSAGES ===');
+    const existingMessages = document.querySelectorAll('.message, .error-container, .validation-help');
+    console.log('Found existing messages:', existingMessages.length);
+    existingMessages.forEach(msg => {
+        if (msg.parentNode) {
+            msg.parentNode.removeChild(msg);
         }
+    });
+}
 
-        // Enhanced validation error display like user/index.php
-        function showValidationErrors(errorMessage) {
-            // Remove existing messages
-            removeExistingMessages();
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== DOM CONTENT LOADED ===');
+    
+    // File input handling for admin sample upload - needs to be first
+    const fileInput = document.getElementById('sampleCsv');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const fileButton = document.querySelector('.file-input-button');
+    
+    console.log('Elements found:');
+    console.log('- fileInput:', fileInput);
+    console.log('- fileInfo:', fileInfo);
+    console.log('- fileName:', fileName);
+    console.log('- fileSize:', fileSize);
+    console.log('- fileButton:', fileButton);
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            console.log('File input changed');
+            handleFileSelection(this);
+        });
+    }
+    
+    // Report Type Selection Logic
+    const reportTypeSelect = document.getElementById('reportType');
+    const newReportTypeField = document.getElementById('newReportTypeField');
+    
+    console.log('Report elements found:');
+    console.log('- reportTypeSelect:', reportTypeSelect);
+    console.log('- newReportTypeField:', newReportTypeField);
+    
+    if (reportTypeSelect) {
+        reportTypeSelect.addEventListener('change', function() {
+            console.log('Report type changed to:', this.value);
             
-            // Parse validation errors
-            let errorMessage_clean = errorMessage;
-            errorMessage_clean = errorMessage_clean.replace("Data validation errors found: ", "");
-            errorMessage_clean = errorMessage_clean.replace(". Please correct these issues and upload again.", "");
+            // Clear validation messages when user makes a selection
+            clearValidationMessages();
             
-            // Check for "No valid data" message
-            if (errorMessage.includes('No valid data')) {
-                const errorList = [
-                    "No valid data found in CSV file - All rows failed validation",
-                    "Common causes: Invalid file format, corrupt data, or unsupported CSV structure"
-                ];
-                showDetailedErrorList(errorList);
-                return;
-            }
-            
-            // Split by semicolons for validation errors
-            const errorList = errorMessage_clean.split(';').filter(error => error.trim().length > 0);
-            
-            if (errorList.length > 0) {
-                showDetailedErrorList(errorList);
+            if (this.value === 'new') {
+                newReportTypeField.style.display = 'block';
+                // Focus on the new report type input
+                setTimeout(() => {
+                    const newReportTypeInput = document.getElementById('newReportType');
+                    if (newReportTypeInput) {
+                        newReportTypeInput.focus();
+                    }
+                }, 100);
             } else {
-                showErrorMessage(errorMessage);
+                newReportTypeField.style.display = 'none';
             }
-        }
+        });
+    }
+    
+    // Clear validation messages when user types in new report type field
+    const newReportTypeInput = document.getElementById('newReportType');
+    if (newReportTypeInput) {
+        newReportTypeInput.addEventListener('input', function() {
+            if (this.value.trim()) {
+                clearValidationMessages();
+            }
+        });
+    }
+    
+    // Enhanced form submission with confirmation and validation error handling
+    const uploadForm = document.getElementById('sampleUploadForm');
+    console.log('Upload form found:', uploadForm);
 
-        function showDetailedErrorList(errorList) {
-            const errorContainer = document.createElement('div');
-            errorContainer.className = 'error-container';
+    if (uploadForm) {
+        // CRITICAL FIX: Disable HTML5 form validation to let our custom validation handle it
+        uploadForm.setAttribute('novalidate', 'true');
+        console.log('Disabled HTML5 validation on form');
+        
+        uploadForm.addEventListener('submit', function(e) {
+            console.log('=== FORM SUBMIT EVENT ===');
+            e.preventDefault();
             
-            const errorSummary = document.createElement('p');
-            errorSummary.className = 'error-summary';
-            errorSummary.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Found ${errorList.length} validation errors in your CSV file:`;
-            errorContainer.appendChild(errorSummary);
+            // Enhanced validation with user-friendly messages
+            console.log('Calling validateSampleFile...');
+            if (!validateSampleFile()) {
+                // Validation failed - messages already shown by validateSampleFile()
+                console.log('Form validation failed - stopping submission');
+                return false;
+            }
+
+            console.log('Validation passed, checking confirmation...');
+            // CRITICAL: Show confirmation before upload
+            if (!confirmSampleDataUpload()) {
+                console.log('User cancelled upload via confirmation');
+                return false;
+            }
             
-            const errorListElement = document.createElement('ul');
-            errorListElement.className = 'error-list';
+            console.log('All checks passed, proceeding with upload...');
             
-            errorList.forEach(error => {
-                const error_clean = error.trim();
-                if (error_clean.length > 0) {
-                    // Parse error and suggestions
-                    const parts = error_clean.split(' Suggestions: ');
-                    const mainError = parts[0];
-                    const suggestions = parts.length > 1 ? parts[1] : '';
-                    
-                    const errorItem = document.createElement('li');
-                    errorItem.className = 'error-item';
-                    
-                    const errorMessage = document.createElement('div');
-                    errorMessage.className = 'error-message';
-                    errorMessage.textContent = mainError;
-                    errorItem.appendChild(errorMessage);
-                    
-                    if (suggestions) {
-                        const errorSuggestions = document.createElement('div');
-                        errorSuggestions.className = 'error-suggestions';
-                        errorSuggestions.innerHTML = `<strong>💡 Suggestions:</strong> <span class="suggestions-text">${suggestions}</span>`;
-                        errorItem.appendChild(errorSuggestions);
-                    }
-                    
-                    errorListElement.appendChild(errorItem);
+            // Show loading state
+            showUploadProgress();
+            
+            // Create FormData and submit via AJAX
+            const formData = new FormData(this);
+            
+            fetch('upload_sample.php', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
                 }
-            });
-            
-            errorContainer.appendChild(errorListElement);
-            
-            // Add validation help section
-            const validationHelp = document.createElement('div');
-            validationHelp.className = 'validation-help';
-            validationHelp.innerHTML = `
-                <h4>Quick Fix Guide:</h4>
-                <div class="fix-guide">
-                    <div class="fix-item">
-                        <strong>📁 File Format Issues:</strong>
-                        <ul>
-                            <li>Ensure CSV has proper headers</li>
-                            <li>Check for GA4 metadata lines starting with #</li>
-                            <li>Verify file isn't corrupted or empty</li>
-                            <li>Make sure data rows aren't all empty</li>
-                        </ul>
-                    </div>
-                    <div class="fix-item">
-                        <strong>🔢 Integer Issues:</strong>
-                        <ul>
-                            <li>Remove letters: "15a" → "15"</li>
-                            <li>Evaluate expressions: "42+3" → "45"</li>
-                            <li>Convert Unicode: "５０" → "50"</li>
-                        </ul>
-                    </div>
-                    <div class="fix-item">
-                        <strong>📊 Float/Decimal Issues:</strong>
-                        <ul>
-                            <li>Fix multiple decimals: "8..5" → "8.5"</li>
-                            <li>Convert scientific: "1.2e3" → "1200"</li>
-                            <li>Remove special chars: "~5.3" → "5.3"</li>
-                        </ul>
-                    </div>
-                    <div class="fix-item">
-                        <strong>⏰ Time Format Issues:</strong>
-                        <ul>
-                            <li>Use proper format: "10:65:30" → "11:05:30"</li>
-                            <li>Convert units: "12m30s" → "12:30" or "750"</li>
-                        </ul>
-                    </div>
-                    <div class="fix-item">
-                        <strong>💰 Currency Issues:</strong>
-                        <ul>
-                            <li>Remove symbols: "$1,200" → "1200"</li>
-                            <li>Remove commas: "500.abc" → "500"</li>
-                        </ul>
-                    </div>
-                    <div class="fix-item">
-                        <strong>🚫 Common CSV Issues:</strong>
-                        <ul>
-                            <li>Remove trademark symbols: ™, ®, ©</li>
-                            <li>Fix unquoted commas in data fields</li>
-                            <li>Remove leading/trailing whitespace</li>
-                            <li>Check for mixed data types in columns</li>
-                        </ul>
-                    </div>
-                </div>
-            `;
-            errorContainer.appendChild(validationHelp);
-            
-            const errorFooter = document.createElement('p');
-            errorFooter.className = 'error-footer';
-            errorFooter.innerHTML = '<strong>Please correct these issues and upload again.</strong>';
-            errorContainer.appendChild(errorFooter);
-            
-            // Insert after the h2 title
-            const title = document.querySelector('h2');
-            if (title && title.parentNode) {
-                title.parentNode.insertBefore(errorContainer, title.nextSibling);
-            }
-        }
-
-        function showDetailedErrors(response) {
-            // Remove existing messages
-            removeExistingMessages();
-            
-            if (response.errors && response.errors.length > 0) {
-                // Create detailed error display for errors array
-                const errorContainer = document.createElement('div');
-                errorContainer.className = 'error-container';
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideUploadProgress();
                 
-                const errorSummary = document.createElement('p');
-                errorSummary.className = 'error-summary';
-                errorSummary.textContent = `Found ${response.errors.length} validation errors in your CSV file:`;
-                errorContainer.appendChild(errorSummary);
-                
-                const errorList = document.createElement('ul');
-                errorList.className = 'error-list';
-                
-                response.errors.forEach(error => {
-                    const errorItem = document.createElement('li');
-                    errorItem.className = 'error-item';
+                if (data.success) {
+                    showSuccessMessage(data.message);
+                    // Reset form
+                    uploadForm.reset();
+                    newReportTypeField.style.display = 'none';
                     
-                    const errorMessage = document.createElement('div');
-                    errorMessage.className = 'error-message';
+                    // Reset file input display
+                    fileName.textContent = '-';
+                    fileSize.textContent = '-';
+                    fileInfo.classList.remove('show');
+                    fileInfo.style.display = 'none';
+                    fileButton.innerHTML = 'Choose CSV File';
+                    fileButton.style.background = '';
                     
-                    // Handle both string and object error formats
-                    if (typeof error === 'string') {
-                        errorMessage.textContent = error;
-                    } else if (error.message) {
-                        errorMessage.textContent = error.message;
-                        
-                        if (error.suggestions) {
-                            const suggestions = document.createElement('div');
-                            suggestions.className = 'error-suggestions';
-                            suggestions.innerHTML = '<strong>💡 Suggestions:</strong> ';
-                            
-                            const suggestionText = document.createElement('span');
-                            suggestionText.className = 'suggestions-text';
-                            suggestionText.textContent = error.suggestions;
-                            suggestions.appendChild(suggestionText);
-                            
-                            errorItem.appendChild(suggestions);
+                    // Update global state
+                    window.adminHasExistingSampleData = true;
+                    
+                    // Refresh page after 2 seconds to show updated existing data info
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    // Handle different types of errors...
+                    if (data.redirect_to_mappings) {
+                        showMappingsRedirectMessage(data.message);
+                    } else if (data.errors && data.errors.length > 0) {
+                        showDetailedErrors(data);
+                    } else if (data.message) {
+                        if (data.message.includes('Data validation errors') || 
+                            data.message.includes('No valid data') ||
+                            data.message.includes('CSV parsing error') ||
+                            data.message.includes('validation')) {
+                            showValidationErrors(data.message);
+                        } else {
+                            showErrorMessage(data.message);
                         }
+                    } else {
+                        showErrorMessage('An unknown error occurred during upload.');
                     }
-                    
-                    errorItem.appendChild(errorMessage);
-                    errorList.appendChild(errorItem);
-                });
-                
-                errorContainer.appendChild(errorList);
-                
-                // Insert after the h2 title
-                const title = document.querySelector('h2');
-                if (title && title.parentNode) {
-                    title.parentNode.insertBefore(errorContainer, title.nextSibling);
                 }
-            }
-        }
-
-        function removeExistingMessages() {
-            const existingMessages = document.querySelectorAll('.message, .error-container, .validation-help');
-            existingMessages.forEach(msg => {
-                if (msg.parentNode) {
-                    msg.parentNode.removeChild(msg);
-                }
+            })
+            .catch(error => {
+                hideUploadProgress();
+                console.error('Upload error:', error);
+                showErrorMessage('An error occurred during upload. Please try again.');
             });
+        });
+    } else {
+        console.error('Upload form not found!');
+    }
+    
+    // Clear Sample Data Button with confirmation
+    const clearSampleDataBtn = document.getElementById('clearSampleDataBtn');
+    if (clearSampleDataBtn) {
+        clearSampleDataBtn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear all sample data? This action cannot be undone and will affect all users currently viewing sample data.')) {
+                fetch('clear_sample_data.php', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showSuccessMessage(data.message);
+                        // Update global state
+                        window.adminHasExistingSampleData = false;
+                        
+                        // Refresh page after 2 seconds to hide existing data info
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        showErrorMessage(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showErrorMessage('An error occurred while clearing sample data.');
+                });
+            }
+        });
+    }
+    
+    // File selection handler function (moved inside DOMContentLoaded)
+    function handleFileSelection(input) {
+        console.log('=== HANDLE FILE SELECTION ===');
+        console.log('Input files length:', input.files.length);
+        
+        if (input.files.length > 0) {
+            const file = input.files[0];
+            console.log('File selected:', file.name, 'Size:', file.size);
+            
+            // Update file info display
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.add('show');
+            fileInfo.style.display = 'flex';
+            
+            // Clear any existing validation messages when a file is selected
+            clearValidationMessages();
+            
+            // File validation with visual feedback
+            const isValidCSV = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+            const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
+            const isNotEmpty = file.size > 0;
+            
+            console.log('File validation:', {
+                isValidCSV,
+                isValidSize,
+                isNotEmpty
+            });
+            
+            // Reset styles first
+            fileName.style.color = '';
+            fileSize.style.color = '';
+            fileButton.style.background = '';
+            
+            if (!isValidCSV) {
+                fileName.textContent = file.name + ' ❌ (Not a CSV file)';
+                fileName.style.color = '#dc3545';
+                fileButton.style.background = '#f8d7da';
+            } else if (!isValidSize) {
+                fileSize.textContent = formatFileSize(file.size) + ' ❌ (Too large - max 5MB)';
+                fileSize.style.color = '#dc3545';
+                fileButton.style.background = '#f8d7da';
+            } else if (!isNotEmpty) {
+                fileName.textContent = file.name + ' ❌ (Empty file)';
+                fileName.style.color = '#dc3545';
+                fileButton.style.background = '#f8d7da';
+            } else {
+                // Valid file
+                fileName.textContent = file.name + ' ✅';
+                fileName.style.color = '#28a745';
+                fileButton.style.background = '#d4edda';
+                fileButton.innerHTML = '✅ CSV File Selected';
+            }
+            
+            console.log('Admin sample file selected:', file.name, formatFileSize(file.size), 'Valid:', isValidCSV && isValidSize && isNotEmpty);
+            
+        } else {
+            console.log('No file selected, resetting display');
+            // Reset to default state
+            fileName.textContent = '-';
+            fileSize.textContent = '-';
+            fileInfo.classList.remove('show');
+            fileInfo.style.display = 'none';
+            
+            // Reset button appearance
+            fileButton.innerHTML = 'Choose CSV File';
+            fileButton.style.background = '';
+            
+            // Reset colors
+            fileName.style.color = '';
+            fileSize.style.color = '';
         }
+    }
+});
 
-        // Form validation
-        function validateSampleFile() {
-            const fileInput = document.getElementById('sampleCsv');
-            const reportType = document.getElementById('reportType');
-            const newReportType = document.getElementById('newReportType');
-            
-            // File validation
-            if (fileInput.files.length === 0) {
-                alert('Please select a CSV file to upload');
-                return false;
-            }
-            
-            const file = fileInput.files[0];
-            
-            // Check file extension
-            if (!file.name.toLowerCase().endsWith('.csv')) {
-                alert('Only CSV files are allowed');
-                return false;
-            }
-            
-            // Check file size (5MB limit)
-            if (file.size > 5 * 1024 * 1024) {
-                alert('File size exceeds the 5MB limit');
-                return false;
-            }
-            
-            // Report type validation
-            if (reportType.value === '') {
-                alert('Please select a report type');
-                return false;
-            }
-            
-            // New report type validation
-            if (reportType.value === 'new' && !newReportType.value.trim()) {
-                alert('Please enter a name for the new report type');
-                return false;
-            }
-            
-            return true;
+// Message handling functions
+function showMappingsRedirectMessage(message) {
+    // Remove existing messages
+    removeExistingMessages();
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message error';
+    messageDiv.innerHTML = `
+        <div style="margin-bottom: 15px;">
+            <i class="fas fa-exclamation-triangle"></i> ${message}
+        </div>
+        <div style="margin-top: 15px;">
+            <a href="admin_mappings.php" class="btn btn-primary" style="margin-right: 10px;">
+                <i class="fas fa-cogs"></i> Go to CSV Mappings
+            </a>
+            <span style="color: #666; font-size: 0.9em;">Configure supported CSV formats first</span>
+        </div>
+    `;
+    
+    // Insert after the h2 title
+    const title = document.querySelector('h2');
+    if (title && title.parentNode) {
+        title.parentNode.insertBefore(messageDiv, title.nextSibling);
+    }
+}
+
+// CRITICAL: Toggle data preview function - copied from user/index.php
+function toggleDataPreview() {
+    const content = document.getElementById('previewContent');
+    const toggle = document.getElementById('previewToggle');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        toggle.classList.add('rotated');
+    } else {
+        content.style.display = 'none';
+        toggle.classList.remove('rotated');
+    }
+}
+
+// CRITICAL: Upload confirmation function similar to user/index.php
+function confirmSampleDataUpload() {
+    const hasExistingSampleData = window.adminHasExistingSampleData;
+    const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
+    
+    console.log('=== ADMIN SAMPLE UPLOAD CONFIRMATION ===');
+    console.log('hasExistingSampleData:', hasExistingSampleData);
+    console.log('hasErrorMessages:', hasErrorMessages);
+    
+    // Show confirmation if there's existing sample data OR error messages
+    if (!hasExistingSampleData && !hasErrorMessages) {
+        console.log('No existing data or error messages - proceeding without confirmation');
+        return true; 
+    }
+    
+    let confirmMessage;
+    
+    // Prioritize error message warning if present
+    if (hasErrorMessages && !hasExistingSampleData) {
+        confirmMessage = "⚠️ Clear Error Messages?\n\n" +
+                       "You have validation error messages displayed that contain helpful suggestions for fixing your CSV file:\n" +
+                       "• 💡 Data fix suggestions\n" +
+                       "• 🔧 Quick fix guide\n" +
+                       "• 📋 Detailed error explanations\n\n" +
+                       "Uploading a new file will clear these helpful messages.\n\n" +
+                       "Do you want to continue with the upload?";
+    } else if (hasErrorMessages && hasExistingSampleData) {
+        confirmMessage = "⚠️ Replace Sample Data & Clear Error Messages?\n\n" +
+                       "You have existing sample data AND validation error messages displayed.\n\n" +
+                       "Uploading a new file will:\n" +
+                       "• Replace the current sample data completely\n" +
+                       "• Clear all sample analytics and metrics\n" +
+                       "• Affect all users currently viewing sample data\n" +
+                       "• Remove the helpful error messages and fix suggestions\n\n" +
+                       "This action cannot be undone. Do you want to continue?";
+    } else if (hasExistingSampleData) {
+        confirmMessage = "⚠️ Replace Existing Sample Data?\n\n" +
+                       "There is already sample data in the system. Uploading a new file will:\n" +
+                       "• Replace the current sample data completely\n" +
+                       "• Clear all sample analytics and metrics\n" +
+                       "• Affect all users currently viewing sample data\n" +
+                       "• Reset all sample dashboard results\n\n" +
+                       "This action cannot be undone. Do you want to continue?";
+    }
+    
+    console.log('Showing confirmation dialog:', confirmMessage);
+    const result = confirm(confirmMessage);
+    console.log('Confirmation result:', result);
+    return result;
+}
+
+// CRITICAL: Browser refresh/navigation confirmation for error messages (like user/index.php)
+window.addEventListener('beforeunload', function(e) {
+    console.log('=== ADMIN BEFOREUNLOAD EVENT TRIGGERED ===');
+    
+    const hasExistingSampleData = window.adminHasExistingSampleData;
+    const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
+    
+    console.log('hasExistingSampleData:', hasExistingSampleData);
+    console.log('hasErrorMessages:', hasErrorMessages);
+    
+    // Only show confirmation if there are error messages with helpful content
+    if (hasErrorMessages) {
+        console.log('Error messages found - showing beforeunload confirmation');
+        
+        // Browser will show its own message regardless
+        e.preventDefault();
+        e.returnValue = ''; // Empty string is sufficient
+        
+        console.log('beforeunload event prevented');
+        return ''; // For older browsers
+    } else {
+        console.log('No error messages, allowing navigation');
+    }
+});
+
+// Progress functions
+function showUploadProgress() {
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+    }
+}
+
+function hideUploadProgress() {
+    const submitBtn = document.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Upload Sample';
+    }
+}
+
+// Success and error message functions
+function showSuccessMessage(message) {
+    // Remove existing messages
+    removeExistingMessages();
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message success';
+    messageDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+    
+    // Insert after the h2 title
+    const title = document.querySelector('h2');
+    if (title && title.parentNode) {
+        title.parentNode.insertBefore(messageDiv, title.nextSibling);
+    }
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.parentNode.removeChild(messageDiv);
         }
+    }, 5000);
+}
 
-				// File input handling for admin sample upload - matching user/index.php
-				document.addEventListener('DOMContentLoaded', function() {
-						const fileInput = document.getElementById('sampleCsv');
-						const fileInfo = document.getElementById('fileInfo');
-						const fileName = document.getElementById('fileName');
-						const fileSize = document.getElementById('fileSize');
-						const fileButton = document.querySelector('.file-input-button');
-						
-						if (fileInput) {
-								fileInput.addEventListener('change', function() {
-										handleFileSelection(this);
-								});
-						}
-						
-						function handleFileSelection(input) {
-								if (input.files.length > 0) {
-										const file = input.files[0];
-										
-										// Update file info display
-										fileName.textContent = file.name;
-										fileSize.textContent = formatFileSize(file.size);
-										fileInfo.classList.add('show');
-										fileInfo.style.display = 'flex';
-										
-										// File validation with visual feedback
-										const isValidCSV = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
-										const isValidSize = file.size <= 5 * 1024 * 1024; // 5MB
-										const isNotEmpty = file.size > 0;
-										
-										if (!isValidCSV) {
-												fileName.textContent = file.name + ' (Not a CSV file)';
-										} else if (!isValidSize) {
-												fileSize.textContent = formatFileSize(file.size) + ' (Too large)';
-										} else if (!isNotEmpty) {
-												fileName.textContent = file.name + ' (Empty file)';
-										}
-										
-										console.log('Admin sample file selected:', file.name, formatFileSize(file.size), 'Valid:', isValidCSV && isValidSize && isNotEmpty);
-										
-								} else {
-										// Reset to default state
-										fileName.textContent = '-';
-										fileSize.textContent = '-';
-										fileInfo.classList.remove('show');
-										fileInfo.style.display = 'none';
-										
-										// Reset button appearance
-										fileButton.innerHTML = 'Choose CSV File';
-										fileButton.style.background = ''; // Reset to default
-										
-										// Reset colors
-										fileName.style.color = '';
-										fileSize.style.color = '';
-								}
-						}
-						
-						function formatFileSize(bytes) {
-								if (bytes === 0) return '0 Bytes';
-								const k = 1024;
-								const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-								const i = Math.floor(Math.log(bytes) / Math.log(k));
-								return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-						}
-						
-						// ... rest of your existing JavaScript code ...
-				});
-				
-        </script>
+function showErrorMessage(message) {
+    // Remove existing messages
+    removeExistingMessages();
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message error';
+    messageDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+    
+    // Insert after the h2 title
+    const title = document.querySelector('h2');
+    if (title && title.parentNode) {
+        title.parentNode.insertBefore(messageDiv, title.nextSibling);
+    }
+}
+
+// Enhanced validation error display like user/index.php
+function showValidationErrors(errorMessage) {
+    // Remove existing messages
+    removeExistingMessages();
+    
+    // Parse validation errors
+    let errorMessage_clean = errorMessage;
+    errorMessage_clean = errorMessage_clean.replace("Data validation errors found: ", "");
+    errorMessage_clean = errorMessage_clean.replace(". Please correct these issues and upload again.", "");
+    
+    // Check for "No valid data" message
+    if (errorMessage.includes('No valid data')) {
+        const errorList = [
+            "No valid data found in CSV file - All rows failed validation",
+            "Common causes: Invalid file format, corrupt data, or unsupported CSV structure"
+        ];
+        showDetailedErrorList(errorList);
+        return;
+    }
+    
+    // Split by semicolons for validation errors
+    const errorList = errorMessage_clean.split(';').filter(error => error.trim().length > 0);
+    
+    if (errorList.length > 0) {
+        showDetailedErrorList(errorList);
+    } else {
+        showErrorMessage(errorMessage);
+    }
+}
+
+function showDetailedErrorList(errorList) {
+    const errorContainer = document.createElement('div');
+    errorContainer.className = 'error-container';
+    
+    const errorSummary = document.createElement('p');
+    errorSummary.className = 'error-summary';
+    errorSummary.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Found ${errorList.length} validation errors in your CSV file:`;
+    errorContainer.appendChild(errorSummary);
+    
+    const errorListElement = document.createElement('ul');
+    errorListElement.className = 'error-list';
+    
+    errorList.forEach(error => {
+        const error_clean = error.trim();
+        if (error_clean.length > 0) {
+            // Parse error and suggestions
+            const parts = error_clean.split(' Suggestions: ');
+            const mainError = parts[0];
+            const suggestions = parts.length > 1 ? parts[1] : '';
+            
+            const errorItem = document.createElement('li');
+            errorItem.className = 'error-item';
+            
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'error-message';
+            errorMessage.textContent = mainError;
+            errorItem.appendChild(errorMessage);
+            
+            if (suggestions) {
+                const errorSuggestions = document.createElement('div');
+                errorSuggestions.className = 'error-suggestions';
+                errorSuggestions.innerHTML = `<strong>💡 Suggestions:</strong> <span class="suggestions-text">${suggestions}</span>`;
+                errorItem.appendChild(errorSuggestions);
+            }
+            
+            errorListElement.appendChild(errorItem);
+        }
+    });
+    
+    errorContainer.appendChild(errorListElement);
+    
+    // Add validation help section
+    const validationHelp = document.createElement('div');
+    validationHelp.className = 'validation-help';
+    validationHelp.innerHTML = `
+        <h4>Quick Fix Guide:</h4>
+        <div class="fix-guide">
+            <div class="fix-item">
+                <strong>📁 File Format Issues:</strong>
+                <ul>
+                    <li>Ensure CSV has proper headers</li>
+                    <li>Check for GA4 metadata lines starting with #</li>
+                    <li>Verify file isn't corrupted or empty</li>
+                    <li>Make sure data rows aren't all empty</li>
+                </ul>
+            </div>
+            <div class="fix-item">
+                <strong>🔢 Integer Issues:</strong>
+                <ul>
+                    <li>Remove letters: "15a" → "15"</li>
+                    <li>Evaluate expressions: "42+3" → "45"</li>
+                    <li>Convert Unicode: "５０" → "50"</li>
+                </ul>
+            </div>
+            <div class="fix-item">
+                <strong>📊 Float/Decimal Issues:</strong>
+                <ul>
+                    <li>Fix multiple decimals: "8..5" → "8.5"</li>
+                    <li>Convert scientific: "1.2e3" → "1200"</li>
+                    <li>Remove special chars: "~5.3" → "5.3"</li>
+                </ul>
+            </div>
+            <div class="fix-item">
+                <strong>⏰ Time Format Issues:</strong>
+                <ul>
+                    <li>Use proper format: "10:65:30" → "11:05:30"</li>
+                    <li>Convert units: "12m30s" → "12:30" or "750"</li>
+                </ul>
+            </div>
+            <div class="fix-item">
+                <strong>💰 Currency Issues:</strong>
+                <ul>
+                    <li>Remove symbols: "$1,200" → "1200"</li>
+                    <li>Remove commas: "500.abc" → "500"</li>
+                </ul>
+            </div>
+            <div class="fix-item">
+                <strong>🚫 Common CSV Issues:</strong>
+                <ul>
+                    <li>Remove trademark symbols: ™, ®, ©</li>
+                    <li>Fix unquoted commas in data fields</li>
+                    <li>Remove leading/trailing whitespace</li>
+                    <li>Check for mixed data types in columns</li>
+                </ul>
+            </div>
+        </div>
+    `;
+    errorContainer.appendChild(validationHelp);
+    
+    const errorFooter = document.createElement('p');
+    errorFooter.className = 'error-footer';
+    errorFooter.innerHTML = '<strong>Please correct these issues and upload again.</strong>';
+    errorContainer.appendChild(errorFooter);
+    
+    // Insert after the h2 title
+    const title = document.querySelector('h2');
+    if (title && title.parentNode) {
+        title.parentNode.insertBefore(errorContainer, title.nextSibling);
+    }
+}
+
+function showDetailedErrors(response) {
+    // Remove existing messages
+    removeExistingMessages();
+    
+    if (response.errors && response.errors.length > 0) {
+        // Create detailed error display for errors array
+        const errorContainer = document.createElement('div');
+        errorContainer.className = 'error-container';
+        
+        const errorSummary = document.createElement('p');
+        errorSummary.className = 'error-summary';
+        errorSummary.textContent = `Found ${response.errors.length} validation errors in your CSV file:`;
+        errorContainer.appendChild(errorSummary);
+        
+        const errorList = document.createElement('ul');
+        errorList.className = 'error-list';
+        
+        response.errors.forEach(error => {
+            const errorItem = document.createElement('li');
+            errorItem.className = 'error-item';
+            
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'error-message';
+            
+            // Handle both string and object error formats
+            if (typeof error === 'string') {
+                errorMessage.textContent = error;
+            } else if (error.message) {
+                errorMessage.textContent = error.message;
+                
+                if (error.suggestions) {
+                    const suggestions = document.createElement('div');
+                    suggestions.className = 'error-suggestions';
+                    suggestions.innerHTML = '<strong>💡 Suggestions:</strong> ';
+                    
+                    const suggestionText = document.createElement('span');
+                    suggestionText.className = 'suggestions-text';
+                    suggestionText.textContent = error.suggestions;
+                    suggestions.appendChild(suggestionText);
+                    
+                    errorItem.appendChild(suggestions);
+                }
+            }
+            
+            errorItem.appendChild(errorMessage);
+            errorList.appendChild(errorItem);
+        });
+        
+        errorContainer.appendChild(errorList);
+        
+        // Insert after the h2 title
+        const title = document.querySelector('h2');
+        if (title && title.parentNode) {
+            title.parentNode.insertBefore(errorContainer, title.nextSibling);
+        }
+    }
+}
+</script>
 </body>
 </html>

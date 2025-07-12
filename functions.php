@@ -1277,10 +1277,16 @@ function getSampleDataNotice() {
     error_log("Session using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
     
     if (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data'] === true) {
+        // Determine the current page to handle redirects properly
+        $currentPage = basename($_SERVER['PHP_SELF']);
+        
+        // Use index.php as the central handler for clearing sample data
+        $clearUrl = ($currentPage === 'index.php') ? '?clear_sample=1' : 'index.php?clear_sample=1';
+        
         $notice = [
             'is_sample' => true,
             'message' => 'You\'re currently viewing sample data to explore TrafAnalyz features.',
-            'action' => '<a href="index.php?clear_sample=1" class="notice-content-btn">Switch to Your Data</a>'
+            'action' => '<a href="' . $clearUrl . '" class="notice-content-btn">Switch to Your Data</a>'
         ];
         error_log("Returning sample notice: " . json_encode($notice));
         error_log("=== END GET SAMPLE DATA NOTICE (SAMPLE) ===");

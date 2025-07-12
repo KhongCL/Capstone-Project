@@ -166,6 +166,7 @@ if (isset($_SESSION['upload_just_completed'])) {
 if (isset($_GET['clear_sample']) && $_GET['clear_sample'] == '1') {
     error_log("Clearing sample data requested");
     
+    // CRITICAL: Clear sample data session variables FIRST
     unset($_SESSION['using_sample_data']);
     unset($_SESSION['sample_upload_id']);
 
@@ -173,6 +174,11 @@ if (isset($_GET['clear_sample']) && $_GET['clear_sample'] == '1') {
     unset($_SESSION['uploaded_csv']);
     unset($_SESSION['mapping_result']);
     unset($_SESSION['csv_metadata']);
+    
+    // Clear cached data FIRST
+    unset($_SESSION['cached_metrics']);
+    unset($_SESSION['cached_traffic_sources']);
+    unset($_SESSION['pages_data_quality']);
     
     // Get user's most recent upload
     $userId = $_SESSION['user_id'];
@@ -182,26 +188,42 @@ if (isset($_GET['clear_sample']) && $_GET['clear_sample'] == '1') {
     $result = $stmt->get_result();
     
     if ($result && $row = $result->fetch_assoc()) {
+        // User has existing data - redirect to overview
         $_SESSION['latest_upload_id'] = $row['UploadID'];
-        error_log("Restored user upload ID: " . $row['UploadID']);
+        error_log("User has existing data, redirecting to overview with UploadID: " . $row['UploadID']);
+        
+        $uploadMessage = [
+            'type' => 'info',
+            'message' => 'Sample data cleared. You\'re now viewing your own data.'
+        ];
+        
+        // CRITICAL: Force session write multiple times to ensure it takes
+        session_write_close();
+        session_start();
+        session_write_close();
+        
+        // Add a small delay to ensure session is written
+        usleep(100000); // 100ms delay
+        
+        // Redirect to overview
+        header('Location: overview.php?cleared=1');
+        exit();
     } else {
+        // User has NO existing data - stay on index for upload
         unset($_SESSION['latest_upload_id']);
-        error_log("No user uploads found, cleared latest_upload_id");
+        error_log("User has no existing data, staying on index for upload");
+        
+        $uploadMessage = [
+            'type' => 'info',
+            'message' => 'Sample data cleared. Please upload your CSV file to view your own analytics data.'
+        ];
+        
+        // CRITICAL: Force session write for staying on index too
+        session_write_close();
+        session_start();
+        
+        // Stay on index.php for upload - no redirect needed
     }
-    
-    // Clear cached data
-    unset($_SESSION['cached_metrics']);
-    unset($_SESSION['cached_traffic_sources']);
-    unset($_SESSION['pages_data_quality']);
-    
-    $uploadMessage = [
-        'type' => 'info',
-        'message' => 'Sample data cleared. You\'re now viewing your own data.'
-    ];
-    
-    // Redirect back to overview
-    header('Location: overview.php');
-    exit();
 }
 
 // Check current sample data status for display

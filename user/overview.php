@@ -33,6 +33,29 @@ if (isset($_GET['sample_data']) && $_GET['sample_data'] == '1') {
     }
 }
 
+// Handle post-clear redirect
+if (isset($_GET['cleared']) && $_GET['cleared'] == '1') {
+    // Force clear any remaining sample data session variables
+    if (isset($_SESSION['using_sample_data'])) {
+        error_log("OVERVIEW: Force clearing remaining sample data session after clear redirect");
+        unset($_SESSION['using_sample_data']);
+        unset($_SESSION['sample_upload_id']);
+        
+        // Clear cached data
+        unset($_SESSION['cached_metrics']);
+        unset($_SESSION['cached_traffic_sources']);
+        unset($_SESSION['pages_data_quality']);
+        
+        // Force session write
+        session_write_close();
+        session_start();
+    }
+    
+    // Redirect to clean URL to remove the parameter
+    header('Location: overview.php');
+    exit();
+}
+
 // UPDATED: Check user role and adjust navigation accordingly
 $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
 $backUrl = $isAdmin ? '../admin/upload_sample_data.php' : 'index.php';
