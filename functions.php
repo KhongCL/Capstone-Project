@@ -963,7 +963,7 @@ function saveTransformedData($conn, $transformedData) {
             $sourceTypeId = getSourceTypeId($conn, $sourceName);
             error_log("Processing source: '$sourceName' (ID: $sourceTypeId)");
             
-            // Process ALL the metrics properly
+            // Process ALL the metrics properly - FIXED: Allow 0 values
             $metricsToProcess = [
                 'visits' => 'Sessions',
                 'unique_visitors' => 'Users', 
@@ -979,10 +979,11 @@ function saveTransformedData($conn, $transformedData) {
             ];
             
             foreach ($metricsToProcess as $rowKey => $metricName) {
-                if (isset($row[$rowKey]) && is_numeric($row[$rowKey]) && $row[$rowKey] > 0) {
+                // FIXED: Allow 0 values - only check if numeric and exists
+                if (isset($row[$rowKey]) && is_numeric($row[$rowKey])) {
                     $result = insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $row[$rowKey], $startDate);
                     error_log("Inserted $metricName data point: VALUE={$row[$rowKey]}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
-            } else {
+                } else {
                     $value = $row[$rowKey] ?? 'NULL';
                     error_log("Skipping $metricName - invalid value: $value");
                 }
@@ -1059,7 +1060,7 @@ function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $
     // Enhanced debugging
     error_log("insertDataPoint called: Upload=$uploadId, Source=$sourceTypeId, Metric='$metricName', Value=$value, Date=$dataDate");
     
-    // Validate input
+    // Validate input - FIXED: Allow 0 values, only reject non-numeric values
     if (!is_numeric($value)) {
         error_log("ERROR: Non-numeric value provided: $value");
         return false;
@@ -1088,7 +1089,7 @@ function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $
     // Default period type (can be customized if needed)
     $periodType = 'Daily';
     
-    // Convert value to proper decimal format
+    // Convert value to proper decimal format - FIXED: Allow 0 values
     $numericValue = floatval($value);
     
     error_log("Final values: Upload=$uploadId, Source=$sourceTypeId, Metric=$metricTypeId ($metricName), Value=$numericValue, Date=$dataDate");
