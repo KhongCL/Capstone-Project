@@ -9,6 +9,19 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_GET) && !isset($_SESSION['upload_just_completed'])) {
+    // Clear old validation errors on normal page load
+    if (isset($_SESSION['validation_errors']) && isset($_SESSION['upload_message'])) {
+        $errorAge = time() - ($_SESSION['validation_errors_timestamp'] ?? 0);
+        if ($errorAge > 300) { // Clear after 5 minutes
+            unset($_SESSION['validation_errors']);
+            unset($_SESSION['upload_message']);
+            unset($_SESSION['persistent_validation_errors']);
+            error_log("Cleared old validation errors on page refresh");
+        }
+    }
+}
+
 // Set page variables for header
 $title = "Dashboard Home";
 $active_page = "home";
