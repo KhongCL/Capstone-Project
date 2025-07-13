@@ -687,7 +687,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
                         <button type="button" class="btn btn-secondary" id="add-format">
                             <i class="fas fa-plus"></i> Add New Format
                         </button>
-                        <button type="submit" name="update_mappings" class="btn btn-primary">
+                        <button type="submit" name="update_mappings" class="btn">
                             <i class="fas fa-save"></i> Save All Mappings
                         </button>
                         <a href="upload_sample_data.php" class="btn btn-info">

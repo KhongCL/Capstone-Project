@@ -562,7 +562,7 @@ if ($row = $result->fetch_assoc()) {
                                 <a href="download_sample.php" class="btn btn-success">
                                     <i class="fas fa-download"></i> Download Sample CSV
                                 </a>
-                                <a href="../user/overview.php?sample_data=1" class="btn btn-primary" target="_blank">
+                                <a href="../user/overview.php?sample_data=1" class="btn" target="_blank">
                                     <i class="fas fa-chart-line"></i> View Sample Dashboard
                                 </a>
                                 <a href="../user/traffic_sources.php?sample_data=1" class="btn btn-secondary" target="_blank">
@@ -627,7 +627,7 @@ if ($row = $result->fetch_assoc()) {
                             </div>
                             
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-primary">Upload Sample</button>
+                                <button type="submit" class="btn">Upload Sample</button>
                             </div>
                         </form>
                     </div>
@@ -1136,7 +1136,7 @@ function showMappingsRedirectMessage(message) {
             <i class="fas fa-exclamation-triangle"></i> ${message}
         </div>
         <div style="margin-top: 15px;">
-            <a href="admin_mappings.php" class="btn btn-primary" style="margin-right: 10px;">
+            <a href="admin_mappings.php" class="btn" style="margin-right: 10px;">
                 <i class="fas fa-cogs"></i> Go to CSV Mappings
             </a>
             <span style="color: #666; font-size: 0.9em;">Configure supported CSV formats first</span>

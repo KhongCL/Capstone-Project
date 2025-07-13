@@ -239,7 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
     </script>
 </head>
-<body>    
+<body style="display: flex; justify-content: center; align-items: center;">    
     <div class="auth-container">
         <div class="auth-form">
             <div class="logo">

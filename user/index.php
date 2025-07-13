@@ -376,22 +376,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
             margin-right: 10px;
             color: #fff;
         }
-        
-        .sample-data-status .btn {
-            padding: 8px 16px;
-            font-size: 0.9em;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-            text-decoration: none;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-        
-        .sample-data-status .btn:hover {
-            background: rgba(255, 255, 255, 0.4);
-            transform: translateY(-1px);
-        }
 
         .sample-actions {
             display: flex;
@@ -554,96 +538,12 @@ error_log("=== END INDEX.PHP DEBUG ===");
             z-index: 100;
         }
 
-        /* ==================== BUTTON STYLES ==================== */
-        .btn-primary {
-            background: #007bff;
-            color: white;
-            border: 1px solid #007bff;
-        }
-
-        .btn-primary:hover {
-            background: #0056b3;
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-            border: 1px solid #6c757d;
-        }
-
-        .btn-secondary:hover {
-            background: #545b62;
-            transform: translateY(-1px);
-        }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
-            border: 1px solid #28a745;
-        }
-
-        .btn-success:hover {
-            background: #218838;
-            border-color: #1e7e34;
-            transform: translateY(-1px);
-        }
-
         /* ==================== PREVIEW ACTIONS STYLES ==================== */
         .preview-actions {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 10px;
             margin-top: 15px;
-        }
-
-        .preview-actions .btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 15px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            border: 1px solid transparent; /* Add border for consistency */
-        }
-
-        /* Specific button color overrides for preview actions */
-        .preview-actions .btn-success {
-            background: #28a745 !important;
-            color: #fff !important;
-            border-color: #28a745 !important;
-        }
-
-        .preview-actions .btn-success:hover {
-            background: #218838 !important;
-            border-color: #1e7e34 !important;
-            color: #fff !important;
-        }
-
-        .preview-actions .btn-primary {
-            background: #007bff !important;
-            color: #fff !important;
-            border-color: #007bff !important;
-        }
-
-        .preview-actions .btn-primary:hover {
-            background: #0056b3 !important;
-            border-color: #004085 !important;
-            color: #fff !important;
-        }
-
-        .preview-actions .btn-secondary {
-            background: #6c757d !important;
-            color: #fff !important;
-            border-color: #6c757d !important;
-        }
-
-        .preview-actions .btn-secondary:hover {
-            background: #545b62 !important;
-            border-color: #4e555b !important;
-            color: #fff !important;
         }
 
         /* ==================== ERROR CONTAINER AND BASIC ERROR STYLES ==================== */
@@ -1161,7 +1061,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
                                 <a href="download_sample.php" class="btn btn-success">
                                     <i class="fas fa-download"></i> Download Sample CSV
                                 </a>
-                                <a href="overview.php" class="btn btn-primary">
+                                <a href="overview.php" class="btn">
                                     <i class="fas fa-chart-line"></i> View Overview Dashboard
                                 </a>
                                 <a href="traffic_sources.php" class="btn btn-secondary">

@@ -1959,14 +1959,6 @@ label {
     }
 }
 
-/* =====================================================
-   ACCESSIBILITY ENHANCEMENTS
-   ===================================================== */
-/* Focus indicators */
-*:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
 
 /* Chart Legend Positioning */
 .user-chart-legend-right {

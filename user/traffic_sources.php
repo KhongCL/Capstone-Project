@@ -343,8 +343,8 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
                   <canvas id="sourcesChart"></canvas>
                 </div>
                 <div class="user-chart-type-toggle">
-                  <button class="btn btn-sm active" data-chart-type="pie">Pie Chart</button>
-                  <button class="btn btn-sm" data-chart-type="bar">Bar Chart</button>
+                  <button class="btn btn-small active" data-chart-type="pie">Pie Chart</button>
+                  <button class="btn btn-small" data-chart-type="bar">Bar Chart</button>
                 </div>
                 <div class="user-export-controls">
                   <button onclick="exportChartToPDF()" class="user-export-btn pdf">

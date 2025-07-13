@@ -1347,7 +1347,7 @@ class UploadProgressTracker {
             </details>
             
             <div class="result-actions">
-                <button onclick="window.location.href='overview.php'" class="btn btn-primary">
+                <button onclick="window.location.href='overview.php'" class="btn">
                     <i class="fas fa-chart-bar"></i> View Imported Data
                 </button>
                 <button onclick="location.reload()" class="btn btn-secondary">
