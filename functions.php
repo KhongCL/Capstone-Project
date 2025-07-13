@@ -1367,19 +1367,36 @@ function preserveValidationErrorsForDisplay($validationErrors, $validRowCount) {
 
 // Add this function to check if validation errors should be displayed
 function shouldShowValidationErrors() {
-    // CRITICAL FIX: Start session if not already started
+    // CRITICAL FIX: Don't try to start session if headers are sent
+    // Instead, check if we already have access to session data
     if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-        error_log("shouldShowValidationErrors: Started session");
+        if (!headers_sent()) {
+            session_start();
+            error_log("shouldShowValidationErrors: Started session");
+        } else {
+            error_log("shouldShowValidationErrors: Cannot start session - headers already sent");
+            // CRITICAL FIX: Check if we can access session data anyway
+            // This happens when session was started earlier but closed due to header output
+            if (isset($_SESSION)) {
+                error_log("shouldShowValidationErrors: Session data still accessible");
+            } else {
+                error_log("shouldShowValidationErrors: No session data accessible");
+                return false;
+            }
+        }
     } else {
         error_log("shouldShowValidationErrors: Session already active");
     }
     
-    if (!isset($_SESSION['persistent_validation_errors']) || 
-        !isset($_SESSION['validation_errors_timestamp'])) {
+    // CRITICAL FIX: Try to access session data even if headers are sent
+    // The session variables might still be accessible from the previous page load
+    $hasErrors = isset($_SESSION['persistent_validation_errors']);
+    $hasTimestamp = isset($_SESSION['validation_errors_timestamp']);
+    
+    if (!$hasErrors || !$hasTimestamp) {
         error_log("shouldShowValidationErrors: Missing session variables");
-        error_log("- persistent_validation_errors: " . (isset($_SESSION['persistent_validation_errors']) ? 'SET' : 'NOT SET'));
-        error_log("- validation_errors_timestamp: " . (isset($_SESSION['validation_errors_timestamp']) ? 'SET' : 'NOT SET'));
+        error_log("- persistent_validation_errors: " . ($hasErrors ? 'SET' : 'NOT SET'));
+        error_log("- validation_errors_timestamp: " . ($hasTimestamp ? 'SET' : 'NOT SET'));
         return false;
     }
     
@@ -1388,7 +1405,10 @@ function shouldShowValidationErrors() {
     error_log("shouldShowValidationErrors: Error age = $errorAge seconds");
     if ($errorAge > 3600) { // 1 hour
         error_log("shouldShowValidationErrors: Errors expired, clearing");
-        clearPersistentValidationErrors();
+        // Only try to clear if we can modify session
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            clearPersistentValidationErrors();
+        }
         return false;
     }
     
@@ -1418,17 +1438,25 @@ function getPersistentValidationErrors() {
 
 // Add this function to clear validation errors
 function clearPersistentValidationErrors() {
-    // CRITICAL FIX: Start session if not already started
-    if (session_status() === PHP_SESSION_NONE) {
+    // CRITICAL FIX: Only clear if session is active and writable
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        unset($_SESSION['persistent_validation_errors']);
+        unset($_SESSION['persistent_validation_count']);
+        unset($_SESSION['persistent_valid_rows']);
+        unset($_SESSION['validation_errors_timestamp']);
+        error_log("Cleared persistent validation errors");
+        return true;
+    } else if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
         session_start();
-        error_log("clearPersistentValidationErrors: Started session");
+        unset($_SESSION['persistent_validation_errors']);
+        unset($_SESSION['persistent_validation_count']);
+        unset($_SESSION['persistent_valid_rows']);
+        unset($_SESSION['validation_errors_timestamp']);
+        error_log("Started session and cleared persistent validation errors");
+        return true;
+    } else {
+        error_log("clearPersistentValidationErrors: Cannot clear - session not writable");
+        return false;
     }
-    
-    unset($_SESSION['persistent_validation_errors']);
-    unset($_SESSION['persistent_validation_count']);
-    unset($_SESSION['persistent_valid_rows']);
-    unset($_SESSION['validation_errors_timestamp']);
-    error_log("Cleared persistent validation errors");
-    return true;
 }
 ?>
