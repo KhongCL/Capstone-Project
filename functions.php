@@ -3,9 +3,19 @@
 require_once 'classes/CsvProcessor.php';
 
 // Replace the handleCsvUpload function:
-
 function handleCsvUpload($conn, $file) {
     error_log("=== HANDLE CSV UPLOAD START ===");
+
+    // CRITICAL FIX: Clear any existing validation errors when starting new upload
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    // CRITICAL FIX: Clear validation errors for new uploads (both regular and comparison)
+    if (isset($_SESSION['persistent_validation_errors'])) {
+        clearPersistentValidationErrors();
+        error_log("Cleared existing validation errors for new upload");
+    }
     
     // CRITICAL FIX: Check if this is a comparison upload
     $isComparisonUpload = isset($_POST['comparison_context']) && $_POST['comparison_context'] === true;
@@ -1360,7 +1370,7 @@ function handleCsvUploadForComparison($conn, $file) {
     
     // CRITICAL FIX: Store original filename and create unique identifier for comparison context
     $originalFileName = $file['name'];
-    $comparisonFileId = uniqid('comp_', true); // Create unique ID for this comparison file
+    $comparisonFileId = uniqid('comp_', true);
     
     error_log("COMPARISON: Processing file with original name: $originalFileName, ID: $comparisonFileId");
     
@@ -1375,6 +1385,18 @@ function handleCsvUploadForComparison($conn, $file) {
     
     // Use the same logic as handleCsvUpload but with comparison context
     $result = handleCsvUpload($conn, $file);
+    
+    // CRITICAL FIX: Check if we have validation errors in comparison context
+    if ($result['type'] === 'success' && isset($_SESSION['persistent_validation_errors']) && !empty($_SESSION['persistent_validation_errors'])) {
+        error_log("COMPARISON: File processed with validation warnings - converting success to warning");
+        
+        // Convert success to warning with validation errors
+        $result['type'] = 'warning_with_errors';
+        $result['validation_errors'] = $_SESSION['persistent_validation_errors'];
+        $result['error_count'] = $_SESSION['persistent_validation_count'] ?? 0;
+        
+        error_log("COMPARISON: Converted to warning_with_errors type with " . count($_SESSION['persistent_validation_errors']) . " total unique errors");
+    }
     
     // CRITICAL FIX: Update comparison context after processing
     $_SESSION['comparison_context'][$comparisonFileId]['processed'] = true;
@@ -1406,34 +1428,80 @@ function preserveValidationErrorsForDisplay($validationErrors, $validRowCount) {
         if (!headers_sent()) {
             session_start();
         } else {
-            error_log("Cannot preserve validation errors - headers already sent");
+            error_log("Cannot start session - headers already sent");
             return;
         }
     }
     
-    // CRITICAL: Store validation errors in a persistent session variable that won't be cleared
-    $_SESSION['persistent_validation_errors'] = $validationErrors;
-    $_SESSION['persistent_validation_count'] = count($validationErrors);
-    $_SESSION['persistent_valid_rows'] = $validRowCount;
-    $_SESSION['validation_errors_timestamp'] = time(); // Track when errors occurred
+    // CRITICAL FIX: For comparison context, merge errors without duplicates
+    $isComparisonContext = isset($_POST['comparison_context']) && $_POST['comparison_context'] === true;
     
-    error_log("PRESERVED validation errors for global display: " . count($validationErrors) . " errors, $validRowCount valid rows");
+    // CRITICAL FIX: Track the upload context for display logic
+    $_SESSION['validation_errors_comparison_context'] = $isComparisonContext;
+    error_log("PRESERVED: Set validation_errors_comparison_context = " . ($isComparisonContext ? 'true' : 'false'));
+    
+    if ($isComparisonContext && isset($_SESSION['persistent_validation_errors'])) {
+        // CRITICAL FIX: Only merge errors if we actually have new validation errors
+        if (!empty($validationErrors)) {
+            error_log("PRESERVED comparison: Processing new validation errors");
+            
+            // Clean and normalize error messages before comparison
+            $existingErrors = $_SESSION['persistent_validation_errors'];
+            
+            // Normalize existing errors (remove any file prefixes)
+            $normalizedExistingErrors = array_map(function($error) {
+                return preg_replace('/^\[File \d+\]\s*/', '', $error);
+            }, $existingErrors);
+            
+            // Normalize new errors (remove any file prefixes)
+            $normalizedNewErrors = array_map(function($error) {
+                return preg_replace('/^\[File \d+\]\s*/', '', $error);
+            }, $validationErrors);
+            
+            // Merge and get unique normalized errors
+            $allNormalizedErrors = array_merge($normalizedExistingErrors, $normalizedNewErrors);
+            $uniqueNormalizedErrors = array_unique($allNormalizedErrors);
+            
+            // Store the unique errors without file prefixes
+            $_SESSION['persistent_validation_errors'] = array_values($uniqueNormalizedErrors);
+            $_SESSION['persistent_validation_count'] = count($uniqueNormalizedErrors);
+            
+            error_log("PRESERVED comparison validation errors: " . count($uniqueNormalizedErrors) . " unique errors (was " . count($existingErrors) . " + " . count($validationErrors) . " = " . count($allNormalizedErrors) . " total, " . count($uniqueNormalizedErrors) . " unique)");
+        } else {
+            // No new validation errors for this file, don't change anything
+            error_log("PRESERVED comparison validation errors: No new errors from this file, keeping existing " . ($_SESSION['persistent_validation_count'] ?? 0) . " errors");
+        }
+        
+    } else {
+        // Normal single file processing - clean any file prefixes
+        $cleanedErrors = array_map(function($error) {
+            return preg_replace('/^\[File \d+\]\s*/', '', $error);
+        }, $validationErrors);
+        
+        $_SESSION['persistent_validation_errors'] = $cleanedErrors;
+        $_SESSION['persistent_validation_count'] = count($cleanedErrors);
+        
+        error_log("PRESERVED validation errors for single file: " . count($cleanedErrors) . " errors");
+    }
+    
+    $_SESSION['validation_errors_timestamp'] = time(); // Track when errors occurred
 }
 
 // Add this function to check if validation errors should be displayed
 function shouldShowValidationErrors() {
-    // CRITICAL FIX: Don't try to start session if headers are sent
-    // Instead, check if we already have access to session data
-    if (session_status() === PHP_SESSION_NONE) {
+    // CRITICAL FIX: Don't try to start session if headers are sent or session already active
+    $sessionActive = (session_status() === PHP_SESSION_ACTIVE);
+    
+    if (!$sessionActive) {
         if (!headers_sent()) {
             session_start();
             error_log("shouldShowValidationErrors: Started session");
         } else {
             error_log("shouldShowValidationErrors: Cannot start session - headers already sent");
-            // CRITICAL FIX: Check if we can access session data anyway
-            // This happens when session was started earlier but closed due to header output
-            if (isset($_SESSION)) {
-                error_log("shouldShowValidationErrors: Session data still accessible");
+            // CRITICAL FIX: For headers already sent, check if session data is still accessible
+            if (isset($_SESSION) && is_array($_SESSION)) {
+                error_log("shouldShowValidationErrors: Session data still accessible despite headers sent");
+                // Continue with validation - session data is still available
             } else {
                 error_log("shouldShowValidationErrors: No session data accessible");
                 return false;
@@ -1443,15 +1511,70 @@ function shouldShowValidationErrors() {
         error_log("shouldShowValidationErrors: Session already active");
     }
     
-    // CRITICAL FIX: Try to access session data even if headers are sent
-    // The session variables might still be accessible from the previous page load
-    $hasErrors = isset($_SESSION['persistent_validation_errors']);
-    $hasTimestamp = isset($_SESSION['validation_errors_timestamp']);
+    // CRITICAL FIX: Check upload context to determine behavior
+    $currentPage = basename($_SERVER['PHP_SELF']);
+    $dashboardPages = ['overview.php', 'traffic_sources.php', 'pages.php'];
+    $isComparisonContext = isset($_SESSION['validation_errors_comparison_context']) && $_SESSION['validation_errors_comparison_context'] === true;
     
-    if (!$hasErrors || !$hasTimestamp) {
+    error_log("shouldShowValidationErrors: Current page: $currentPage, Comparison context: " . ($isComparisonContext ? 'YES' : 'NO'));
+    
+    // CRITICAL FIX: For comparison context - only show on compare.php, clear on dashboard pages
+    if ($isComparisonContext) {
+        if (in_array($currentPage, $dashboardPages) && $_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['upload_success'])) {
+            error_log("shouldShowValidationErrors: Comparison context - auto-clearing validation errors on dashboard page: $currentPage");
+            // CRITICAL FIX: Only clear if session is writable (not if headers sent)
+            if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
+                clearPersistentValidationErrors();
+            } else {
+                error_log("shouldShowValidationErrors: Cannot clear validation errors - headers already sent or session not writable");
+            }
+            return false;
+        }
+        
+        // For compare.php in comparison context, preserve the errors
+        if ($currentPage === 'compare.php') {
+            error_log("shouldShowValidationErrors: Comparison context - preserving errors for compare.php");
+            // Don't auto-clear on compare.php for comparison uploads
+        }
+    } else {
+        // CRITICAL FIX: For regular index.php uploads - DON'T auto-clear on dashboard pages
+        if (in_array($currentPage, $dashboardPages) && $_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['upload_success'])) {
+            error_log("shouldShowValidationErrors: Regular upload context - preserving validation errors for dashboard page: $currentPage");
+            // Don't clear - let dashboard pages show the warnings
+        }
+        
+        // CRITICAL FIX: For regular uploads - clear on compare.php
+        if ($currentPage === 'compare.php' && $_SERVER['REQUEST_METHOD'] === 'GET' && 
+            !isset($_GET['mapping_failed']) && empty($_GET)) {
+            error_log("shouldShowValidationErrors: Regular upload context - clearing validation errors on compare.php");
+            // CRITICAL FIX: Only clear if session is writable (not if headers sent)
+            if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
+                clearPersistentValidationErrors();
+            } else {
+                error_log("shouldShowValidationErrors: Cannot clear validation errors - headers already sent or session not writable");
+            }
+            return false;
+        }
+    }
+    
+    // CRITICAL FIX: Clear errors on page refresh for index.php (but preserve for compare.php)
+    if ($currentPage === 'index.php' && $_SERVER['REQUEST_METHOD'] === 'GET' && 
+        !isset($_GET['upload_success']) && !isset($_GET['mapping_failed']) && empty($_GET)) {
+        error_log("shouldShowValidationErrors: Page refresh detected on index.php, clearing validation errors");
+        // CRITICAL FIX: Only clear if session is writable (not if headers sent)
+        if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
+            clearPersistentValidationErrors();
+        } else {
+            error_log("shouldShowValidationErrors: Cannot clear validation errors - headers already sent or session not writable");
+        }
+        return false;
+    }
+    
+    // CRITICAL FIX: Only proceed if session is properly accessible
+    if (!isset($_SESSION['persistent_validation_errors']) || !isset($_SESSION['validation_errors_timestamp'])) {
         error_log("shouldShowValidationErrors: Missing session variables");
-        error_log("- persistent_validation_errors: " . ($hasErrors ? 'SET' : 'NOT SET'));
-        error_log("- validation_errors_timestamp: " . ($hasTimestamp ? 'SET' : 'NOT SET'));
+        error_log("- persistent_validation_errors: " . (isset($_SESSION['persistent_validation_errors']) ? 'SET' : 'NOT SET'));
+        error_log("- validation_errors_timestamp: " . (isset($_SESSION['validation_errors_timestamp']) ? 'SET' : 'NOT SET'));
         return false;
     }
     
@@ -1460,9 +1583,11 @@ function shouldShowValidationErrors() {
     error_log("shouldShowValidationErrors: Error age = $errorAge seconds");
     if ($errorAge > 3600) { // 1 hour
         error_log("shouldShowValidationErrors: Errors expired, clearing");
-        // Only try to clear if we can modify session
-        if (session_status() === PHP_SESSION_ACTIVE) {
+        // Only try to clear if we can modify session and headers not sent
+        if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
             clearPersistentValidationErrors();
+        } else {
+            error_log("shouldShowValidationErrors: Cannot clear expired errors - headers already sent or session not writable");
         }
         return false;
     }
@@ -1483,7 +1608,6 @@ function getPersistentValidationErrors() {
     $result = [
         'errors' => $_SESSION['persistent_validation_errors'],
         'error_count' => $_SESSION['persistent_validation_count'],
-        'valid_rows' => $_SESSION['persistent_valid_rows'],
         'timestamp' => $_SESSION['validation_errors_timestamp']
     ];
     
@@ -1493,25 +1617,53 @@ function getPersistentValidationErrors() {
 
 // Add this function to clear validation errors
 function clearPersistentValidationErrors() {
-    // CRITICAL FIX: Only clear if session is active and writable
-    if (session_status() === PHP_SESSION_ACTIVE) {
+    // CRITICAL FIX: Only clear if session is active and writable and headers not sent
+    if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
         unset($_SESSION['persistent_validation_errors']);
         unset($_SESSION['persistent_validation_count']);
-        unset($_SESSION['persistent_valid_rows']);
         unset($_SESSION['validation_errors_timestamp']);
-        error_log("Cleared persistent validation errors");
+        unset($_SESSION['validation_errors_comparison_context']); // CRITICAL FIX: Clear context flag
+        error_log("Cleared persistent validation errors and context");
         return true;
     } else if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
         session_start();
         unset($_SESSION['persistent_validation_errors']);
         unset($_SESSION['persistent_validation_count']);
-        unset($_SESSION['persistent_valid_rows']);
         unset($_SESSION['validation_errors_timestamp']);
-        error_log("Started session and cleared persistent validation errors");
+        unset($_SESSION['validation_errors_comparison_context']); // CRITICAL FIX: Clear context flag
+        error_log("Started session and cleared persistent validation errors and context");
         return true;
     } else {
-        error_log("clearPersistentValidationErrors: Cannot clear - session not writable");
+        error_log("clearPersistentValidationErrors: Cannot clear - session not writable or headers already sent");
         return false;
     }
+}
+
+function clearValidationErrorsOnPageLoad() {
+    // CRITICAL FIX: Only proceed if session is safely accessible
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        // Clear validation errors if they exist
+        if (isset($_SESSION['persistent_validation_errors'])) {
+            unset($_SESSION['persistent_validation_errors']);
+            unset($_SESSION['persistent_validation_count']);
+            unset($_SESSION['validation_errors_timestamp']);
+            error_log("Cleared validation errors on page load");
+            return true;
+        }
+    } elseif (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+        session_start();
+        // Clear validation errors if they exist
+        if (isset($_SESSION['persistent_validation_errors'])) {
+            unset($_SESSION['persistent_validation_errors']);
+            unset($_SESSION['persistent_validation_count']);
+            unset($_SESSION['validation_errors_timestamp']);
+            error_log("Started session and cleared validation errors on page load");
+            return true;
+        }
+    } else {
+        error_log("clearValidationErrorsOnPageLoad: Cannot access session safely");
+    }
+    
+    return false;
 }
 ?>
