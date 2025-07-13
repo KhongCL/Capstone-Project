@@ -28,7 +28,7 @@ if (isset($_GET['sample_data']) && $_GET['sample_data'] == '1') {
     }
 }
 
-// UPDATED: Check user role and adjust navigation accordingly
+// Check user role and adjust navigation accordingly
 $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
 $backUrl = $isAdmin ? '../admin/upload_sample_data.php' : 'index.php';
 
@@ -252,7 +252,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 <body>
   <div class="container">
     <?php 
-    // UPDATED: Use appropriate header based on user role
+    // Use appropriate header based on user role
     if ($isAdmin) {
         echo '<header style="background-color: #343a40; color: #fff; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px;">
                 <div style="display: flex; align-items: center; justify-content: center;">
@@ -546,7 +546,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         data = data.sort((a, b) => parseInt(b.visit_count) - parseInt(a.visit_count)).slice(0, limit);
       }
 
-      // Apply minimum percentage filter - FIXED: Handle negative values properly
+      // Apply minimum percentage filter, Handle negative values properly
       if (currentFilters.minPercentage > 0) {
         data = data.filter(source => parseFloat(source.percentage) >= currentFilters.minPercentage);
       } else if (currentFilters.minPercentage < 0) {
@@ -679,7 +679,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     function handleMinPercentageChange() {
       let value = parseFloat(document.getElementById('minPercentageFilter').value) || 0;
       
-      // FIXED: Validate minimum percentage input
+      // Validate minimum percentage input
       if (value < 0) {
         value = 0;
         document.getElementById('minPercentageFilter').value = '0';
@@ -787,8 +787,6 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       // Show alert if no data found after filtering
       if (currentFilters.selectedSources.length === 0) {
         alert(`No data found for ${filterName}. All sources in your data fall outside this range.`);
-        // Optionally, you could clear filters and show all data again
-        // clearAllFilters();
       }
     }
 

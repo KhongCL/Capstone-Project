@@ -56,7 +56,7 @@ if (isset($_GET['cleared']) && $_GET['cleared'] == '1') {
     exit();
 }
 
-// UPDATED: Check user role and adjust navigation accordingly
+// Check user role and adjust navigation accordingly
 $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
 $backUrl = $isAdmin ? '../admin/upload_sample_data.php' : 'index.php';
 
@@ -140,7 +140,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
 <body>
   <div class="container">
     <?php 
-    // UPDATED: Use appropriate header based on user role
+    // Use appropriate header based on user role
     if ($isAdmin) {
         // For admin users, create a minimal header WITHOUT back button
         echo '<header style="background: #343a40; color: #fff; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px;">
@@ -271,7 +271,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     </main>
 
     <?php 
-    // UPDATED: Only include footer for regular users
+    // Only include footer for regular users
     if (!$isAdmin) {
         include 'user_footer.php';
     }
@@ -360,7 +360,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
       });
     });
 
-    // ========== Annotations Logic ==========
+    // Annotations Logic
     function getAnnotations() {
         return fetch(`get_annotations.php?uploadId=${uploadId}`)
             .then(response => response.json())
@@ -535,7 +535,7 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
         renderAnnotationsList();
     });
 
-    // ========== Export Functions ==========
+    // Export Functions
 
     function exportToCSV() {
       const metricCards = document.querySelectorAll('.user-metric-card');

@@ -29,7 +29,7 @@ header('Content-Type: application/json');
 
 session_start();
 
-// CRITICAL FIX: Clear sample data session when user uploads new file
+// Clear sample data session when user uploads new file
 if (isset($_SESSION['using_sample_data'])) {
     error_log("UPLOAD_HANDLER: Clearing sample data session for new upload");
     unset($_SESSION['using_sample_data']);
@@ -41,7 +41,7 @@ if (isset($_SESSION['using_sample_data'])) {
     unset($_SESSION['pages_data_quality']);
 }
 
-// CRITICAL FIX: Log current session state for debugging
+// Log current session state for debugging
 error_log("UPLOAD_HANDLER: Current session state:");
 error_log("- using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
 error_log("- sample_upload_id: " . ($_SESSION['sample_upload_id'] ?? 'not set'));
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
         if ($uploadMessage['type'] === 'success') {
             $_SESSION['upload_just_completed'] = true;
             
-            // NEW: Get actual row count from the uploaded file
+            // Get actual row count from the uploaded file
             $totalRows = 0;
             if (isset($_SESSION['latest_upload_id'])) {
                 $uploadId = $_SESSION['latest_upload_id'];
@@ -81,11 +81,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
             $response['success'] = true;
             $response['message'] = $uploadMessage['message'];
             $response['stage'] = 4; // Completed
-            $response['total_rows'] = $totalRows; // NEW: Include actual row count
+            $response['total_rows'] = $totalRows; // Include actual row count
             // Don't include redirect for normal success - let JS handle it
             error_log("UPLOAD_HANDLER: Success response prepared with {$totalRows} rows");
         } else if ($uploadMessage['type'] === 'warning') {
-            // NEW: Handle validation warnings and include row count
+            // Handle validation warnings and include row count
             $totalRows = 0;
             if (isset($_SESSION['latest_upload_id'])) {
                 $uploadId = $_SESSION['latest_upload_id'];
@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
             $response['success'] = true;
             $response['message'] = $uploadMessage['message'];
             $response['stage'] = 4; // Completed with warnings
-            $response['total_rows'] = $totalRows; // NEW: Include row count even for warnings
+            $response['total_rows'] = $totalRows; // Include row count even for warnings
             $response['validation_errors'] = $uploadMessage['validation_errors'] ?? [];
             error_log("UPLOAD_HANDLER: Warning response prepared with " . count($response['validation_errors']) . " validation errors and {$totalRows} rows");
         } else if ($uploadMessage['type'] === 'needs_mapping') {

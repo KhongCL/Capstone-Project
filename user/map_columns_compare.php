@@ -25,7 +25,7 @@ if (isset($_SESSION['compare_files'])) {
 }
 error_log("Session user_id: " . ($_SESSION['user_id'] ?? 'NOT SET'));
 
-// CRITICAL FIX: Wait a moment and try to restore session if it's missing
+// Wait a moment and try to restore session if it's missing
 if (!isset($_SESSION['compare_files'])) {
     error_log("CRITICAL: compare_files not found in session, attempting to restore...");
     
@@ -130,7 +130,7 @@ if (!$currentFilePath || !file_exists($currentFilePath)) {
             $_SESSION['compare_files'][$currentFileIndex]['path'] = $foundFile;
             $currentFile['path'] = $foundFile;
             
-            // CRITICAL FIX: Extract and clean the filename properly
+            // Extract and clean the filename properly
             $extractedName = basename($foundFile);
             $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
             $_SESSION['compare_files'][$currentFileIndex]['name'] = $cleanName;
@@ -150,7 +150,7 @@ if (!$currentFilePath || !file_exists($currentFilePath)) {
         exit;
     }
 } else {
-    // CRITICAL FIX: File exists, but ensure we have a clean name
+    // File exists, but ensure we have a clean name
     if (!isset($currentFile['name']) || $currentFile['name'] === 'Unknown file' || empty($currentFile['name']) || strpos($currentFile['name'], '_') !== false) {
         $extractedName = basename($currentFile['path']);
         $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
@@ -252,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
 
         error_log("Starting data transformation for comparison file...");
 
-        // For manual mapping cases, we need to determine the format
+        // For manual mapping cases, determine the format
         $format = null;
         if (isset($mappingResult['format']) && $mappingResult['format']) {
             $format = $mappingResult['format'];
@@ -274,7 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         error_log("Using format for transformation: " . ($format ?? 'null'));
         
         try {
-            // CRITICAL FIX: Clear any previous validation errors before transformation
+            // Clear any previous validation errors before transformation
             if (isset($_SESSION['validation_errors'])) {
                 unset($_SESSION['validation_errors']);
                 error_log("Cleared previous validation errors before new transformation");
@@ -286,7 +286,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             if (empty($transformedData)) {
                 error_log("ERROR: No data returned from transformation");
                 
-                // CRITICAL FIX: Redirect to compare.php with validation errors instead of showing them on mapping page
+                // Redirect to compare.php with validation errors instead of showing them on mapping page
                 if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
                     $validationErrors = $_SESSION['validation_errors'];
                     error_log("Found validation errors, redirecting to compare.php: " . implode('; ', array_slice($validationErrors, 0, 5)));
@@ -352,7 +352,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                         unset($_SESSION['validation_errors']);
                     }
                     
-                    // CRITICAL FIX: Ensure the name is preserved
+                    // Ensure the name is preserved
                     if (!isset($_SESSION['compare_files'][$currentFileIndex]['name']) || 
                         $_SESSION['compare_files'][$currentFileIndex]['name'] === 'Unknown file') {
                         
@@ -370,7 +370,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     // Clear mapping session data for this file
                     unset($_SESSION["mapping_result_$currentFileIndex"]);
                     
-                    // CRITICAL FIX: Force session write before checking next file
+                    // Force session write before checking next file
                     session_write_close();
                     session_start();
                     
@@ -384,7 +384,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
 
                     error_log("Checking next file (index $nextFileIndex): " . json_encode($nextFile));
 
-                    // FIXED: Better logic to determine if next file needs mapping
+                    // Better logic to determine if next file needs mapping
                     $nextFileNeedsMapping = false;
                     if ($nextFile) {
                         // Check multiple conditions to determine if mapping is needed
@@ -398,12 +398,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                                 ", mapped=" . ($nextFile['mapped'] ?? 'not set') . 
                                 ", result=" . ($nextFileNeedsMapping ? 'YES' : 'NO'));
                     } else {
-                        // CRITICAL FIX: If there's no second file, we're in single-file comparison mode
+                        // If there's no second file, we're in single-file comparison mode
                         error_log("No next file found - this appears to be a single file upload");
                     }
 
                     if ($nextFileNeedsMapping) {
-                        // CRITICAL FIX: Verify the next file exists before redirecting
+                        // Verify the next file exists before redirecting
                         $nextFilePath = $nextFile['path'] ?? null;
                         
                         if ($nextFilePath && file_exists($nextFilePath)) {
@@ -435,7 +435,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                             exit;
                         }
                     } else {
-                        // CRITICAL FIX: Only proceed if we actually have a second file
+                        // Only proceed if we actually have a second file
                         if ($nextFile === null) {
                             // Single file scenario - this shouldn't happen in comparison mode
                             error_log("CRITICAL ERROR: Single file in comparison mode");
@@ -519,7 +519,6 @@ function saveTransformedDataForComparison($conn, $transformedData, $fileIndex) {
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="user_style.css">
     <style>
-        /* Add to the existing styles in map_columns_compare.php */
         .user-alert-warning {
             background-color: #fff3cd;
             border-color: #ffeaa7;
@@ -566,7 +565,7 @@ function saveTransformedDataForComparison($conn, $transformedData, $fileIndex) {
                     <h4>📊 Mapping File <?php echo $currentFileIndex; ?> for Comparison</h4>
                     
                     <?php 
-                    // ENHANCED DEBUG: Show actual file name and how we got it
+                    // Show actual file name
                     $displayName = $currentFile['name'] ?? 'Unknown file';
                     $actualPath = $currentFile['path'] ?? 'No path';
                     $extractedFromPath = $actualPath ? basename($actualPath) : 'No path';
@@ -942,14 +941,14 @@ document.addEventListener('DOMContentLoaded', function() {
         let confidence = calculateStringSimilarity(csvColumn, selectedField);
         
         // Determine confidence color and icon
-        let confidenceColor = '#dc3545'; // Red for low confidence
+        let confidenceColor = '#dc3545';
         let confidenceIcon = '⚠️';
         
         if (confidence >= 85) {
-            confidenceColor = '#28a745'; // Green for high confidence
+            confidenceColor = '#28a745';
             confidenceIcon = '✅';
         } else if (confidence >= 60) {
-            confidenceColor = '#ffc107'; // Yellow for medium confidence
+            confidenceColor = '#ffc107';
             confidenceIcon = '⚡';
         }
         

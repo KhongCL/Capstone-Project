@@ -1,13 +1,13 @@
 // Global confirmation function for upload progress tracker
 function confirmDataReplacement() {
-    // ENHANCED: Use the global variables set by PHP
+    // Use the global variables set by PHP
     const hasExistingData = window.sessionHasExistingData;
     const isUsingSampleData = window.sessionIsUsingSampleData;
     
-    // NEW: Check if there are error messages displayed that would be helpful to keep
+    // Check if there are error messages displayed that would be helpful to keep
     const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
     
-    // ENHANCED DEBUG LOGGING
+    // Debug Logging
     console.log('=== CONFIRMATION DEBUG ===');
     console.log('hasExistingData:', hasExistingData);
     console.log('isUsingSampleData:', isUsingSampleData);
@@ -15,14 +15,14 @@ function confirmDataReplacement() {
     console.log('Current URL:', window.location.href);
     console.log('Referrer:', document.referrer);
     
-    // NEW: Check if this is a page refresh after successful upload
+    // Check if this is a page refresh after successful upload
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('upload_success') === '1') {
         console.log('Page loaded after successful upload - sample data should be cleared');
         return true; // Proceed without confirmation on post-upload page loads
     }
     
-    // CRITICAL FIX: Check for mapping page return but STILL show confirmation if needed
+    // Check for mapping page return but still show confirmation if needed
     const isFromMappingPage = document.referrer && document.referrer.includes('map_columns.php');
     if (isFromMappingPage) {
         console.log('Detected return from mapping page');
@@ -37,7 +37,7 @@ function confirmDataReplacement() {
     
     console.log('========================');
     
-    // FIXED: ALWAYS show confirmation if there's existing data, regardless of error messages
+    // Always show confirmation if there's existing data, regardless of error messages
     if (!hasExistingData && !hasErrorMessages) {
         console.log('No existing data or error messages - proceeding without confirmation');
         return true; // No existing data or helpful messages, proceed
@@ -45,7 +45,7 @@ function confirmDataReplacement() {
     
     let confirmMessage;
     
-    // NEW: Add special messaging for mapping page returns
+    // Add special messaging for mapping page returns
     if (isFromMappingPage && hasErrorMessages) {
         confirmMessage = "⚠️ Upload Different File?\n\n" +
                     "You just came back from the column mapping page with validation errors displayed.\n\n" +
@@ -106,7 +106,7 @@ function confirmDataReplacement() {
     return result;
 }
 
-// CRITICAL: Ensure the function is available globally
+// Ensure the function is available globally
 window.confirmDataReplacement = confirmDataReplacement;
 
 class UploadProgressTracker {
@@ -125,8 +125,8 @@ class UploadProgressTracker {
         this.serverResponseReceived = false;
         this.serverResponse = null;
         this.isUploading = false;
-        this.totalRows = 0; // NEW: Store actual row count
-        this.selectedFile = null; // NEW: Store selected file
+        this.totalRows = 0;
+        this.selectedFile = null;
         
         this.initializeEventListeners();
         
@@ -147,28 +147,28 @@ class UploadProgressTracker {
             this.handleFileSelection(e.target.files[0]);
         });
 
-        // Form submission handler - ENHANCED WITH CONFIRMATION
+        // Form submission handler
         uploadForm.addEventListener('submit', (e) => {
             e.preventDefault();
             console.log('Form submitted'); // Debug log
             
-            // CRITICAL: Prevent multiple simultaneous uploads
+            // Prevent multiple simultaneous uploads
             if (this.isUploading) {
                 console.log('Upload already in progress, ignoring submission');
                 return;
             }
             
-            // DEBUG: Check function availability
+            // Check function availability
             console.log('typeof confirmDataReplacement:', typeof confirmDataReplacement);
             console.log('window.confirmDataReplacement exists:', typeof window.confirmDataReplacement);
             
-            // ENHANCED: Always check for confirmation before proceeding with AJAX upload
+            // Always check for confirmation before proceeding with AJAX upload
             const confirmFunction = window.confirmDataReplacement || confirmDataReplacement;
             if (typeof confirmFunction === 'function') {
                 console.log('Checking for data replacement confirmation...');
                 if (!confirmFunction()) {
                     console.log('User cancelled upload via confirmation dialog');
-                    return; // User cancelled
+                    return;
                 }
                 console.log('User confirmed upload, proceeding...');
             } else {
@@ -205,14 +205,14 @@ class UploadProgressTracker {
                     rowCount++;
                 }
             }
-            
-            this.totalRows = Math.max(rowCount, 1); // Now includes header
+
+            this.totalRows = Math.max(rowCount, 1); 
             console.log(`CSV file has ${this.totalRows} total rows (including header)`);
         };
         
         reader.onerror = () => {
             console.log('Could not read file for row counting, using default estimate');
-            this.totalRows = Math.floor(file.size / 100); // Fallback estimate
+            this.totalRows = Math.floor(file.size / 100);
         };
         
         reader.readAsText(file);
@@ -223,10 +223,10 @@ class UploadProgressTracker {
 
         console.log('New file selected:', file.name); // Debug log
 
-        // CRITICAL: Reset the entire component state when new file is selected
+        // Reset the entire component state when new file is selected
         this.resetComponentState();
 
-        // NEW: Store the selected file and count rows
+        // Store the selected file and count rows
         this.selectedFile = file;
         this.countRowsInFile(file);
 
@@ -262,7 +262,7 @@ class UploadProgressTracker {
         this.resetUIState();
     }
 
-    // NEW METHOD: Reset UI state
+    // Reset UI state
     resetUIState() {
         const uploadProgress = document.getElementById('uploadProgress');
         const uploadBtn = document.getElementById('uploadBtn');
@@ -273,7 +273,7 @@ class UploadProgressTracker {
             uploadProgress.style.display = 'none';
         }
 
-        // CRITICAL: Re-enable upload button and show it
+        // Re-enable upload button and show it
         if (uploadBtn) {
             uploadBtn.disabled = false;
             uploadBtn.style.display = 'inline-block';
@@ -324,13 +324,13 @@ class UploadProgressTracker {
     startUpload(file) {
         console.log('Starting upload for file:', file.name);
         
-        // CRITICAL: Set upload state to prevent multiple uploads
+        // Set upload state to prevent multiple uploads
         this.isUploading = true;
         
         // Hide sample data UI immediately
         this.hideSampleDataUI();
 
-        // MOVED HERE: Clear any existing error/warning messages only when upload actually starts
+        // Clear any existing error/warning messages only when upload actually starts
         this.clearExistingMessages();
         
         // Reset upload state
@@ -351,11 +351,11 @@ class UploadProgressTracker {
             console.log('Upload button disabled during upload');
         }
         
-        // CRITICAL: Reset all stages before starting
+        // Reset all stages before starting
         this.resetAllStages();
         this.activateStage(0); // Activate the first stage
         
-        // Update file details - RESET ROW DISPLAY
+        // Update file details
         this.updateFileDetails(file);
         
         // Start the upload
@@ -370,7 +370,7 @@ class UploadProgressTracker {
             fileSizeDetail.textContent = this.formatFileSize(file.size);
         }
         
-        // FIXED: Reset to show uploading status instead of final row count
+        // Reset to show uploading status instead of final row count
         if (rowsProcessed) {
             rowsProcessed.textContent = 'Starting upload...';
         }
@@ -411,14 +411,14 @@ class UploadProgressTracker {
             uploadProgress.style.display = 'none';
             cancelBtn.style.display = 'none';
             
-            // CRITICAL: Re-enable upload button when hiding progress
+            // Re-enable upload button when hiding progress
             if (uploadBtn) {
                 uploadBtn.style.display = 'inline-block';
                 uploadBtn.disabled = false;
                 console.log('Upload button re-enabled in hideProgressContainer');
             }
             
-            // CRITICAL: Reset upload state
+            // Reset upload state
             this.isUploading = false;
     }
 
@@ -480,7 +480,7 @@ class UploadProgressTracker {
         if (progressText) progressText.textContent = '100%';
     }
 
-    // NEW METHOD: Complete stage with error state
+    // Complete stage with error state
     completeStageWithError(stageIndex) {
         const stageElement = document.getElementById(this.stages[stageIndex].id);
         stageElement.classList.remove('active');
@@ -554,7 +554,7 @@ class UploadProgressTracker {
             }
         }
 
-        // FIXED: Show upload progress in bytes, not rows during upload stage
+        // Show upload progress in bytes, not rows during upload stage
         if (rowsProcessed && this.totalRows > 0) {
             if (loaded < total) {
                 // During upload, show upload progress
@@ -567,7 +567,7 @@ class UploadProgressTracker {
         }
     }
 
-    // NEW METHOD: Update progress details during processing simulation
+    // Update progress details during processing simulation
     updateProcessingDetails(stage, percent, message) {
         const rowsProcessed = document.getElementById('rowsProcessed');
         const currentTask = document.getElementById('currentTask');
@@ -790,7 +790,7 @@ class UploadProgressTracker {
             return;
         }
 
-        // IMPORTANT: Check for manual mapping BEFORE starting any timeouts
+        // Check for manual mapping BEFORE starting any timeouts
         if (this.serverResponseReceived && this.serverResponse && 
             this.serverResponse.success && this.serverResponse.redirect && 
             this.serverResponse.redirect.includes('map_columns.php')) {
@@ -821,7 +821,7 @@ class UploadProgressTracker {
                 return;
             }
             
-            // ALSO CHECK FOR MANUAL MAPPING HERE
+            // Also check for manual mapping here
             if (this.serverResponseReceived && this.serverResponse && 
                 this.serverResponse.success && this.serverResponse.redirect && 
                 this.serverResponse.redirect.includes('map_columns.php')) {
@@ -853,7 +853,7 @@ class UploadProgressTracker {
                 return;
             }
             
-            // ALSO CHECK FOR MANUAL MAPPING HERE
+            // Also check for manual mapping here
             if (this.serverResponseReceived && this.serverResponse && 
                 this.serverResponse.success && this.serverResponse.redirect && 
                 this.serverResponse.redirect.includes('map_columns.php')) {
@@ -885,7 +885,7 @@ class UploadProgressTracker {
                 return;
             }
             
-            // ALSO CHECK FOR MANUAL MAPPING HERE
+            // Also check for manual mapping here
             if (this.serverResponseReceived && this.serverResponse && 
                 this.serverResponse.success && this.serverResponse.redirect && 
                 this.serverResponse.redirect.includes('map_columns.php')) {
@@ -924,14 +924,14 @@ class UploadProgressTracker {
                 this.updateOverallProgress(45, 'Structure validation completed');
                 this.updateProcessingDetails(1, 100, 'Structure validation complete ✓');
                 
-                // CHECK FOR MANUAL MAPPING ONE FINAL TIME
+                // Check for manual mapping one final time
                 if (this.serverResponseReceived && this.serverResponse && 
                     this.serverResponse.success && this.serverResponse.redirect && 
                     this.serverResponse.redirect.includes('map_columns.php')) {
                     console.log("DEBUG: Manual mapping required, stopping simulation immediately");
                     this.updateOverallProgress(50, 'Manual column mapping required...');
                     this.updateProcessingDetails(1, 100, 'Column mapping required...');
-                    // CRITICAL: Don't proceed to data processing - redirect now
+                    // Don't proceed to data processing - redirect now
                     setTimeout(() => {
                         this.processServerResponse();
                     }, 100);
@@ -953,11 +953,11 @@ class UploadProgressTracker {
             }
         }, 1200));
 
-        // IMPORTANT: All subsequent timeouts need manual mapping checks too
+        // All subsequent timeouts need manual mapping checks too
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(2)) return;
             
-            // CHECK FOR MANUAL MAPPING BEFORE PROCEEDING
+						// Check for manual mapping before proceeding
             if (this.serverResponseReceived && this.serverResponse && 
                 this.serverResponse.success && this.serverResponse.redirect && 
                 this.serverResponse.redirect.includes('map_columns.php')) {
@@ -973,7 +973,7 @@ class UploadProgressTracker {
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(2)) return;
             
-            // CHECK FOR MANUAL MAPPING BEFORE PROCEEDING
+            // Check for manual mapping before proceeding
             if (this.serverResponseReceived && this.serverResponse && 
                 this.serverResponse.success && this.serverResponse.redirect && 
                 this.serverResponse.redirect.includes('map_columns.php')) {
@@ -989,7 +989,7 @@ class UploadProgressTracker {
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(2)) return;
             
-            // CHECK FOR MANUAL MAPPING BEFORE PROCEEDING
+            // Check for manual mapping before proceeding
             if (this.serverResponseReceived && this.serverResponse && 
                 this.serverResponse.success && this.serverResponse.redirect && 
                 this.serverResponse.redirect.includes('map_columns.php')) {
@@ -1005,7 +1005,7 @@ class UploadProgressTracker {
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(2)) return;
             
-            // CHECK FOR MANUAL MAPPING BEFORE PROCEEDING
+            // Check for manual mapping before proceeding
             if (this.serverResponseReceived && this.serverResponse && 
                 this.serverResponse.success && this.serverResponse.redirect && 
                 this.serverResponse.redirect.includes('map_columns.php')) {
@@ -1027,7 +1027,7 @@ class UploadProgressTracker {
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(3)) return;
             
-            // CHECK FOR MANUAL MAPPING
+            // Check for mannual mapping
             if (this.serverResponseReceived && this.serverResponse && 
                 this.serverResponse.success && this.serverResponse.redirect && 
                 this.serverResponse.redirect.includes('map_columns.php')) {
@@ -1042,7 +1042,7 @@ class UploadProgressTracker {
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(3)) return;
             
-            // CHECK FOR MANUAL MAPPING
+            // Check for mannual mapping
             if (this.serverResponseReceived && this.serverResponse && 
                 this.serverResponse.success && this.serverResponse.redirect && 
                 this.serverResponse.redirect.includes('map_columns.php')) {
@@ -1057,7 +1057,7 @@ class UploadProgressTracker {
         this.simulationTimeouts.push(setTimeout(() => {
             if (this.cancelled || this.shouldStopSimulation(3)) return;
             
-            // CHECK FOR MANUAL MAPPING
+            // Check for mannual mapping
             if (this.serverResponseReceived && this.serverResponse && 
                 this.serverResponse.success && this.serverResponse.redirect && 
                 this.serverResponse.redirect.includes('map_columns.php')) {
@@ -1129,7 +1129,7 @@ class UploadProgressTracker {
             console.log("DEBUG: Response success:", response.success);
             console.log("DEBUG: Response errors:", response.errors);
 
-            // NEW: Update row count from server if available
+            // Update row count from server if available
             if (response.total_rows && response.total_rows > 0) {
                 this.totalRows = response.total_rows;
                 console.log(`Server reported ${this.totalRows} total rows`);
@@ -1148,7 +1148,7 @@ class UploadProgressTracker {
             return;
         }
 
-        // IMPORTANT: Set these BEFORE any other processing
+        // Set these BEFORE any other processing
         this.serverResponseReceived = true;
         this.serverResponse = response;
         
@@ -1219,9 +1219,9 @@ class UploadProgressTracker {
         const response = this.serverResponse;
 
         if (response.success) {
-            // FIXED: Check for manual mapping redirect FIRST
+            // Check for manual mapping redirect FIRST
             if (response.redirect && response.redirect.includes('map_columns.php')) {
-                // CRITICAL FIX: Clear confirmation state when redirecting to mapping
+                // Clear confirmation state when redirecting to mapping
                 // This prevents stale sample data state from affecting future confirmations
                 console.log('Manual mapping detected - clearing any stale session state');
                 
@@ -1231,7 +1231,7 @@ class UploadProgressTracker {
                 
                 this.updateOverallProgress(50, 'Redirecting to column mapping...');
                 
-                // NEW: Show success message for manual mapping
+                // Show success message for manual mapping
                 setTimeout(() => {
                     const confirmMessage = "🎉 Upload Successful!\n\n" +
                                         "Your CSV file has been successfully uploaded and validated.\n\n" +
@@ -1264,16 +1264,16 @@ class UploadProgressTracker {
                     this.showValidationWarnings(response.message, response.validation_errors);
                 }, 1500);
             } else {
-                // FIXED: Complete success - redirect with confirmation IMMEDIATELY
+                // Complete success - redirect with confirmation IMMEDIATELY
                 this.completeStage(0); // File upload ✅
                 this.completeStage(1); // Structure validation ✅  
                 this.completeStage(2); // Data processing ✅
                 this.completeStage(3); // Database save ✅
                 this.updateOverallProgress(100, 'Upload completed successfully!');
                 
-                // FIXED: Redirect immediately instead of waiting 2 seconds
+                // Redirect immediately instead of waiting 2 seconds
                 setTimeout(() => {
-                    // CRITICAL FIX: Get session state from global variables set by PHP
+                    // Get session state from global variables set by PHP
                     const hasExistingData = window.sessionHasExistingData || false;
                     const isUsingSampleData = window.sessionIsUsingSampleData || false;
                     
@@ -1299,7 +1299,7 @@ class UploadProgressTracker {
                         // User cancelled - just refresh the current page to show updated state
                         window.location.reload();
                     }
-                }, 500); // REDUCED from 2000ms to 500ms for immediate redirect
+                }, 500); // Reduce from 2000ms to 500ms for immediate redirect
             }
         } else {
             // Error handling - these methods will call hideProgressContainer
@@ -1405,7 +1405,7 @@ class UploadProgressTracker {
                     errorMessage = error.message;
                     suggestions = error.suggestions || '';
                 } else if (typeof error === 'string') {
-                    // ENHANCED: Handle multiple suggestion patterns
+                    // Handle multiple suggestion patterns
                     if (error.includes(' Suggestions: ')) {
                         const parts = error.split(' Suggestions: ');
                         errorMessage = parts[0];
@@ -1426,7 +1426,7 @@ class UploadProgressTracker {
                 errorMessageDiv.textContent = errorMessage.trim();
                 errorItem.appendChild(errorMessageDiv);
                 
-                // CRITICAL FIX: Add suggestions in yellow container if they exist
+                // Add suggestions in yellow container if they exist
                 if (suggestions && suggestions.trim() !== '') {
                     const suggestionsDiv = document.createElement('div');
                     suggestionsDiv.className = 'error-suggestions';
@@ -1485,7 +1485,7 @@ class UploadProgressTracker {
                     let errorMessage = errorLine.trim();
                     let suggestions = '';
                     
-                    // ENHANCED: Parse suggestions from individual error lines
+                    // Parse suggestions from individual error lines
                     if (errorMessage.includes(' Suggestions: ')) {
                         const parts = errorMessage.split(' Suggestions: ');
                         errorMessage = parts[0];
@@ -1662,7 +1662,7 @@ class UploadProgressTracker {
                 form.parentNode.insertBefore(errorDiv, form.nextSibling);
             }
             
-            // CRITICAL: Reset upload state
+            // Reset upload state
             this.isUploading = false;
         }, 3000);
     }
