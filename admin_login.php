@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Process login if no errors
     if (empty($errors)) {
-        // FIXED: Only check for Admin users in admin login
+        // Only check for Admin users in admin login
         $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ? AND Role = 'Admin'");
         $stmt->bind_param("s", $username);
         $stmt->execute();
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors['general'] = 'Invalid admin credentials. Please check your username and password.';
             }
         } else {
-            // ENHANCED: More specific error message for admin login
+            // Provide error message for admin login
             $errors['general'] = 'Invalid admin credentials. This login is for administrators only.';
         }
     }

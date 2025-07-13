@@ -112,19 +112,19 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
-                margin-top: 12px;
+        margin-top: 12px;
     }
 
     .filter-btn {
         padding: 10px 20px;
         border: none;
-            background-color: var(--primary-color);
-            color: white;
+        background-color: var(--primary-color);
+        color: white;
         border-radius: 8px;
         cursor: pointer;
-                font-family: inherit;
+        font-family: inherit;
         font-size: 0.9em;
-                font-weight: 500;
+        font-weight: 500;
         transition: all 0.3s ease;
     }
 

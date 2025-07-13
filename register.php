@@ -15,8 +15,6 @@ if (isset($_SESSION['user_id'])) {
 // Initialize variables
 $errors = [];
 $success = false;
-
-// Initialize form variables
 $firstname = '';
 $lastname = '';
 $username = '';
@@ -94,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'Email address already exists';
             }
         } else {
-            // Create the user account - FIXED: Removed FirstName and LastName from INSERT
+            // Create the user account
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $conn->prepare("INSERT INTO user (Username, Email, PasswordHash, Role, AccountStatus) VALUES (?, ?, ?, 'End-User', 'Active')");
             $stmt->bind_param("sss", $username, $email, $hashedPassword);
