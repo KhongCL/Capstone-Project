@@ -197,7 +197,41 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         display: none;
     }
 
+    .chart-legend-container {
+      max-height: 400px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 10px;
+      margin-left: 10px;
+    }
 
+    /* Custom scrollbar for better appearance */
+    .chart-legend-container::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .chart-legend-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .chart-legend-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .chart-legend-container::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    /* Improve legend item spacing */
+    .chartjs-legend {
+        max-height: none !important;
+    }
+
+    .chartjs-legend ul {
+        max-height: none !important;
+    }
 
     @media (max-width: 768px) {
         .filter-controls {
