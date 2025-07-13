@@ -1227,7 +1227,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             <section class="upload-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2>Upload Traffic Data</h2>
-                    <a href="supported_formats.php" class="btn btn-secondary">
+                    <a href="../supported_formats.php" class="btn btn-secondary">
                         <i class="fas fa-file-alt"></i> Supported CSV Formats
                     </a>
                 </div>

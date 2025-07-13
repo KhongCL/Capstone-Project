@@ -252,10 +252,10 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       		    </div>
 
       		    <!-- Minimum Percentage Filter -->
-      		    <div class="filter-group">
-      		      <label for="minPercentageFilter">Min Percentage (%):</label>
-      		      <input type="number" id="minPercentageFilter" class="filter-input" min="0" max="100" step="0.1" 		placeholder="0.0">
-      		    </div>
+              <div class="filter-group">
+                <label for="minPercentageFilter">Min Percentage (%):</label>
+                <input type="number" id="minPercentageFilter" class="filter-input" min="0" max="100" step="0.1" placeholder="0.0" oninput="validatePercentageInput(this)">
+              </div>
       		  </div>
 
 						<!-- Quick Filter Buttons -->
@@ -512,9 +512,15 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         data = data.sort((a, b) => parseInt(b.visit_count) - parseInt(a.visit_count)).slice(0, limit);
       }
 
-      // Apply minimum percentage filter
+      // Apply minimum percentage filter - FIXED: Handle negative values properly
       if (currentFilters.minPercentage > 0) {
         data = data.filter(source => parseFloat(source.percentage) >= currentFilters.minPercentage);
+      } else if (currentFilters.minPercentage < 0) {
+        // If negative value is entered, treat it as 0 and show warning
+        console.warn('Negative percentage filter detected, treating as 0');
+        currentFilters.minPercentage = 0;
+        // Update the input field to reflect the correction
+        document.getElementById('minPercentageFilter').value = '0';
       }
 
       // Apply selected sources filter
@@ -530,6 +536,58 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       }));
 
       return data;
+    }
+
+    function validatePercentageInput(input) {
+      let value = parseFloat(input.value);
+      
+      if (isNaN(value)) {
+        return;
+      }
+      
+      if (value < 0) {
+        input.value = '0';
+        showInputFeedback(input, 'Minimum percentage cannot be negative');
+      } else if (value > 100) {
+        input.value = '100';
+        showInputFeedback(input, 'Percentage cannot exceed 100%');
+      }
+    }
+
+    function showInputFeedback(input, message) {
+      // Visual feedback
+      const originalBorder = input.style.border;
+      const originalBackground = input.style.backgroundColor;
+      
+      input.style.border = '2px solid #ff6b6b';
+      input.style.backgroundColor = '#ffe6e6';
+      
+      // Create tooltip
+      const tooltip = document.createElement('div');
+      tooltip.style.cssText = `
+        position: absolute;
+        background: #ff6b6b;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 1000;
+        margin-top: 5px;
+        margin-left: 0px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      `;
+      tooltip.textContent = message;
+      
+      input.parentNode.style.position = 'relative';
+      input.parentNode.appendChild(tooltip);
+      
+      setTimeout(() => {
+        input.style.border = originalBorder;
+        input.style.backgroundColor = originalBackground;
+        if (tooltip.parentNode) {
+          tooltip.parentNode.removeChild(tooltip);
+        }
+      }, 2500);
     }
 
     // Chart type toggle
@@ -585,7 +643,43 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     function handleMinPercentageChange() {
-      const value = parseFloat(document.getElementById('minPercentageFilter').value) || 0;
+      let value = parseFloat(document.getElementById('minPercentageFilter').value) || 0;
+      
+      // FIXED: Validate minimum percentage input
+      if (value < 0) {
+        value = 0;
+        document.getElementById('minPercentageFilter').value = '0';
+        
+        // Show user feedback
+        const inputField = document.getElementById('minPercentageFilter');
+        const originalBorder = inputField.style.border;
+        inputField.style.border = '2px solid #ff6b6b';
+        inputField.style.backgroundColor = '#ffe6e6';
+        
+        setTimeout(() => {
+          inputField.style.border = originalBorder;
+          inputField.style.backgroundColor = '';
+        }, 2000);
+        
+        console.log('Negative percentage not allowed, reset to 0');
+      } else if (value > 100) {
+        value = 100;
+        document.getElementById('minPercentageFilter').value = '100';
+        
+        // Show user feedback
+        const inputField = document.getElementById('minPercentageFilter');
+        const originalBorder = inputField.style.border;
+        inputField.style.border = '2px solid #ff6b6b';
+        inputField.style.backgroundColor = '#ffe6e6';
+        
+        setTimeout(() => {
+          inputField.style.border = originalBorder;
+          inputField.style.backgroundColor = '';
+        }, 2000);
+        
+        console.log('Percentage cannot exceed 100%, reset to 100');
+      }
+      
       currentFilters.minPercentage = value;
       applyFilters();
     }
