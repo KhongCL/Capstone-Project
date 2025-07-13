@@ -981,10 +981,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Update global state
                     window.adminHasExistingSampleData = true;
                     
-                    // Refresh page after 2 seconds to show updated existing data info
+                    // FIXED: Increased refresh delay from 2 seconds to 4 seconds for better user experience
                     setTimeout(() => {
                         window.location.reload();
-                    }, 2000);
+                    }, 4000); // Changed from 2000 to 4000 milliseconds (4 seconds)
                 } else {
                     // Handle different types of errors...
                     if (data.redirect_to_mappings) {
@@ -1033,10 +1033,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Update global state
                         window.adminHasExistingSampleData = false;
                         
-                        // Refresh page after 2 seconds to hide existing data info
+                        // FIXED: Increased refresh delay from 2 seconds to 5 seconds for better user experience
                         setTimeout(() => {
                             window.location.reload();
-                        }, 2000);
+                        }, 5000); // Changed from 2000 to 5000 milliseconds (5 seconds)
                     } else {
                         showErrorMessage(data.message);
                     }

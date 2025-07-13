@@ -6,7 +6,7 @@ require_once '../functions.php';
 // Get summary statistics
 $userStats = getUserStats($conn);
 $csvStats = getCsvStats($conn);
-$reportTypes = getReportTypes($conn);
+$supportedFormats = getSupportedFormats();
 
 // Helper functions to get statistics
 function getUserStats($conn) {
@@ -18,23 +18,25 @@ function getUserStats($conn) {
         'users' => 0
     ];
     
-    $sql = "SELECT COUNT(*) as count, Role, AccountStatus FROM user GROUP BY Role, AccountStatus";
+    // FIXED: Get actual user counts, not group counts
+    $sql = "SELECT Role, AccountStatus, COUNT(*) as count FROM user GROUP BY Role, AccountStatus";
     $result = $conn->query($sql);
     
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            $stats['total']++;
+            $count = $row['count'];
+            $stats['total'] += $count;
             
             if ($row['AccountStatus'] == 'Active') {
-                $stats['active']++;
+                $stats['active'] += $count;
             } else {
-                $stats['suspended']++;
+                $stats['suspended'] += $count;
             }
             
             if ($row['Role'] == 'Admin') {
-                $stats['admins']++;
+                $stats['admins'] += $count;
             } else {
-                $stats['users']++;
+                $stats['users'] += $count;
             }
         }
     }
@@ -78,19 +80,19 @@ function getCsvStats($conn) {
     return $stats;
 }
 
-function getReportTypes($conn) {
-    $reportTypes = [];
+function getSupportedFormats() {
+    $supportedFormats = [];
     
-    // Get distinct report types from CSV_UPLOAD
-    $sql = "SELECT DISTINCT ReportType FROM csv_upload ORDER BY ReportType";
-    $result = $conn->query($sql);
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $reportTypes[] = $row['ReportType'];
+    // Read from CSV mappings configuration file
+    $mappingsFile = __DIR__ . '/../config/csv_mappings.json';
+    if (file_exists($mappingsFile)) {
+        $mappings = json_decode(file_get_contents($mappingsFile), true);
+        if ($mappings && is_array($mappings)) {
+            $supportedFormats = array_keys($mappings);
         }
     }
     
-    return $reportTypes;
+    return $supportedFormats;
 }
 
 ?>
@@ -101,7 +103,7 @@ function getReportTypes($conn) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - TrafAnalyz</title>
-		<link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="admin_style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
@@ -110,8 +112,6 @@ function getReportTypes($conn) {
         <?php include 'admin_header.php'; ?>
 
         <main>
-            <?php /* Removed the sample_upload_message display section that was here */ ?>
-
             <?php if (isset($_SESSION['sample_clear_message'])): ?>
                 <div class="message <?php echo $_SESSION['sample_clear_message']['success'] ? 'success' : 'error'; ?>">
                     <?php echo $_SESSION['sample_clear_message']['message']; ?>
@@ -144,8 +144,8 @@ function getReportTypes($conn) {
                 </div>
                 <div class="stat-card">
                     <i class="fas fa-chart-line icon"></i>
-                    <div class="label">Report Types</div>
-                    <div class="value"><?php echo count($reportTypes); ?></div>
+                    <div class="label">Supported Formats</div>
+                    <div class="value"><?php echo count($supportedFormats); ?></div>
                 </div>
             </section>
 
@@ -213,20 +213,20 @@ function getReportTypes($conn) {
                 </table>
             </section>
 
-            <section class="admin-section" id="report-types">
-                <h3><i class="fas fa-file-alt"></i> Supported Report Types</h3>
+            <section class="admin-section" id="supported-formats">
+                <h3><i class="fas fa-file-alt"></i> Supported CSV Formats</h3>
                 <div class="report-types">
-                    <?php if (count($reportTypes) > 0): ?>
-                        <?php foreach ($reportTypes as $type): ?>
-                            <span class="report-type"><?php echo htmlspecialchars($type); ?></span>
+                    <?php if (count($supportedFormats) > 0): ?>
+                        <?php foreach ($supportedFormats as $format): ?>
+                            <span class="report-type"><?php echo htmlspecialchars(ucwords(str_replace('_', ' ', $format))); ?></span>
                         <?php endforeach; ?>
                     <?php else: ?>
-                        <p>No report types defined yet. Configure the CSV mappings to add report types.</p>
+                        <p>No CSV formats configured yet. Configure the CSV mappings to add supported formats.</p>
                     <?php endif; ?>
                 </div>
                 
                 <div style="margin-top: 20px;">
-                    <a href="admin_mappings.php" class="btn btn-secondary">Manage Report Types</a>
+                    <a href="admin_mappings.php" class="btn btn-secondary">Manage CSV Formats</a>
                 </div>
             </section>
             
