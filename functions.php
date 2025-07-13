@@ -1188,32 +1188,87 @@ function updateUserStatus($conn, $userId, $status) {
  */
 function deleteUser($conn, $userId) {
     try {
-        // Start transaction to handle related records
-        $conn->begin_transaction();
+        // Start transaction
+        $conn->autocommit(false);
         
-        // Note: In a production system, you might want to:
-        // 1. Archive the user data instead of deleting
-        // 2. Handle related data (uploads, data points) by reassigning or deleting
+        // First, check if user has any uploaded data
+        $checkStmt = $conn->prepare("SELECT COUNT(*) as upload_count FROM csv_upload WHERE UserID = ?");
+        $checkStmt->bind_param("i", $userId);
+        $checkStmt->execute();
+        $result = $checkStmt->get_result();
+        $uploadCount = $result->fetch_assoc()['upload_count'];
         
-        // Delete user
-        $stmt = $conn->prepare("DELETE FROM user WHERE UserID = ?");
-        $stmt->bind_param("i", $userId);
-        $result = $stmt->execute();
+        if ($uploadCount > 0) {
+            // Get upload details for logging
+            $uploadStmt = $conn->prepare("SELECT UploadID, FileName FROM csv_upload WHERE UserID = ?");
+            $uploadStmt->bind_param("i", $userId);
+            $uploadStmt->execute();
+            $uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            
+            // Delete related data in correct order to respect foreign key constraints
+            
+            // 1. Delete processed data points
+            foreach ($uploads as $upload) {
+                $deleteDataStmt = $conn->prepare("DELETE FROM processed_data_point WHERE UploadID = ?");
+                $deleteDataStmt->bind_param("i", $upload['UploadID']);
+                $deleteDataStmt->execute();
+                error_log("Deleted processed_data_point records for UploadID: " . $upload['UploadID']);
+            }
+            
+            // 2. Delete annotations
+            foreach ($uploads as $upload) {
+                $deleteAnnotationsStmt = $conn->prepare("DELETE FROM annotation WHERE UploadID = ?");
+                $deleteAnnotationsStmt->bind_param("i", $upload['UploadID']);
+                $deleteAnnotationsStmt->execute();
+                error_log("Deleted annotations for UploadID: " . $upload['UploadID']);
+            }
+            
+            // 3. Delete export history
+            $deleteExportStmt = $conn->prepare("DELETE FROM export_history WHERE UserID = ?");
+            $deleteExportStmt->bind_param("i", $userId);
+            $deleteExportStmt->execute();
+            
+            // 4. Delete CSV uploads
+            $deleteCsvStmt = $conn->prepare("DELETE FROM csv_upload WHERE UserID = ?");
+            $deleteCsvStmt->bind_param("i", $userId);
+            $deleteCsvStmt->execute();
+            error_log("Deleted csv_upload records for UserID: " . $userId);
+        }
         
-        if ($result) {
+        // Finally, delete the user
+        $deleteUserStmt = $conn->prepare("DELETE FROM user WHERE UserID = ?");
+        $deleteUserStmt->bind_param("i", $userId);
+        $deleteUserResult = $deleteUserStmt->execute();
+        
+        if ($deleteUserResult) {
             // Commit transaction
             $conn->commit();
-            return true;
+            error_log("Successfully deleted user $userId and all related data ($uploadCount uploads)");
+            return [
+                'success' => true,
+                'message' => "User account and all related data ($uploadCount uploads) have been deleted successfully."
+            ];
         } else {
-            // Rollback on failure
+            // Rollback transaction
             $conn->rollback();
-            return false;
+            error_log("Failed to delete user $userId: " . $conn->error);
+            return [
+                'success' => false,
+                'message' => "Failed to delete user account: " . $conn->error
+            ];
         }
+        
     } catch (Exception $e) {
-        // Rollback on error
+        // Rollback transaction on error
         $conn->rollback();
-        error_log("Error deleting user: " . $e->getMessage());
-        return false;
+        error_log("Exception in deleteUser: " . $e->getMessage());
+        return [
+            'success' => false,
+            'message' => "Error deleting user: " . $e->getMessage()
+        ];
+    } finally {
+        // Restore autocommit
+        $conn->autocommit(true);
     }
 }
 

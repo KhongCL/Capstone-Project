@@ -14,37 +14,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && isset($_POST['user_id'])) {
         $userId = (int)$_POST['user_id'];
         
-        switch ($_POST['action']) {
-            case 'suspend':
-                if (updateUserStatus($conn, $userId, 'Suspended')) {
-                    $message = "User account has been suspended.";
-                    $messageType = "success";
-                } else {
-                    $message = "Failed to suspend user account.";
-                    $messageType = "error";
-                }
-                break;
-                
-            case 'restore':
-                if (updateUserStatus($conn, $userId, 'Active')) {
-                    $message = "User account has been restored.";
-                    $messageType = "success";
-                } else {
-                    $message = "Failed to restore user account.";
-                    $messageType = "error";
-                }
-                break;
-                
-            case 'delete':
-                if (deleteUser($conn, $userId)) {
-                    $message = "User account has been deleted.";
-                    $messageType = "success";
-                } else {
-                    $message = "Failed to delete user account.";
-                    $messageType = "error";
-                }
-                break;
+        // SECURITY: Prevent admin actions on other admin accounts
+        $checkAdminStmt = $conn->prepare("SELECT Role FROM user WHERE UserID = ?");
+        $checkAdminStmt->bind_param("i", $userId);
+        $checkAdminStmt->execute();
+        $targetUserResult = $checkAdminStmt->get_result();
+        
+        if ($targetUserResult && $targetUser = $targetUserResult->fetch_assoc()) {
+            if ($targetUser['Role'] === 'Admin') {
+                $message = "Cannot perform actions on admin accounts for security reasons.";
+                $messageType = "error";
+            } else {
+                // Existing switch statement goes here
+                switch ($_POST['action']) {
+                    case 'suspend':
+                        if (updateUserStatus($conn, $userId, 'Suspended')) {
+                            $message = "User account has been suspended.";
+                            $messageType = "success";
+                        } else {
+                            $message = "Failed to suspend user account.";
+                            $messageType = "error";
+                        }
+                        break;
+                        
+                    case 'restore':
+                        if (updateUserStatus($conn, $userId, 'Active')) {
+                            $message = "User account has been restored.";
+                            $messageType = "success";
+                        } else {
+                            $message = "Failed to restore user account.";
+                            $messageType = "error";
+                        }
+                        break;
+                        
+                    case 'delete':
+                        $deleteResult = deleteUser($conn, $userId);
+                        if ($deleteResult['success']) {
+                            $message = $deleteResult['message'];
+                            $messageType = "success";
+                        } else {
+                            $message = $deleteResult['message'];
+                            $messageType = "error";
+                        }
+                        break;
+                }   
+            }
         }
+    } else {
+        $message = "User not found.";
+        $messageType = "error";
     }
 }
 
@@ -94,12 +112,6 @@ if ($result) {
                 </div>
                 <?php endif; ?>
                 
-                <!-- Debug information -->
-                <div class="admin-debug-info">
-                    <p>Database query found: <?php echo $debugCount; ?> user(s)</p>
-                    <p>PHP array contains: <?php echo count($users); ?> user(s)</p>
-                </div>
-                
                 <?php if (empty($users)): ?>
                     <div class="admin-no-users-message">
                         <p>No users found in the database.</p>
@@ -131,29 +143,34 @@ if ($result) {
                                 </td>
                                 <td><?php echo date('Y-m-d', strtotime($user['CreatedAt'])); ?></td>
                                 <td class="admin-user-actions">
-                                    <form method="post">
-                                        <input type="hidden" name="user_id" value="<?php echo $user['UserID']; ?>">
-                                        <?php if ($user['AccountStatus'] === 'Active'): ?>
-                                            <input type="hidden" name="action" value="suspend">
-                                            <button type="submit" class="btn btn-small btn-warning" 
-                                                    onclick="return confirm('Are you sure you want to suspend this user?')">
-                                                Suspend
+                                    <?php if ($user['Role'] === 'Admin'): ?>
+                                        <!-- No actions for Admin users -->
+                                        <span class="admin-protected">Protected Admin Account</span>
+                                    <?php else: ?>
+                                        <form method="post">
+                                            <input type="hidden" name="user_id" value="<?php echo $user['UserID']; ?>">
+                                            <?php if ($user['AccountStatus'] === 'Active'): ?>
+                                                <input type="hidden" name="action" value="suspend">
+                                                <button type="submit" class="btn btn-small btn-warning" 
+                                                        onclick="return confirm('Are you sure you want to suspend this user?')">
+                                                    Suspend
+                                                </button>
+                                            <?php else: ?>
+                                                <input type="hidden" name="action" value="restore">
+                                                <button type="submit" class="btn btn-small btn-success">
+                                                    Restore
+                                                </button>
+                                            <?php endif; ?>
+                                        </form>
+                                        <form method="post">
+                                            <input type="hidden" name="user_id" value="<?php echo $user['UserID']; ?>">
+                                            <input type="hidden" name="action" value="delete">
+                                            <button type="submit" class="btn btn-small btn-danger" 
+                                                    onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.')">
+                                                Delete
                                             </button>
-                                        <?php else: ?>
-                                            <input type="hidden" name="action" value="restore">
-                                            <button type="submit" class="btn btn-small btn-success">
-                                                Restore
-                                            </button>
-                                        <?php endif; ?>
-                                    </form>
-                                    <form method="post">
-                                        <input type="hidden" name="user_id" value="<?php echo $user['UserID']; ?>">
-                                        <input type="hidden" name="action" value="delete">
-                                        <button type="submit" class="btn btn-small btn-danger" 
-                                                onclick="return confirm('Are you sure you want to delete this user? This action cannot be undone.')">
-                                            Delete
-                                        </button>
-                                    </form>
+                                        </form>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
