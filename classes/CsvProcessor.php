@@ -1149,48 +1149,52 @@ class CsvProcessor {
 
         error_log("Validated $rowNumber rows, found " . count($validationErrors) . " errors, $validRows rows valid");
 
-    if (!empty($validationErrors)) {
-        error_log("Validation errors found: " . implode("; ", $validationErrors));
-        
-        // Store validation errors in session for user feedback
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
-        
-        // CRITICAL FIX: Only discard data if NO valid rows were processed
-        if (count($transformed) === 0) {
-            // No valid data at all - return error
-            $_SESSION['upload_message'] = [
-                'type' => 'error',
-                'message' => "Data validation errors found: " . implode("; ", $validationErrors) . ". Please correct these issues and upload again."
-            ];
+        if (!empty($validationErrors)) {
+            error_log("Validation errors found: " . implode("; ", $validationErrors));
             
-            // Clean up the file when there are validation errors
-            if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
-                unlink($_SESSION['uploaded_csv']);
-                unset($_SESSION['uploaded_csv']);
+            // Store validation errors in session for user feedback
+            if (session_status() == PHP_SESSION_NONE) {
+                session_start();
             }
             
-            // Return empty array to indicate no valid data
-            return [];
+            // CRITICAL FIX: Only discard data if NO valid rows were processed
+            if (count($transformed) === 0) {
+                // No valid data at all - return error
+                $_SESSION['upload_message'] = [
+                    'type' => 'error',
+                    'message' => "Data validation errors found: " . implode("; ", $validationErrors) . ". Please correct these issues and upload again."
+                ];
+                
+                // Clean up the file when there are validation errors
+                if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
+                    unlink($_SESSION['uploaded_csv']);
+                    unset($_SESSION['uploaded_csv']);
+                }
+                
+                // Return empty array to indicate no valid data
+                return [];
+            } else {
+                // Some valid data found - store errors as warnings but continue processing
+                $_SESSION['validation_errors'] = $validationErrors;
+                error_log("Stored " . count($validationErrors) . " validation errors as warnings - processing " . count($transformed) . " valid rows");
+                
+                // NEW: Preserve validation errors for display across all pages
+                require_once __DIR__ . '/../functions.php';
+                preserveValidationErrorsForDisplay($validationErrors, count($transformed));
+                
+                // Store success message with warnings
+                $_SESSION['upload_message'] = [
+                    'type' => 'warning',
+                    'message' => "Data imported successfully with " . count($validationErrors) . " validation warnings. " . count($transformed) . " valid rows were processed."
+                ];
+                
+                error_log("=== TRANSFORM DATA DEBUG END ===");
+                return $transformed; // Return the valid data
+            }
         } else {
-            // Some valid data found - store errors as warnings but continue processing
-            $_SESSION['validation_errors'] = $validationErrors;
-            error_log("Stored " . count($validationErrors) . " validation errors as warnings - processing " . count($transformed) . " valid rows");
-            
-            // Store success message with warnings
-            $_SESSION['upload_message'] = [
-                'type' => 'warning',
-                'message' => "Data imported successfully with " . count($validationErrors) . " validation warnings. " . count($transformed) . " valid rows were processed."
-            ];
-            
             error_log("=== TRANSFORM DATA DEBUG END ===");
-            return $transformed; // Return the valid data
+            return $transformed;
         }
-    } else {
-        error_log("=== TRANSFORM DATA DEBUG END ===");
-        return $transformed;
-    }
     }
 
     /**

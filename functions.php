@@ -1344,4 +1344,91 @@ function handleCsvUploadForComparison($conn, $file) {
     
     return $result;
 }
+
+function preserveValidationErrorsForDisplay($validationErrors, $validRowCount) {
+    // CRITICAL FIX: Only proceed if session is available
+    if (session_status() === PHP_SESSION_NONE) {
+        if (!headers_sent()) {
+            session_start();
+        } else {
+            error_log("Cannot preserve validation errors - headers already sent");
+            return;
+        }
+    }
+    
+    // CRITICAL: Store validation errors in a persistent session variable that won't be cleared
+    $_SESSION['persistent_validation_errors'] = $validationErrors;
+    $_SESSION['persistent_validation_count'] = count($validationErrors);
+    $_SESSION['persistent_valid_rows'] = $validRowCount;
+    $_SESSION['validation_errors_timestamp'] = time(); // Track when errors occurred
+    
+    error_log("PRESERVED validation errors for global display: " . count($validationErrors) . " errors, $validRowCount valid rows");
+}
+
+// Add this function to check if validation errors should be displayed
+function shouldShowValidationErrors() {
+    // CRITICAL FIX: Start session if not already started
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+        error_log("shouldShowValidationErrors: Started session");
+    } else {
+        error_log("shouldShowValidationErrors: Session already active");
+    }
+    
+    if (!isset($_SESSION['persistent_validation_errors']) || 
+        !isset($_SESSION['validation_errors_timestamp'])) {
+        error_log("shouldShowValidationErrors: Missing session variables");
+        error_log("- persistent_validation_errors: " . (isset($_SESSION['persistent_validation_errors']) ? 'SET' : 'NOT SET'));
+        error_log("- validation_errors_timestamp: " . (isset($_SESSION['validation_errors_timestamp']) ? 'SET' : 'NOT SET'));
+        return false;
+    }
+    
+    // Show errors for 1 hour after upload
+    $errorAge = time() - $_SESSION['validation_errors_timestamp'];
+    error_log("shouldShowValidationErrors: Error age = $errorAge seconds");
+    if ($errorAge > 3600) { // 1 hour
+        error_log("shouldShowValidationErrors: Errors expired, clearing");
+        clearPersistentValidationErrors();
+        return false;
+    }
+    
+    error_log("shouldShowValidationErrors: Returning TRUE");
+    return true;
+}
+
+// Add this function to get validation errors for display
+function getPersistentValidationErrors() {
+    error_log("getPersistentValidationErrors: Called");
+    
+    if (!shouldShowValidationErrors()) {
+        error_log("getPersistentValidationErrors: shouldShowValidationErrors returned false");
+        return null;
+    }
+    
+    $result = [
+        'errors' => $_SESSION['persistent_validation_errors'],
+        'error_count' => $_SESSION['persistent_validation_count'],
+        'valid_rows' => $_SESSION['persistent_valid_rows'],
+        'timestamp' => $_SESSION['validation_errors_timestamp']
+    ];
+    
+    error_log("getPersistentValidationErrors: Returning data with " . $result['error_count'] . " errors");
+    return $result;
+}
+
+// Add this function to clear validation errors
+function clearPersistentValidationErrors() {
+    // CRITICAL FIX: Start session if not already started
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+        error_log("clearPersistentValidationErrors: Started session");
+    }
+    
+    unset($_SESSION['persistent_validation_errors']);
+    unset($_SESSION['persistent_validation_count']);
+    unset($_SESSION['persistent_valid_rows']);
+    unset($_SESSION['validation_errors_timestamp']);
+    error_log("Cleared persistent validation errors");
+    return true;
+}
 ?>

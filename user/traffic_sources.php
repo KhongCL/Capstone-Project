@@ -78,9 +78,9 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     }
 
     /* Filter Panel Styles */
-		.filter-panel-section {
-			margin-bottom: 30px
-		}
+        .filter-panel-section {
+            margin-bottom: 30px
+        }
 
     .filter-controls {
         display: flex;
@@ -112,19 +112,19 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
-				margin-top: 12px;
+                margin-top: 12px;
     }
 
     .filter-btn {
         padding: 10px 20px;
         border: none;
-    		background-color: var(--primary-color);
-    		color: white;
+            background-color: var(--primary-color);
+            color: white;
         border-radius: 8px;
         cursor: pointer;
-				font-family: inherit;
+                font-family: inherit;
         font-size: 0.9em;
-				font-weight: 500;
+                font-weight: 500;
         transition: all 0.3s ease;
     }
 
@@ -229,135 +229,135 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         include 'user_header.php';
     }
     ?>
+
+    <?php include 'validation_errors_display.php'; ?>
     
     <main>
-			<section class="user-section">
-      		<h2>Traffic Sources Dashboard</h2>
+            <section class="user-section">
+              <h2>Traffic Sources Dashboard</h2>
 
-      		<!-- Filter Panel -->
-      		<div class="filter-panel-section">
-      		  <h3><i class="fas fa-filter"></i> Filter Traffic Sources</h3>
+              <!-- Filter Panel -->
+              <div class="filter-panel-section">
+                <h3><i class="fas fa-filter"></i> Filter Traffic Sources</h3>
 
-      		  <div class="filter-controls">
-      		    <!-- Top Sources Filter -->
-      		    <div class="filter-group">
-      		      <label for="topSourcesFilter">Show Top Sources:</label>
-      		      <select id="topSourcesFilter" class="filter-select">
-      		        <option value="all">All Sources</option>
-      		        <option value="5">Top 5</option>
-      		        <option value="10">Top 10</option>
-      		        <option value="15">Top 15</option>
-      		        <option value="20">Top 20</option>
-      		      </select>
-      		    </div>
+                <div class="filter-controls">
+                  <!-- Top Sources Filter -->
+                  <div class="filter-group">
+                    <label for="topSourcesFilter">Show Top Sources:</label>
+                    <select id="topSourcesFilter" class="filter-select">
+                      <option value="all">All Sources</option>
+                      <option value="5">Top 5</option>
+                      <option value="10">Top 10</option>
+                      <option value="15">Top 15</option>
+                      <option value="20">Top 20</option>
+                    </select>
+                  </div>
 
-      		    <!-- Minimum Percentage Filter -->
+                  <!-- Minimum Percentage Filter -->
               <div class="filter-group">
                 <label for="minPercentageFilter">Min Percentage (%):</label>
                 <input type="number" id="minPercentageFilter" class="filter-input" min="0" max="100" step="0.1" placeholder="0.0" oninput="validatePercentageInput(this)">
               </div>
-      		  </div>
+                </div>
 
-						<!-- Quick Filter Buttons -->
-      		  <div class="filter-buttons">
-      		    <button class="filter-btn" onclick="applyQuickFilter('major')">Major Sources (>5%)</button>
-      		    <button class="filter-btn" onclick="applyQuickFilter('moderate')">Moderate (1-5%)</button>
-      		    <button class="filter-btn" onclick="applyQuickFilter('minor')">Minor (<1%)</button>
-      		    <button class="filter-btn secondary" onclick="clearAllFilters()">Clear Filters</button>
-      		  </div>
+                        <!-- Quick Filter Buttons -->
+                <div class="filter-buttons">
+                  <button class="filter-btn" onclick="applyQuickFilter('major')">Major Sources (>5%)</button>
+                  <button class="filter-btn" onclick="applyQuickFilter('moderate')">Moderate (1-5%)</button>
+                  <button class="filter-btn" onclick="applyQuickFilter('minor')">Minor (<1%)</button>
+                  <button class="filter-btn secondary" onclick="clearAllFilters()">Clear Filters</button>
+                </div>
 
-      		  <!-- Source Selection Area -->
-      		  <div style="margin-top: 20px;">
-      		    <div style="display: flex; justify-content: space-between; align-items: center;">
-      		      <label style="font-weight: 500; color: #495057;">Select Specific Sources:</label>
-      		    </div>
-      		    <div class="source-selection" id="sourceSelection">
-      		      <!-- Checkboxes will be populated by JavaScript -->
-      		    </div>
-							<div>
-      		        <button class="filter-btn" onclick="selectAllSources()">Select All</button>
-      		        <button class="filter-btn secondary" onclick="deselectAllSources()">Deselect All</button>
-      		    </div>
-      		  </div>
+                <!-- Source Selection Area -->
+                <div style="margin-top: 20px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label style="font-weight: 500; color: #495057;">Select Specific Sources:</label>
+                  </div>
+                  <div class="source-selection" id="sourceSelection">
+                    <!-- Checkboxes will be populated by JavaScript -->
+                  </div>
+                            <div>
+                      <button class="filter-btn" onclick="selectAllSources()">Select All</button>
+                      <button class="filter-btn secondary" onclick="deselectAllSources()">Deselect All</button>
+                  </div>
+                </div>
 
-      		  <!-- Filter Summary -->
-      		  <div class="filter-summary" id="filterSummary" style="display: none;">
-      		    <span id="filterSummaryText"></span>
-      		  </div>
-      		</div>
+                <!-- Filter Summary -->
+                <div class="filter-summary" id="filterSummary" style="display: none;">
+                  <span id="filterSummaryText"></span>
+                </div>
+              </div>
 
-
-
-      		<!-- Sample Data Notice (from current) -->
-      		<?php if ($sampleNotice['is_sample']): ?>
-      		  <div class="<?php echo $isAdmin ? 'admin-notice' : 'sample-data-notice'; ?>">
-      		    <div class="notice-content">
-      		      <i class="fas fa-vial"></i>
-      		      <span><?php echo $sampleNotice['message']; ?></span>
-      		      <?php if (!$isAdmin): ?>
-      		          <?php echo $sampleNotice['action']; ?>
-      		      <?php else: ?>
-      		          <a href="<?php echo $backUrl; ?>" class="btn">Back to Admin Panel</a>
-      		      <?php endif; ?>
-      		    </div>
-      		  </div>
-      		<?php endif; ?>
-								
-      		<div class="user-chart-section">
-      		  <h3><i class="fas fa-chart-pie"></i> Traffic Sources Distribution</h3>
-      		  <div class="user-sources-chart-container" id="chartContainer">
-      		    <canvas id="sourcesChart"></canvas>
-      		  </div>
-      		  <div class="user-chart-type-toggle">
-      		    <button class="btn btn-sm active" data-chart-type="pie">Pie Chart</button>
-      		    <button class="btn btn-sm" data-chart-type="bar">Bar Chart</button>
-      		  </div>
-      		  <div class="user-export-controls">
-      		    <button onclick="exportChartToPDF()" class="user-export-btn pdf">
-      		      <span class="icon">📄</span>
-      		      <span class="text">Export to PDF</span>
-      		    </button>
-      		  </div>
-					</div>
-								
-      		<div class="user-data-table-section">
-      		  <h3><i class="fas fa-table"></i> Traffic Sources Breakdown</h3>
-      		  <div class="user-sources-table-container">
-      		    <table class="user-data-table" id="sourcesTable">
-      		      <thead>
-      		        <tr>
-      		          <th>
-      		            <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllRows(this)">
-      		            Source
-      		          </th>
-      		          <th>Visits</th>
-      		          <th>Percentage</th>
-      		        </tr>
-      		      </thead>
-      		      <tbody>
-      		        <?php foreach ($sourcesData as $index => $source): ?>
-      		          <tr data-source-index="<?php echo $index; ?>" data-source-name="<?php echo htmlspecialchars($source['traffic_source']); ?>" 
-      		              data-visit-count="<?php echo $source['visit_count']; ?>" data-percentage="<?php echo $source['percentage']; ?>"
-      		              onclick="toggleRowSelection(this)" style="cursor: pointer;">
-      		            <td>
-      		              <input type="checkbox" class="row-checkbox" onclick="event.stopPropagation(); toggleRowSelection(this.closest('tr'))">
-      		              <?php echo htmlspecialchars($source['traffic_source']); ?>
-      		            </td>
-      		            <td><?php echo number_format($source['visit_count']); ?></td>
-      		            <td><?php echo $source['percentage']; ?>%</td>
-      		          </tr>
-      		        <?php endforeach; ?>
-      		      </tbody>
-      		    </table>
-      		  </div>
-      		  <div class="user-export-controls">
-      		    <button onclick="exportTableToCSV()" class="user-export-btn csv">
-      		      <span class="icon">📊</span>
-      		      <span class="text">Export Table to CSV</span>
-      		    </button>
-      		  </div>
-      		</div>
-			</section>
+              <!-- Sample Data Notice (from current) -->
+              <?php if ($sampleNotice['is_sample']): ?>
+                <div class="<?php echo $isAdmin ? 'admin-notice' : 'sample-data-notice'; ?>">
+                  <div class="notice-content">
+                    <i class="fas fa-vial"></i>
+                    <span><?php echo $sampleNotice['message']; ?></span>
+                    <?php if (!$isAdmin): ?>
+                        <?php echo $sampleNotice['action']; ?>
+                    <?php else: ?>
+                        <a href="<?php echo $backUrl; ?>" class="btn">Back to Admin Panel</a>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              <?php endif; ?>
+                                
+              <div class="user-chart-section">
+                <h3><i class="fas fa-chart-pie"></i> Traffic Sources Distribution</h3>
+                <div class="user-sources-chart-container" id="chartContainer">
+                  <canvas id="sourcesChart"></canvas>
+                </div>
+                <div class="user-chart-type-toggle">
+                  <button class="btn btn-sm active" data-chart-type="pie">Pie Chart</button>
+                  <button class="btn btn-sm" data-chart-type="bar">Bar Chart</button>
+                </div>
+                <div class="user-export-controls">
+                  <button onclick="exportChartToPDF()" class="user-export-btn pdf">
+                    <span class="icon">📄</span>
+                    <span class="text">Export to PDF</span>
+                  </button>
+                </div>
+                    </div>
+                                
+              <div class="user-data-table-section">
+                <h3><i class="fas fa-table"></i> Traffic Sources Breakdown</h3>
+                <div class="user-sources-table-container">
+                  <table class="user-data-table" id="sourcesTable">
+                    <thead>
+                      <tr>
+                        <th>
+                          <input type="checkbox" id="selectAllCheckbox" onchange="toggleAllRows(this)">
+                          Source
+                        </th>
+                        <th>Visits</th>
+                        <th>Percentage</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <?php foreach ($sourcesData as $index => $source): ?>
+                        <tr data-source-index="<?php echo $index; ?>" data-source-name="<?php echo htmlspecialchars($source['traffic_source']); ?>" 
+                            data-visit-count="<?php echo $source['visit_count']; ?>" data-percentage="<?php echo $source['percentage']; ?>"
+                            onclick="toggleRowSelection(this)" style="cursor: pointer;">
+                          <td>
+                            <input type="checkbox" class="row-checkbox" onclick="event.stopPropagation(); toggleRowSelection(this.closest('tr'))">
+                            <?php echo htmlspecialchars($source['traffic_source']); ?>
+                          </td>
+                          <td><?php echo number_format($source['visit_count']); ?></td>
+                          <td><?php echo $source['percentage']; ?>%</td>
+                        </tr>
+                      <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="user-export-controls">
+                  <button onclick="exportTableToCSV()" class="user-export-btn csv">
+                    <span class="icon">📊</span>
+                    <span class="text">Export Table to CSV</span>
+                  </button>
+                </div>
+              </div>
+            </section>
     </main>
 
     <?php 

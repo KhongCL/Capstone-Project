@@ -153,6 +153,8 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
     }
     ?>
 
+    <?php include 'validation_errors_display.php'; ?>
+
     <main>
 			<section class="user-section">
       	<h2>Overview Dashboard</h2>

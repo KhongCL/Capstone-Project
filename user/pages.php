@@ -99,6 +99,8 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
         include 'user_header.php';
     }
     ?>
+
+    <?php include 'validation_errors_display.php'; ?>
     
     <main>
 			<section class="user-section">
