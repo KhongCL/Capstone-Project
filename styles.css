@@ -1,9 +1,4 @@
-/* TrafAnalyz - Modern Stylesheet */
-/* Updated to match admin styling - Modern design with gradients and enhanced effects */
-
-/* =====================================================
-   CSS CUSTOM PROPERTIES (VARIABLES) - UPDATED TO MATCH ADMIN
-   ===================================================== */
+/* Root Variable */
 :root {
   --primary-color: #0ea5e9;
   --primary-dark: #0369a1;
@@ -29,9 +24,7 @@
   --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
-/* =====================================================
-   GLOBAL RESET AND BASE STYLES - ENHANCED
-   ===================================================== */
+/* Global and Base Styles */
 * {
   margin: 0;
   padding: 0;
@@ -64,9 +57,7 @@ body {
   }
 }
 
-/* =====================================================
-   TYPOGRAPHY - ENHANCED
-   ===================================================== */
+/* Typography */
 h1,
 h2,
 h3,
@@ -99,9 +90,7 @@ a:hover {
   color: var(--primary-dark);
 }
 
-/* =====================================================
-   HEADER AND NAVIGATION - MODERNIZED
-   ===================================================== */
+/* Header */
 header {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
@@ -131,7 +120,7 @@ header {
   }
 }
 
-/* Logo Styling - Enhanced */
+/* Logo Styling */
 .logo {
     display: flex;
     align-items: center;
@@ -156,7 +145,7 @@ header .logo-image:hover {
 		transform: translateY(-2px);
 }
 
-/* Navigation - Enhanced */
+/* Navigation */
 nav ul {
   display: flex;
   list-style: none;
@@ -176,19 +165,6 @@ nav a {
   overflow: hidden;
 }
 
-nav a::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-}
-
-nav a:hover::before {
-  left: 100%;
-}
-
 nav a:hover, 
 nav a.active {
     background-color: var(--primary-color);
@@ -205,9 +181,7 @@ nav .logout:hover {
 		color: white;
 }
 
-/* =====================================================
-   MAIN CONTENT AREAS - ENHANCED
-   ===================================================== */
+/* Main Content Areas */
 main {
   margin-bottom: 2rem;
 }
@@ -254,9 +228,7 @@ section:hover {
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* =====================================================
-   FORM ELEMENTS - ENHANCED
-   ===================================================== */
+/* Form Elements */
 .form-group {
   margin-bottom: 1.5rem;
   position: relative;
@@ -301,9 +273,7 @@ select:focus {
   background: white;
 }
 
-/* =====================================================
-   BUTTONS - ENHANCED
-   ===================================================== */
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -437,9 +407,7 @@ select:focus {
   color: white;
 }
 
-/* =====================================================
-   LANDING PAGE STYLES (index.php) - ENHANCED
-   ===================================================== */
+/* Home Page */
 .hero {
   background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
   color: white;
@@ -472,10 +440,6 @@ select:focus {
   max-width: 800px;
   margin: 0 auto;
 }
-
-/* =====================================================
-   ENHANCED PAGE TITLES - UPDATED FOR BETTER VISUAL IMPACT
-   ===================================================== */
 
 /* Main content page titles - FAQ, About, Terms, Privacy, etc. */
 .faq-content h1,
@@ -552,55 +516,6 @@ select:focus {
   font-size: 1.1rem;
 }
 
-/* Contact page title enhancement */
-#contact-us h1 {
-  font-size: 2.5rem;
-  background-clip: text;
-  color: var(--primary-color);
-  margin-bottom: 40px;
-  font-weight: 700;
-  text-shadow: 0 2px 4px rgba(14, 165, 233, 0.1);
-  position: relative;
-}
-
-#contact-us h1::after {
-  content: "";
-  position: absolute;
-  bottom: -0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100px;
-  height: 4px;
-  background: var(--primary-color);
-  border-radius: 2px;
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
-}
-
-/* Features section title enhancement */
-.features h2 {
-  text-align: center;
-  margin-bottom: 3rem;
-  background-clip: text;
-  color: var(--primary-color);
-  font-size: 2.8rem;
-  font-weight: 700;
-  text-shadow: 0 2px 4px rgba(14, 165, 233, 0.1);
-  position: relative;
-}
-
-.features h2::after {
-  content: "";
-  position: absolute;
-  bottom: -0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 120px;
-  height: 4px;
-  background: var(--primary-color);
-  border-radius: 2px;
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
-}
-
 .hero p {
   font-size: 1.25rem;
   margin-bottom: 2rem;
@@ -628,17 +543,6 @@ select:focus {
   overflow: hidden;
 }
 
-.cta-button::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background-color:rgba(255, 255, 255, 0.2);
-  transition: left 0.5s ease;
-}
-
 .login-btn {
   background-color: white;
   color: var(--primary-dark);
@@ -663,18 +567,7 @@ select:focus {
   box-shadow: 0 10px 15px -3px rgba(255, 255, 255, 0.3);
 }
 
-.terms-link,
-.privacy-link {
-    color: var(--primary-color);
-    transition: color 0.3s ease;
-}
-
-.terms-link:hover,
-.privacy-link:hover {
-    color: var(--primary-dark);
-}
-
-/* Features Section - Enhanced */
+/* Features Section */
 .features {
   padding: 4rem 2rem;
   background: rgba(248, 250, 252, 0.8);
@@ -683,6 +576,30 @@ select:focus {
   margin-bottom: 2rem;
   border: 1px solid rgba(226, 232, 240, 0.6);
   box-shadow: var(--shadow);
+}
+
+.features h2 {
+  text-align: center;
+  margin-bottom: 3rem;
+  background-clip: text;
+  color: var(--primary-color);
+  font-size: 2.8rem;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(14, 165, 233, 0.1);
+  position: relative;
+}
+
+.features h2::after {
+  content: "";
+  position: absolute;
+  bottom: -0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 4px;
+  background: var(--primary-color);
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
 }
 
 .features-grid {
@@ -725,9 +642,7 @@ select:focus {
   line-height: 1.6;
 }
 
-/* =====================================================
-   AUTHENTICATION PAGES - ENHANCED
-   ===================================================== */
+/* Login / Register Page Styles */
 .auth-container {
   display: flex;
   background: rgba(255, 255, 255, 0.9);
@@ -756,7 +671,6 @@ select:focus {
   min-height: 500px;
 }
 
-/* Auth Logo - Enhanced */
 .logo-text {
   color: var(--text-color);
   font-weight: 600;
@@ -775,7 +689,6 @@ select:focus {
     box-shadow: 0 2px 4px rgba(14, 165, 233, 0.3);
 }
 
-/* Auth Form Styling - Enhanced */
 .auth-form h1 {
   font-size: 42px;
   font-weight: 700;
@@ -799,7 +712,7 @@ select:focus {
   flex: 1;
 }
 
-/* Password Field - Enhanced */
+/* Password Field*/
 .password-field {
   position: relative;
 }
@@ -847,7 +760,6 @@ select:focus {
     box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3);
 }
 
-/* Sign up/Sign in links */
 .sign-up,
 .sign-in {
   text-align: center;
@@ -868,7 +780,7 @@ select:focus {
     color: #0369a1;
 }
 
-/* Form Note - Enhanced */
+/* Form Note */
 .form-note {
     background: rgba(248, 250, 252, 0.8);
     backdrop-filter: blur(10px);
@@ -882,9 +794,7 @@ select:focus {
     border: 1px solid rgba(226, 232, 240, 0.6);
 }
 
-/* =====================================================
-   ERROR HANDLING AND VALIDATION - ENHANCED
-   ===================================================== */
+/* Error Handling and Validations */
 .error-bubble {
   position: absolute;
   background-color:#dc2626;
@@ -913,7 +823,7 @@ select:focus {
   background-color: rgba(254, 202, 202, 0.3);
 }
 
-/* Success Popup - Enhanced */
+/* Success Popup */
 .success-popup {
   position: fixed;
   top: 50%;
@@ -969,9 +879,7 @@ select:focus {
   visibility: visible;
 }
 
-/* =====================================================
-   MESSAGE STYLES - ENHANCED
-   ===================================================== */
+/* Message Styles */
 .message {
   padding: 1rem 1.5rem;
   border-radius: 0.75rem;
@@ -1032,9 +940,7 @@ select:focus {
   margin-bottom: 8px;
 }
 
-/* =====================================================
-   CONTACT US PAGE - ENHANCED
-   ===================================================== */
+/* Contact Us Page*/
 #contact-us {
   padding: 50px 20px;
   background: rgba(255, 255, 255, 0.8);
@@ -1043,6 +949,29 @@ select:focus {
   margin-bottom: 2rem;
   box-shadow: var(--shadow);
   border: 1px solid rgba(226, 232, 240, 0.6);
+}
+
+#contact-us h1 {
+  font-size: 2.5rem;
+  background-clip: text;
+  color: var(--primary-color);
+  margin-bottom: 40px;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(14, 165, 233, 0.1);
+  position: relative;
+}
+
+#contact-us h1::after {
+  content: "";
+  position: absolute;
+  bottom: -0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 4px;
+  background: var(--primary-color);
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
 }
 
 #contact-us .contact-container {
@@ -1120,9 +1049,7 @@ select:focus {
   text-decoration: underline;
 }
 
-/* =====================================================
-   CONTENT PAGES - ENHANCED
-   ===================================================== */
+/* Content Pages */
 .content-page {
   min-height: calc(100vh - 200px);
   padding: 2rem 0;
@@ -1162,7 +1089,7 @@ select:focus {
   line-height: 1.6;
 }
 
-/* Terms and Privacy Pages - Enhanced */
+/* Terms and Privacy Page Styles */
 .terms-content,
 .privacy-content {
   max-width: 800px;
@@ -1208,6 +1135,17 @@ select:focus {
   color: var(--dark-gray);
 }
 
+.terms-link,
+.privacy-link {
+    color: var(--primary-color);
+    transition: color 0.3s ease;
+}
+
+.terms-link:hover,
+.privacy-link:hover {
+    color: var(--primary-dark);
+}
+
 .effective-date {
   background: rgba(248, 250, 252, 0.8);
   backdrop-filter: blur(10px);
@@ -1218,7 +1156,7 @@ select:focus {
   border: 1px solid rgba(226, 232, 240, 0.6);
 }
 
-/* FAQ Content Styling - Enhanced */
+/* FAQ Page Styles */
 .faq-content {
   max-width: 800px;
   margin: auto;
@@ -1230,7 +1168,6 @@ select:focus {
   border: 1px solid rgba(226, 232, 240, 0.6);
 }
 
-/* FAQ Specific Styles - Enhanced */
 .faq-item {
   margin-bottom: 2rem;
   border: 1px solid rgba(226, 232, 240, 0.6);
@@ -1272,9 +1209,7 @@ select:focus {
   line-height: 1.6;
 }
 
-/* =====================================================
-   ABOUT PAGE STYLES - ENHANCED
-   ===================================================== */
+/* About Page Styles */
 .about-content {
   max-width: 800px;
   margin: auto;
@@ -1302,9 +1237,7 @@ select:focus {
   font-weight: 600;
 }
 
-/* =====================================================
-   FOOTER STYLES - ENHANCED
-   ===================================================== */
+/* Footer Styles */
 footer {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
@@ -1344,10 +1277,12 @@ footer {
   color: var(--primary-dark);
   text-decoration: underline;
 }
+    
+body {
+    padding-bottom: 0 !important;
+}
 
-/* =====================================================
-   ANIMATION KEYFRAMES
-   ===================================================== */
+/* Animation Keyframes */
 @keyframes bounce {
   0%,
   20%,
@@ -1383,9 +1318,6 @@ footer {
   }
 }
 
-/* =====================================================
-   RESPONSIVE DESIGN - ENHANCED
-   ===================================================== */
 @media (max-width: 1024px) {
   .container {
     padding: 1rem;
@@ -1500,7 +1432,6 @@ footer {
   }
 }
 
-/* Enhanced responsive design for titles */
 @media (max-width: 768px) {
   .faq-content h1,
   .about-content h1,
@@ -1518,12 +1449,10 @@ footer {
 }
 
 @media (max-width: 480px) {
-  /* Base Adjustments */
   .container {
     padding: 0.75rem;
   }
 
-  /* Typography */
   h1 {
     font-size: 1.8rem;
   }
@@ -1576,7 +1505,6 @@ footer {
     font-size: 1em;
   }
 
-  /* Buttons */
   .btn {
     padding: 0.625rem 1rem;
     font-size: 0.875rem;
@@ -1632,7 +1560,6 @@ footer {
     font-size: 2rem;
   }
 
-  /* Adjust underline width for mobile */
   .faq-content h1::after,
   .about-content h1::after,
   .content-section h1::after,
@@ -1644,91 +1571,7 @@ footer {
     height: 3px;
   }
 }
-
-/* =====================================================
-   UTILITY CLASSES
-   ===================================================== */
-.text-center {
-  text-align: center;
-}
-.text-left {
-  text-align: left;
-}
-.F {
-  text-align: right;
-}
-
-.mt-0 {
-  margin-top: 0;
-}
-.mt-1 {
-  margin-top: 0.5rem;
-}
-.mt-2 {
-  margin-top: 1rem;
-}
-.mt-3 {
-  margin-top: 1.5rem;
-}
-.mt-4 {
-  margin-top: 2rem;
-}
-
-.mb-0 {
-  margin-bottom: 0;
-}
-.mb-1 {
-  margin-bottom: 0.5rem;
-}
-.mb-2 {
-  margin-bottom: 1rem;
-}
-.mb-3 {
-  margin-bottom: 1.5rem;
-}
-.mb-4 {
-  margin-bottom: 2rem;
-}
-
-.p-0 {
-  padding: 0;
-}
-.p-1 {
-  padding: 0.5rem;
-}
-.p-2 {
-  padding: 1rem;
-}
-.p-3 {
-  padding: 1.5rem;
-}
-.p-4 {
-  padding: 2rem;
-}
-
-.d-none {
-  display: none;
-}
-.d-block {
-  display: block;
-}
-.d-flex {
-  display: flex;
-}
-.d-grid {
-  display: grid;
-}
-
-.w-100 {
-  width: 100%;
-}
-.h-100 {
-  height: 100%;
-}
-
-/* =====================================================
-   FOCUS STATES AND ACCESSIBILITY
-   ===================================================== */
+/* Focus States and Accessibility */
 .about-content p:focus-within,
 .content-section p:focus-within,
 .faq-content p:focus-within {
@@ -1737,9 +1580,7 @@ footer {
   border-radius: 4px;
 }
 
-/* =====================================================
-   PRINT STYLES
-   ===================================================== */
+/* Print Style */
 @media print {
   .no-print {
     display: none !important;
@@ -1801,7 +1642,6 @@ footer {
 /* =====================================================
    ACCESSIBILITY ENHANCEMENTS
    ===================================================== */
-/* Focus indicators */
 *:focus {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
@@ -1810,7 +1650,6 @@ footer {
 /* =====================================================
    COMPONENT-SPECIFIC OVERRIDES
    ===================================================== */
-/* Ensure specific pages don't conflict with general styles */
 .useful-links-page {
-  font-family: "Inter", sans-serif;
+  font-family: "Inter", sans-seri;
 }

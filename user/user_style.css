@@ -1,6 +1,3 @@
-/* TrafAnalyz User Dashboard - Stylesheet */
-/* User-specific styles for all user dashboard pages */
-
 /* =====================================================
    CSS CUSTOM PROPERTIES (VARIABLES)
    ===================================================== */
@@ -1959,14 +1956,6 @@ label {
     }
 }
 
-/* =====================================================
-   ACCESSIBILITY ENHANCEMENTS
-   ===================================================== */
-/* Focus indicators */
-*:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
 
 /* Chart Legend Positioning */
 .user-chart-legend-right {

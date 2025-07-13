@@ -12,7 +12,7 @@ if (isset($_SESSION['compare_files'])) {
     exit;
 }
 
-// CRITICAL FIX: Clear sample data session when user reaches manual mapping
+// Clear sample data session when user reaches manual mapping
 if (isset($_SESSION['using_sample_data'])) {
     unset($_SESSION['using_sample_data']);
     unset($_SESSION['sample_upload_id']);
@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         $error_message = "Please map at least one column before proceeding.";
         error_log("ERROR: No columns mapped");
     } else {
-        // ENHANCED: Check for minimum required mappings for meaningful analytics
+        // Check for minimum required mappings for meaningful analytics
         $mappedFields = array_values($columnMapping);
         $hasTrafficSource = in_array('traffic_source', $mappedFields);
         $hasMetric = array_intersect(['visits', 'sessions', 'users', 'pageviews', 'events_per_session', 'key_events', 'total_revenue'], $mappedFields);
@@ -122,14 +122,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         } else {
             error_log("Starting data transformation...");
             
-            // CRITICAL FIX: Get the file path from session
+            // Get the file path from session
             $filePath = $_SESSION['uploaded_csv'] ?? null;
             
             if (!$filePath || !file_exists($filePath)) {
                 $error_message = "File not found. Please upload your CSV file again.";
                 error_log("ERROR: File path not found or file doesn't exist: " . ($filePath ?? 'NULL'));
             } else {
-                // CRITICAL FIX: For manual mapping, set a default format to avoid validation errors
+                // For manual mapping, set a default format to avoid validation errors
                 $format = 'manual_mapping'; // Use a special format identifier for manual mappings
                 
                 // Check if we can detect format based on mapped columns
@@ -146,13 +146,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 error_log("Using format for transformation: " . $format);
                 
                 try {
-                    // CRITICAL FIX: Clear any previous validation errors before transformation
+                    // Clear any previous validation errors before transformation
                     if (isset($_SESSION['validation_errors'])) {
                         unset($_SESSION['validation_errors']);
                         error_log("Cleared previous validation errors before new transformation");
                     }
                     
-                    // CRITICAL FIX: Set a flag to indicate this is manual mapping
+                    //Set a flag to indicate this is manual mapping
                     $_SESSION['manual_mapping_mode'] = true;
                     
                     $transformedData = $processor->transformData($filePath, $columnMapping, $format);
@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     if (empty($transformedData)) {
                         error_log("ERROR: No data returned from transformation");
                         
-                        // CRITICAL FIX: Redirect to index.php with validation errors instead of showing them on mapping page
+                        // Redirect to index.php with validation errors instead of showing them on mapping page
                         if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
                             $validationErrors = $_SESSION['validation_errors'];
                             error_log("Found validation errors, redirecting to index.php: " . implode('; ', array_slice($validationErrors, 0, 5)));
@@ -282,7 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     // Clear the manual mapping flag on error
                     unset($_SESSION['manual_mapping_mode']);
                     
-                    // CRITICAL FIX: Also redirect exceptions to index.php
+                    // Also redirect exceptions to index.php
                     $_SESSION['upload_message'] = [
                         'type' => 'error',
                         'message' => 'Error processing data: ' . $e->getMessage()
@@ -316,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
     <link rel="stylesheet" href="../styles.css">
     <link rel="stylesheet" href="user_style.css">
     <style>
-        /* ==================== SCROLLABLE ERROR MESSAGE STYLES (Matching index.php) ==================== */
+				/* Scrollable Error Message Styles */
         .error-container {
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
@@ -324,16 +324,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             padding: 20px;
             margin: 20px 0;
             border-left: 4px solid var(--danger);
-            max-height: 400px; /* Limit height */
-            overflow-y: auto; /* Make scrollable */
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .error-list {
             list-style: none;
             padding: 0;
             margin: 0;
-            max-height: 300px; /* Limit the list height */
-            overflow-y: auto; /* Make the list scrollable */
+            max-height: 300px;
+            overflow-y: auto;
             border: 1px solid rgba(0,0,0,0.1);
             border-radius: 6px;
             background-color: rgba(255,255,255,0.5);
@@ -358,22 +358,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             border-radius: 12px;
             padding: 20px;
             margin: 20px 0;
-            max-height: 500px; /* Limit height */
-            overflow-y: auto; /* Make scrollable */
+            max-height: 500px;
+            overflow-y: auto;
         }
 
         .validation-tips {
-            max-height: 350px; /* Limit the tips section */
-            overflow-y: auto; /* Make scrollable */
-            padding-right: 10px; /* Add space for scrollbar */
+            max-height: 350px;
+            overflow-y: auto;
+            padding-right: 10px;
         }
 
         .validation-errors-list {
             list-style: none;
             padding: 0;
             margin: 15px 0;
-            max-height: 300px; /* Limit the list height */
-            overflow-y: auto; /* Make the list scrollable */
+            max-height: 300px;
+            overflow-y: auto;
             border: 1px solid rgba(0,0,0,0.1);
             border-radius: 6px;
             background-color: rgba(255,255,255,0.5);
@@ -400,7 +400,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             color: #721c24;
         }
 
-        /* Custom scrollbar styles for better appearance */
         .error-container::-webkit-scrollbar,
         .error-list::-webkit-scrollbar,
         .validation-help::-webkit-scrollbar,
@@ -435,32 +434,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             background: #a8a8a8;
         }
 
-        /* Responsive adjustments */
         @media (max-width: 768px) {
             .error-container {
-                max-height: 300px; /* Smaller on mobile */
+                max-height: 300px;
                 padding: 15px;
             }
             
             .error-list,
             .validation-errors-list {
-                max-height: 200px; /* Smaller list on mobile */
+                max-height: 200px;
             }
             
             .validation-help {
-                max-height: 350px; /* Smaller on mobile */
+                max-height: 350px;
                 padding: 15px;
             }
             
             .validation-tips {
-                max-height: 250px; /* Smaller tips on mobile */
-            }
+                max-height: 250px;
+						}
         }
 
         @media (max-width: 480px) {
             .error-container {
-                max-height: 250px; /* Even smaller on very small screens */
-            }
+                max-height: 250px;
+						}
             
             .error-list,
             .validation-errors-list {
@@ -476,7 +474,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             }
         }
 
-        /* ==================== CONFIDENCE BAR STYLES ==================== */
+        /* Confidence Bar Styles */
         .user-confidence-bar {
             justify-content: left;
         }
@@ -488,8 +486,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             height: 100%;
             border-radius: 11px;
             transition: all 0.3s ease;
-            background-color: var(--danger); /* Default red */
-            transform-origin: left; /* Ensure scaling from left */
+            background-color: var(--danger);
+            transform-origin: left;
         }
 
         .user-confidence-bar span {
@@ -501,31 +499,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             text-shadow: 0 1px 2px rgba(0,0,0,0.5);
             display: flex;
             align-items: center;
-            justify-content: center; /* FIXED: Center the text content */
+            justify-content: center;
             gap: 4px;
-            width: 100%; /* Take full width */
-            margin: 0; /* FIXED: Remove left margin */
-            padding: 0 8px; /* FIXED: Add horizontal padding instead */
-            text-align: center; /* FIXED: Ensure text is centered */
+            width: 100%;
+            margin: 0;
+            padding: 0 8px;
+            text-align: center;
         }
 
-        /* FIXED: Better text positioning for different confidence levels */
         .user-confidence-bar[data-confidence="low"] span {
-            color: #333; /* Dark text for low confidence */
+            color: #333;
             text-shadow: none;
-            justify-content: center; /* FIXED: Center for all confidence levels */
+            justify-content: center;
         }
 
         .user-confidence-bar[data-confidence="medium"] span {
-            color: #333; /* Dark text for medium confidence */
+            color: #333;
             text-shadow: none;
-            justify-content: center; /* FIXED: Center for all confidence levels */
+            justify-content: center;
         }
 
         .user-confidence-bar[data-confidence="high"] span {
             color: #fff;
             text-shadow: 0 1px 2px rgba(0,0,0,0.7);
-            justify-content: center; /* FIXED: Center for all confidence levels */
+            justify-content: center;
         }
 
         /* Ensure progress bar fills from left when width is very small */
@@ -535,7 +532,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         .user-confidence-fill[style*="width: 3%"],
         .user-confidence-fill[style*="width: 4%"],
         .user-confidence-fill[style*="width: 5%"] {
-            min-width: 2px; /* Minimum visible width for very low percentages */
+            min-width: 2px;
         }
 
         /* Table styling to accommodate confidence bars */
@@ -544,7 +541,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             padding: 8px;
         }
 
-        /* ==================== ERROR STATE STYLES ==================== */
+        /* Error State Styles  */
         .progress-stage.error {
             background-color: #f8d7da;
             border-color: #f5c6cb;
@@ -590,7 +587,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                         $errors = preg_split('/(?=Row \d+)/', $errorText);
                         $errors = array_filter(array_map('trim', $errors)); // Remove empty elements
                     ?>
-                        <!-- UPDATED: Enhanced error container matching index.php style -->
+                        <!-- Enhanced error container matching index.php style -->
                         <div class="error-container">
                             <h4><i class="fas fa-exclamation-triangle"></i> CSV File Validation Failed</h4>
                             <p><strong>Your file couldn't be processed due to data validation errors.</strong></p>
@@ -852,11 +849,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         <?php include 'user_footer.php'; ?>
     </div>
     <script>
-        // CRITICAL: Set global variables for upload_progress.js to use
+        // Set global variables for upload_progress.js to use
         window.sessionHasExistingData = <?php echo (isset($_SESSION['latest_upload_id']) || isset($_SESSION['using_sample_data'])) ? 'true' : 'false'; ?>;
         window.sessionIsUsingSampleData = <?php echo (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data']) ? 'true' : 'false'; ?>;
         
-        // NEW: Pass validation error state to JavaScript
+        // Pass validation error state to JavaScript
         window.hasValidationErrors = <?php echo (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) ? 'true' : 'false'; ?>;
         
         // Utility functions that don't require DOM to be ready
@@ -887,12 +884,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         document.addEventListener('DOMContentLoaded', function() {
             console.log('=== MAP COLUMNS PAGE INITIALIZATION ===');
             
-            // STEP 1: Style error suggestions from map_columns.php
             const errorItems = document.querySelectorAll('.error-item');
             errorItems.forEach(function(errorItem) {
                 const html = errorItem.innerHTML;
                 
-                // Pattern: <br><strong>💡 Suggestions:</strong> followed by text
                 if (html.includes('<br><strong>💡 Suggestions:</strong>')) {
                     const parts = html.split('<br><strong>💡 Suggestions:</strong>');
                     if (parts.length >= 2) {
@@ -906,7 +901,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                             '</div>';
                     }
                 }
-                // Alternative pattern: direct suggestion text after strong tag
+                // Direct suggestion text after strong tag
                 else if (html.includes('💡 Suggestions:') && !html.includes('error-suggestions')) {
                     const suggestionRegex = /<strong>💡 Suggestions:<\/strong>\s*([^<]+)/gi;
                     const newHtml = html.replace(suggestionRegex, function(match, suggestionText) {
@@ -922,7 +917,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 }
             });
             
-            // STEP 2: Handle upload success redirect case
+            // Handle upload success redirect case
             const urlParams = new URLSearchParams(window.location.search);
             const uploadSuccess = urlParams.get('upload_success');
             
@@ -934,7 +929,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 }
             }
             
-            // STEP 3: Setup file input handler (only if element exists)
+            // Setup file input handler (only if element exists)
             const csvFileInput = document.getElementById('csvFile');
             if (csvFileInput) {
                 csvFileInput.addEventListener('change', function() {
@@ -953,7 +948,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 });
             }
             
-            // STEP 4: CONFIDENCE SYSTEM AND DROPDOWN LOCKING
+						// Confidence System and Dropdown Locking
             console.log('=== CONFIDENCE SYSTEM DEBUG START ===');
             
             const fieldSelects = document.querySelectorAll('.user-field-select');
@@ -1077,28 +1072,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 console.log('Calculated confidence:', confidence);
                 
                 // Determine confidence color and icon
-                let confidenceColor = '#dc3545'; // Red for low confidence
+                let confidenceColor = '#dc3545';
                 let confidenceIcon = '⚠️';
                 let confidenceLevel = 'low';
-                let textColor = '#333'; // Dark text for low confidence
+                let textColor = '#333';
                 
                 if (confidence >= 85) {
-                    confidenceColor = '#28a745'; // Green for high confidence
+                    confidenceColor = '#28a745';
                     confidenceIcon = '✅';
                     confidenceLevel = 'high';
-                    textColor = '#fff'; // White text for high confidence
+                    textColor = '#fff';
                 } else if (confidence >= 60) {
-                    confidenceColor = '#ffc107'; // Yellow for medium confidence
+                    confidenceColor = '#ffc107';
                     confidenceIcon = '⚡';
                     confidenceLevel = 'medium';
-                    textColor = '#333'; // Dark text for medium confidence
+                    textColor = '#333';
                 }
                 
                 console.log('Confidence color:', confidenceColor);
                 console.log('Confidence icon:', confidenceIcon);
                 console.log('Confidence level:', confidenceLevel);
                 
-                // FIXED: Update confidence bar with proper left-to-right fill and text visibility
+                // Update confidence bar with proper left-to-right fill and text visibility
                 const confidenceHTML = `
                     <div class="user-confidence-bar" data-confidence="${confidenceLevel}">
                         <div class="user-confidence-fill" style="width: ${confidence}%; background-color: ${confidenceColor}; transition: all 0.3s ease;"></div>
@@ -1174,7 +1169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             
             console.log('=== CONFIDENCE SYSTEM DEBUG END ===');
 
-            // STEP 5: FORM SUBMISSION AND PROGRESS ANIMATION
+						// Form Submission and Progress Animation
             const form = document.querySelector('form');
             const progressDiv = document.getElementById('mappingProgress');
             let formSubmitted = false;
@@ -1196,7 +1191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 });
             }
             
-            // SIMPLE: Progress animation functions that work for both valid and invalid files
+            // Progress animation functions that work for both valid and invalid files
             function runProgressAnimation() {
                 // Start data validation stage (Stage 3)
                 setTimeout(() => {

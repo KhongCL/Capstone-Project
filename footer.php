@@ -1,12 +1,11 @@
 <style>
-  	/* Footer */
 		footer {
 		    background-color: #1e3c72;
 		    color: white;
 		    padding: 2rem;
 		    text-align: center;
-		    border-radius: 1rem 1rem 0 0 !important; /* Only round top corners */
-		    margin-bottom: 0 !important; /* Remove any bottom margin */
+		    border-radius: 1rem 1rem 0 0 !important;
+		    margin-bottom: 0 !important;
 		}
 
     .footer-content {
@@ -30,12 +29,10 @@
             text-decoration: underline;
     }
     
-    /* Ensure body doesn't have bottom padding that creates gaps */
     body {
         padding-bottom: 0 !important;
     }
     
-    /* Make sure the footer container extends to edges */
     .container:has(footer),
     footer .container {
         max-width: 100% !important;

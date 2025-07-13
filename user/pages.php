@@ -28,7 +28,7 @@ if (isset($_GET['sample_data']) && $_GET['sample_data'] == '1') {
     }
 }
 
-// UPDATED: Check user role and adjust navigation accordingly
+// Check user role and adjust navigation accordingly
 $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
 $backUrl = $isAdmin ? '../admin/upload_sample_data.php' : 'index.php';
 
@@ -88,7 +88,7 @@ $dataQuality = $_SESSION['pages_data_quality'] ?? [
 <body>
   <div class="container">
     <?php 
-    // UPDATED: Use appropriate header based on user role
+    // Use appropriate header based on user role
     if ($isAdmin) {
         echo '<header class="pages-header">
                 <div class="pages-header-content">

@@ -1217,12 +1217,3 @@ select option[value="__custom_type__"] {
   right: 5%;
   animation-delay: 1s;
 }
-
-/* =====================================================
-   ACCESSIBILITY ENHANCEMENTS
-   ===================================================== */
-/* Focus indicators */
-*:focus {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
-}

@@ -28,7 +28,7 @@ if (isset($_GET['sample_data']) && $_GET['sample_data'] == '1') {
     }
 }
 
-// UPDATED: Check user role and adjust navigation accordingly
+// Check user role and adjust navigation accordingly
 $isAdmin = isset($_SESSION['role']) && $_SESSION['role'] === 'Admin';
 $backUrl = $isAdmin ? '../admin/upload_sample_data.php' : 'index.php';
 
@@ -112,19 +112,19 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         display: flex;
         gap: 10px;
         flex-wrap: wrap;
-                margin-top: 12px;
+        margin-top: 12px;
     }
 
     .filter-btn {
         padding: 10px 20px;
         border: none;
-            background-color: var(--primary-color);
-            color: white;
+        background-color: var(--primary-color);
+        color: white;
         border-radius: 8px;
         cursor: pointer;
-                font-family: inherit;
+        font-family: inherit;
         font-size: 0.9em;
-                font-weight: 500;
+        font-weight: 500;
         transition: all 0.3s ease;
     }
 
@@ -252,7 +252,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 <body>
   <div class="container">
     <?php 
-    // UPDATED: Use appropriate header based on user role
+    // Use appropriate header based on user role
     if ($isAdmin) {
         echo '<header style="background-color: #343a40; color: #fff; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px;">
                 <div style="display: flex; align-items: center; justify-content: center;">
@@ -343,8 +343,8 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
                   <canvas id="sourcesChart"></canvas>
                 </div>
                 <div class="user-chart-type-toggle">
-                  <button class="btn btn-sm active" data-chart-type="pie">Pie Chart</button>
-                  <button class="btn btn-sm" data-chart-type="bar">Bar Chart</button>
+                  <button class="btn btn-small active" data-chart-type="pie">Pie Chart</button>
+                  <button class="btn btn-small" data-chart-type="bar">Bar Chart</button>
                 </div>
                 <div class="user-export-controls">
                   <button onclick="exportChartToPDF()" class="user-export-btn pdf">
@@ -546,7 +546,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         data = data.sort((a, b) => parseInt(b.visit_count) - parseInt(a.visit_count)).slice(0, limit);
       }
 
-      // Apply minimum percentage filter - FIXED: Handle negative values properly
+      // Apply minimum percentage filter, Handle negative values properly
       if (currentFilters.minPercentage > 0) {
         data = data.filter(source => parseFloat(source.percentage) >= currentFilters.minPercentage);
       } else if (currentFilters.minPercentage < 0) {
@@ -679,7 +679,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
     function handleMinPercentageChange() {
       let value = parseFloat(document.getElementById('minPercentageFilter').value) || 0;
       
-      // FIXED: Validate minimum percentage input
+      // Validate minimum percentage input
       if (value < 0) {
         value = 0;
         document.getElementById('minPercentageFilter').value = '0';
@@ -787,8 +787,6 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       // Show alert if no data found after filtering
       if (currentFilters.selectedSources.length === 0) {
         alert(`No data found for ${filterName}. All sources in your data fall outside this range.`);
-        // Optionally, you could clear filters and show all data again
-        // clearAllFilters();
       }
     }
 

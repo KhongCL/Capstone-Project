@@ -209,46 +209,46 @@ $active_page = "supported_formats";
         }
 
 
-.format-header {
-    background: var(--primary-dark);
-    color: white;
-    padding: 1.5rem;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
-}
+				.format-header {
+						background: var(--primary-dark);
+						color: white;
+						padding: 1.5rem;
+						cursor: pointer;
+						display: flex;
+						justify-content: space-between;
+						align-items: center;
+						transition: all 0.2s ease;
+						position: relative;
+						overflow: hidden;
+				}
 
 
-.format-header:hover {
-    background: var(--primary-color);
-}
+				.format-header:hover {
+						background: var(--primary-color);
+				}
 
-.format-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
+				.format-header h3 {
+						margin: 0;
+						font-size: 1.25rem;
+						font-weight: 600;
+						display: flex;
+						align-items: center;
+						gap: 0.75rem;
+				}
 
-.format-header i {
-    color: white;
-}
+				.format-header i {
+						color: white;
+				}
 
-  .format-toggle {
-    font-size: 1.25rem;
-    transition: all 0.3s ease;
-    color: white;
-}
+					.format-toggle {
+						font-size: 1.25rem;
+						transition: all 0.3s ease;
+						color: white;
+				}
 
-.format-toggle.expanded {
-    transform: rotate(180deg);
-}
+				.format-toggle.expanded {
+						transform: rotate(180deg);
+				}
 
         .format-content {
             padding: 0;
@@ -536,48 +536,48 @@ $active_page = "supported_formats";
             }
         }
 
-.stats-highlight {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin: 2rem 0;
-}
+				.stats-highlight {
+						display: grid;
+						grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+						gap: 1rem;
+						margin: 2rem 0;
+				}
 
-.stat-card {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(14, 165, 233, 0.2);
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-    text-align: center;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-}
+				.stat-card {
+						background: rgba(255, 255, 255, 0.9);
+						backdrop-filter: blur(10px);
+						border: 1px solid rgba(14, 165, 233, 0.2);
+						border-radius: 0.75rem;
+						padding: 1.5rem;
+						text-align: center;
+						box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+						transition: all 0.3s ease;
+				}
 
-.stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
+				.stat-card:hover {
+						transform: translateY(-4px);
+						box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+				}
 
-.stat-number {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--primary-color);
-    display: block;
-}
+				.stat-number {
+						font-size: 2rem;
+						font-weight: 700;
+						color: var(--primary-color);
+						display: block;
+				}
 
-.stat-label {
-    color: var(--slate);
-    font-size: 0.9rem;
-    margin-top: 0.5rem;
-}
+				.stat-label {
+						color: var(--slate);
+						font-size: 0.9rem;
+						margin-top: 0.5rem;
+				}
 
-.divider {
-    height: 1.5px;
-    background: var(--primary-color);
-    margin: 2rem 0;
-    border-radius: 1px;
-}
+				.divider {
+						height: 1.5px;
+						background: var(--primary-color);
+						margin: 2rem 0;
+						border-radius: 1px;
+				}
 
     </style>
 </head>
@@ -875,8 +875,6 @@ $active_page = "supported_formats";
 				<?php include 'footer.php'; ?>
 		</div>
 
-		
-    
     <script>
         function toggleFormat(formatKey) {
             const content = document.getElementById('content-' + formatKey);
@@ -891,9 +889,7 @@ $active_page = "supported_formats";
             }
         }
         
-        // Remove the auto-open functionality - all dropdowns start closed
         document.addEventListener('DOMContentLoaded', function() {
-            // Page is ready, but all dropdowns remain closed by default
             console.log('Page loaded - all format dropdowns are closed by default');
         });
     </script>
