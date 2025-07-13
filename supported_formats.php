@@ -1,15 +1,6 @@
 <?php
-
-require_once '../auth/user_auth.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header("Location: ../login.php");
-    exit();
-}
-
 // Load supported formats from config
-$mappingsFile = __DIR__ . '/../config/csv_mappings.json';
+$mappingsFile = __DIR__ . '/config/csv_mappings.json';
 $supportedFormats = [];
 
 if (file_exists($mappingsFile)) {
@@ -29,7 +20,7 @@ $active_page = "supported_formats";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Supported CSV Formats - TrafAnalyz</title>
-    <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         :root {
@@ -592,7 +583,7 @@ $active_page = "supported_formats";
 </head>
 <body>
 		<div class="container">
-    		<?php include 'user_header.php'; ?>
+    		<?php include 'header.php'; ?>
 
     		<main>
             <!-- Hero Section -->
@@ -881,7 +872,7 @@ $active_page = "supported_formats";
  
     		</main>
 		
-				<?php include 'user_footer.php'; ?>
+				<?php include 'footer.php'; ?>
 		</div>
 
 		

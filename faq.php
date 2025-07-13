@@ -33,7 +33,7 @@ session_start();
             <div class="faq-item">
                 <h3 class="faq-question">What file formats are supported?</h3>
                 <div class="faq-answer">
-                    <p>We currently support CSV files exported from Google Analytics 4 (GA4) and other major analytics platforms. Our system can automatically detect and map common CSV formats. For a complete list of supported formats and step-by-step export instructions, visit our <a href="user/supported_formats.php" style="color: #007bff; text-decoration: underline;">Supported CSV Formats page</a>.</p>
+                    <p>We currently support CSV files exported from Google Analytics 4 (GA4) and other major analytics platforms. Our system can automatically detect and map common CSV formats. For a complete list of supported formats and step-by-step export instructions, visit our <a href="supported_formats.php" style="color: #007bff; text-decoration: underline;">Supported CSV Formats page</a>.</p>
                 </div>
             </div>
 
@@ -61,7 +61,7 @@ session_start();
             <div class="faq-item">
                 <h3 class="faq-question">I'm having trouble with my CSV upload. What should I do?</h3>
                 <div class="faq-answer">
-                    <p>If you're experiencing issues with CSV uploads, first check our <a href="user/supported_formats.php" style="color: #007bff; text-decoration: underline;">Supported CSV Formats guide</a> which includes troubleshooting tips and requirements for successful uploads. Make sure your file is under 5MB, properly formatted, and matches one of our supported formats.</p>
+                    <p>If you're experiencing issues with CSV uploads, first check our <a href="supported_formats.php" style="color: #007bff; text-decoration: underline;">Supported CSV Formats guide</a> which includes troubleshooting tips and requirements for successful uploads. Make sure your file is under 5MB, properly formatted, and matches one of our supported formats.</p>
                 </div>
             </div>
         </div>
