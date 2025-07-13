@@ -1,0 +1,1002 @@
+//index.php
+START
+
+    IMPORT session, database_connection, utility_functions
+
+    REQUIRE user_authentication
+    REQUIRE configuration
+    INCLUDE utility_functions
+
+    IF user is not logged in THEN
+        REDIRECT to login page
+        EXIT
+    END IF
+
+    SET page title and active page variables
+
+    // Debugging: Log session and GET parameters for troubleshooting
+    LOG GET parameters and session state
+
+    // Handle redirect after successful upload
+    IF 'upload_success' is set in GET parameters THEN
+        LOG upload success and clear sample data session variables
+        UNSET sample data session variables and cached data
+        FORCE session write and restart session
+        SET upload success message
+        OUTPUT JavaScript to hide sample data UI and redirect to overview page
+        EXIT
+    END IF
+
+    // Handle failed mapping, upload, or processing redirects
+    IF 'mapping_failed' or 'upload_failed' or 'processing_failed' is set in GET parameters THEN
+        LOG the respective failure
+    END IF
+
+    // Check for upload message in session
+    IF upload_message exists in session THEN
+        SET uploadMessage from session and unset it
+        LOG found upload message
+    END IF
+
+    // Handle loading sample data
+    IF 'load_sample' is set in GET parameters THEN
+        LOG loading sample data
+        ENSURE session is started
+        QUERY database for latest sample data upload
+        IF sample data found THEN
+            SET sample data session variables
+            UNSET cached data
+            FORCE session write and restart session
+            LOG sample data session variables set
+            SET uploadMessage to success
+        ELSE
+            LOG no sample data found
+            SET uploadMessage to error
+        END IF
+    END IF
+
+    // Handle upload just completed (clear sample data session)
+    IF 'upload_just_completed' is set in session THEN
+        LOG upload just completed
+        UNSET upload_just_completed and sample data session variables
+        UNSET cached data
+    END IF
+
+    // Handle clearing sample data
+    IF 'clear_sample' is set in GET parameters THEN
+        LOG clearing sample data
+        UNSET sample data and mapping-related session variables
+        UNSET cached data
+        QUERY database for user's most recent upload (not sample data)
+        IF user has existing data THEN
+            SET latest_upload_id in session
+            LOG redirecting to overview
+            SET uploadMessage to info
+            FORCE session write and restart session
+            DELAY briefly
+            REDIRECT to overview page
+            EXIT
+        ELSE
+            UNSET latest_upload_id
+            LOG staying on index for upload
+            SET uploadMessage to info
+            FORCE session write and restart session
+            // Stay on index.php for upload
+        END IF
+    END IF
+
+    // Check current sample data status for display
+    IF using_sample_data is set in session THEN
+        QUERY database for sample data info
+        IF found THEN
+            SET currentSampleInfo
+            LOG current sample info
+        ELSE
+            LOG sample upload ID not found, clear sample session
+            UNSET sample data session variables
+        END IF
+    ELSE
+        LOG not currently viewing sample data
+    END IF
+
+    // Prepare sample data preview if sample data is active
+    IF currentSampleInfo exists THEN
+        QUERY database for sample file name
+        IF file exists THEN
+            OPEN CSV file
+            READ header row
+            READ up to 10 data rows for preview
+            CLOSE file
+            LOG CSV headers and sample rows count
+        ELSE
+            LOG CSV file not found
+        END IF
+    END IF
+
+    // Handle CSV upload (non-JavaScript fallback)
+    IF request is POST and csvFile is uploaded and not AJAX THEN
+        CALL handleCsvUpload and set uploadMessage
+    END IF
+
+    LOG end of index.php debug
+
+    // HTML OUTPUT BEGINS
+
+    OUTPUT HTML header and styles
+
+    INCLUDE user_header
+
+    OUTPUT welcome section
+
+    // Display sample data status if active
+    IF currentSampleInfo exists THEN
+        OUTPUT sample data status UI with details and actions
+        IF sampleDataPreview exists THEN
+            OUTPUT data preview table (first 10 rows of CSV)
+            OUTPUT preview actions (download, view dashboard, etc.)
+        END IF
+    END IF
+
+    OUTPUT JavaScript for UI state management (hiding sample data UI, upload button state, etc.)
+
+    OUTPUT upload section:
+        OUTPUT upload form with file input, progress indicators, and upload button
+        IF uploadMessage exists THEN
+            IF uploadMessage is error with detailed validation errors THEN
+                OUTPUT enhanced error container with error list and suggestions
+                OUTPUT validation help section
+            ELSE
+                OUTPUT regular message
+            END IF
+        END IF
+
+        IF not viewing sample data THEN
+            OUTPUT option to load sample data
+        END IF
+
+    OUTPUT dashboard navigation links
+
+    INCLUDE user_footer
+
+    OUTPUT scripts for upload progress, file info display, confirmation dialogs, error message parsing, and DOM observers
+
+END
+
+
+
+
+
+//functions.php
+START
+
+    IMPORT necessary PHP modules and classes
+    REQUIRE 'classes/CsvProcessor.php'
+
+    DEFINE FUNCTION handleCsvUpload WITH PARAMETERS conn, file
+        LOG "HANDLE CSV UPLOAD START"
+        SET isComparisonUpload based on POST['comparison_context']
+        LOG isComparisonUpload status
+
+        IF session indicates sample data AND NOT isComparisonUpload
+            LOG "Clearing sample data session"
+            UNSET sample data and cached session variables
+        END IF
+
+        IF file upload error exists
+            RETURN error message with upload error
+        END IF
+
+        IF file extension is not 'csv'
+            RETURN error message for invalid file type
+        END IF
+
+        IF file size exceeds 5MB
+            RETURN error message for file size
+        END IF
+
+        IF csv_mappings.json does not exist
+            CREATE config directory if needed
+            CREATE default csv_mappings.json file
+        END IF
+
+        IF uploads directory does not exist
+            CREATE uploads directory
+        END IF
+
+        GENERATE unique filename using hash
+        SET filePath to uploads directory + unique filename
+
+        IF moving uploaded file fails
+            RETURN error message for file save failure
+        END IF
+
+        IF session not started
+            START session
+        END IF
+        STORE uploaded file info in session
+
+        TRY
+            CREATE CsvProcessor instance
+            EXTRACT metadata from file
+            PROCESS file using CsvProcessor
+
+            IF processing is successful
+                TRANSFORM data
+                STORE metadata and file info in session
+                SAVE transformed data to database
+
+                IF save is successful
+                    IF validation errors exist in session
+                        // Do not delete file, keep for comparison
+                    END IF
+                    CLEAR session data for upload and comparison
+                    RETURN success message
+                ELSE
+                    CLEAR session data for upload and comparison
+                    DELETE uploaded file
+                    RETURN error message from save
+                END IF
+
+            ELSE IF processing needs mapping
+                STORE mapping info and file path in session
+                CLEAR sample data session if needed
+                CLEAR comparison session data if not comparison upload
+
+                IF AJAX request
+                    RETURN needs_mapping with redirect info
+                ELSE
+                    IF comparison upload
+                        RETURN needs_mapping with file info
+                    ELSE
+                        REDIRECT to map_columns.php
+                        EXIT
+                    END IF
+                END IF
+
+            ELSE
+                DELETE uploaded file
+                RETURN error message from processing
+            END IF
+
+        CATCH Exception e
+            DELETE uploaded file
+            LOG error and stack trace
+            RETURN error message
+        END TRY
+    END FUNCTION
+
+    DEFINE FUNCTION saveTransformedData WITH PARAMETERS conn, transformedData
+        LOG "SAVE TRANSFORMED DATA DEBUG"
+        IF transformedData is empty
+            IF validation errors exist in session
+                STORE failed file info in session
+                FORMAT and RETURN all validation errors
+            END IF
+            CLEAR session data for upload
+            RETURN error for no valid data
+        END IF
+
+        TRY
+            BEGIN database transaction
+            GET user ID from session
+            GET metadata from session
+            SET default values for missing metadata
+
+            INSERT new CSV_UPLOAD record with metadata
+
+            STORE new upload ID in session
+
+            FOR each row in transformedData
+                GET or create source type ID
+                FOR each metric in row
+                    IF value is valid
+                        INSERT data point into database
+                    ELSE
+                        LOG skipping invalid value
+                    END IF
+                END FOR
+            END FOR
+
+            COMMIT transaction
+            VERIFY inserted data points
+            CLEAR cached session data
+            RETURN success message
+
+        CATCH Exception e
+            ROLLBACK transaction
+            LOG error
+            RETURN error message
+        END TRY
+    END FUNCTION
+
+    DEFINE FUNCTION getSourceTypeId WITH PARAMETERS conn, sourceName
+        TRY to SELECT SourceTypeID by sourceName
+        IF found
+            RETURN SourceTypeID
+        ELSE
+            INSERT new source type and RETURN new ID
+        END IF
+    END FUNCTION
+
+    DEFINE FUNCTION getMetricTypeId WITH PARAMETERS conn, metricName
+        TRY to SELECT MetricTypeID by metricName
+        IF found
+            RETURN MetricTypeID
+        ELSE
+            RETURN null
+        END IF
+    END FUNCTION
+
+    DEFINE FUNCTION insertDataPoint WITH PARAMETERS conn, uploadId, sourceTypeId, metricName, value, dataDate
+        IF value is not numeric
+            LOG error
+            RETURN false
+        END IF
+
+        GET metricTypeId
+        IF not found
+            INSERT new metric type and get ID
+        END IF
+
+        INSERT data point into PROCESSED_DATA_POINT
+        RETURN result
+    END FUNCTION
+
+    DEFINE FUNCTION getKeyMetrics WITH PARAMETERS conn, uploadId
+        IF uploadId not provided
+            GET userId from session
+            GET uploadId using getCurrentUploadId
+        END IF
+
+        IF no uploadId
+            RETURN default metrics
+        END IF
+
+        QUERY for total page views, unique visitors, avg session duration, bounce rate
+        RETURN metrics
+    END FUNCTION
+
+    DEFINE FUNCTION getTrafficOverTime WITH PARAMETERS conn, interval, uploadId
+        IF uploadId not provided
+            GET userId from session
+            GET uploadId using getCurrentUploadId
+        END IF
+
+        IF no uploadId
+            RETURN empty data
+        END IF
+
+        QUERY for sessions data by date
+        RETURN data
+    END FUNCTION
+
+    DEFINE FUNCTION getTrafficSourcesDistribution WITH PARAMETERS conn, uploadId
+        IF uploadId not provided
+            GET userId from session
+            GET uploadId using getCurrentUploadId
+        END IF
+
+        IF no uploadId
+            RETURN empty data
+        END IF
+
+        QUERY for traffic sources and calculate percentages
+        RETURN data
+    END FUNCTION
+
+    DEFINE FUNCTION getTopVisitedPages WITH PARAMETERS conn, limit
+        GET userId from session
+        GET latestUpload using getCurrentUploadId
+
+        IF no latestUpload
+            RETURN empty data
+        END IF
+
+        GET overview metrics for unique visitors
+        QUERY for sessions data grouped by page
+        DISTRIBUTE estimated visitors proportionally
+        STORE data quality info in session
+        RETURN data
+    END FUNCTION
+
+    DEFINE FUNCTION getUploadErrorMessage WITH PARAMETER errorCode
+        RETURN human-readable error message based on errorCode
+    END FUNCTION
+
+    DEFINE FUNCTION saveComparison WITH PARAMETERS conn, uploadId1, uploadId2
+        BEGIN transaction
+        INSERT new saved_comparison record
+        LINK both files to comparison
+        COMMIT transaction
+        RETURN true
+        ON ERROR
+            ROLLBACK transaction
+            RETURN false
+    END FUNCTION
+
+    DEFINE FUNCTION updateUploadProgress WITH PARAMETERS stage, percent, message, rowsProcessed, totalRows
+        IF session not started
+            START session
+        END IF
+        UPDATE session upload_progress with progress info
+        WRITE session data and sleep briefly
+        RESTART session if needed
+        LOG progress
+    END FUNCTION
+
+    DEFINE FUNCTION getAllUsers WITH PARAMETER conn
+        QUERY all users from user table
+        RETURN users as list
+    END FUNCTION
+
+    DEFINE FUNCTION updateUserStatus WITH PARAMETERS conn, userId, status
+        IF status is valid
+            UPDATE user AccountStatus
+            RETURN result
+        ELSE
+            RETURN false
+        END IF
+    END FUNCTION
+
+    DEFINE FUNCTION deleteUser WITH PARAMETERS conn, userId
+        BEGIN transaction
+        DELETE user by userId
+        COMMIT or ROLLBACK as needed
+        RETURN result
+    END FUNCTION
+
+    DEFINE FUNCTION getCurrentUploadId WITH PARAMETERS conn, userId
+        IF session indicates sample data
+            VERIFY sample upload exists and is valid
+            RETURN sampleUploadId if valid
+        END IF
+
+        QUERY for most recent user upload
+        RETURN uploadId
+    END FUNCTION
+
+    DEFINE FUNCTION isUsingSampleData
+        RETURN session['using_sample_data'] is true
+    END FUNCTION
+
+    DEFINE FUNCTION getSampleDataNotice
+        IF session indicates sample data
+            RETURN notice with action to clear sample data
+        ELSE
+            RETURN no notice
+        END IF
+    END FUNCTION
+
+    DEFINE FUNCTION handleCsvUploadForComparison WITH PARAMETERS conn, file
+        SET POST['comparison_context'] to true
+        GENERATE unique comparisonFileId
+        STORE comparison context in session
+        CALL handleCsvUpload with comparison context
+        UPDATE comparison context in session with result
+        RETURN result with file info and upload_id if available
+    END FUNCTION
+
+END
+
+
+
+
+
+//CsvProcessor.php
+START
+
+    DEFINE CLASS CsvProcessor
+
+        DEFINE FUNCTION __construct
+            SET default charset and encoding to UTF-8
+            SET locale to UTF-8
+            SET mappingsFile to the absolute path of csv_mappings.json
+            IF mappingsFile does not exist
+                THROW Exception "Mappings file not found"
+            END IF
+            LOAD mappings from mappingsFile as JSON
+            IF mappings is empty
+                THROW Exception "Failed to load CSV mapping configurations"
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION processFile WITH PARAMETER filePath
+            IF file is empty
+                RETURN error: "The CSV file is empty. Please upload a file with data."
+            END IF
+
+            OPEN filePath for reading
+            READ first line
+            IF first line starts with '#'
+                RETURN CALL processGoogleAnalyticsFormat WITH filePath
+            ELSE
+                SET result to CALL processSimpleFormat WITH filePath
+                IF result status is success
+                    RETURN result
+                END IF
+            END IF
+
+            OPEN filePath for reading
+            READ header row
+            IF header is invalid
+                RETURN error: "Invalid CSV file: No headers found or file is empty."
+            END IF
+
+            READ up to 5 data rows as sample
+            TRY
+                SET detectedFormat to CALL detectFormat WITH header
+                IF detectedFormat found
+                    RETURN success with format, header, mapping, data_types, and sample
+                ELSE
+                    RETURN needs_mapping with header, sample, and suggestions
+                END IF
+            CATCH Exception e
+                RETURN error with e.message
+            END TRY
+        END FUNCTION
+
+        DEFINE FUNCTION processSimpleFormat WITH filePath
+            OPEN filePath for reading
+            READ header row and up to 5 data rows as sample
+            CHECK for GA4 indicators in header
+            IF at least 3 indicators found
+                SET detectedFormat to 'ga4_traffic_acquisition'
+                CREATE mapping based on column names
+                RETURN success with format, header, sample, and mapping
+            ELSE
+                RETURN needs_mapping with header, sample, and suggestions
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION processGoogleAnalyticsFormat WITH filePath
+            CALL validateRawCsvStructure WITH filePath
+            INITIALIZE headerLine, dataLines, metadataLines
+            OPEN filePath for reading
+            FOR first 50 lines
+                IF line contains required metadata keywords
+                    INCREMENT foundMetadataCount
+                IF line starts with '#'
+                    ADD to metadataLines
+                ELSE IF headerLine is null
+                    SET headerLine to line
+                ELSE
+                    ADD line to dataLines
+            END FOR
+            IF foundMetadataCount < 3
+                RETURN error: "This does not appear to be a Google Analytics export."
+            END IF
+
+            PARSE headerLine as CSV header
+            PARSE dataLines as CSV data
+            CHECK header for GA keywords
+            IF not enough GA keywords
+                RETURN error: "This file does not appear to contain web analytics data."
+            END IF
+
+            FOR each mapping in mappings
+                CHECK if header matches format_detection columns (case-insensitive)
+                IF match found (>=70%)
+                    PREPARE mappingToUse and dataTypesToUse
+                    RETURN success with format, header, mapping, data_types, and sample
+            END FOR
+
+            RETURN needs_mapping with header, sample, and suggestions
+        END FUNCTION
+
+        DEFINE FUNCTION validateRawCsvStructure WITH filePath
+            READ all lines from filePath
+            FOR each line
+                IF not metadata and not header
+                    CHECK field count matches header
+                    IF mismatch
+                        ADD structure error with row info
+            END FOR
+            IF any structure errors
+                THROW Exception with all errors
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION detectFormat WITH headers
+            FOR each format in mappings
+                COUNT case-insensitive matches between headers and format_detection
+                IF >=70% match
+                    SET detectedFormat and RETURN format
+            END FOR
+            RETURN null
+        END FUNCTION
+
+        DEFINE FUNCTION suggestColumnMapping WITH headers
+            FOR each header
+                FOR each system field and its keywords
+                    IF header matches keyword (exact or partial)
+                        ASSIGN mapping with confidence score
+            RETURN suggestions
+        END FUNCTION
+
+        DEFINE FUNCTION transformData WITH filePath, columnMapping, format
+            CLEAR previous validation errors and messages in session
+            SET columnMap to columnMapping
+            IF format provided
+                ADD config mappings to columnMap (avoid duplicates)
+            REMOVE duplicate mappings to same target field
+            IF format provided
+                SET detectedFormat
+            ELSE
+                INFER format from mapped fields if possible
+            END IF
+
+            IF file is GA4 format
+                SKIP metadata lines, parse header and data
+                FOR each data row
+                    FOR each column in columnMap
+                        VALIDATE value using formatValue
+                        IF validation error, add to validationErrors
+                    IF row has no errors, add to transformed
+            ELSE
+                READ header and data rows
+                FOR each data row
+                    FOR each column in columnMap
+                        VALIDATE value using formatValue
+                        IF validation error, add to validationErrors
+                    IF row has no critical errors, add to transformed
+            END IF
+
+            IF no valid rows
+                STORE validation errors and upload message in session
+                DELETE uploaded file if needed
+                RETURN empty array
+            ELSE IF validation errors exist
+                STORE validation errors as warnings in session
+                RETURN transformed
+            ELSE
+                RETURN transformed
+            END IF
+        END FUNCTION
+
+        DEFINE FUNCTION formatValue WITH value, column
+            GET targetField from columnMap
+            IF detectedFormat is GA4 or manual_mapping
+                RETURN validateGa4Field(value, column, targetField)
+            IF value contains comma
+                THROW Exception "CSV parsing error: Value contains commas"
+            IF targetField is traffic_source
+                CHECK for trademark or special symbols
+                IF found, THROW Exception
+                CHECK for non-ASCII characters
+                IF found, THROW Exception
+                RETURN trimmed value
+            IF targetField is events_per_session
+                VALIDATE as float, check for negatives, special chars, high values
+            IF targetField is key_events
+                VALIDATE as integer, check for negatives, decimals, high values
+            IF no data type in mappings
+                HANDLE special fields (total_revenue, rates, etc.)
+            ELSE
+                VALIDATE based on type (integer, float, percentage, currency, time, text)
+            END IF
+            RETURN formatted value
+        END FUNCTION
+
+        DEFINE FUNCTION validateGa4Field WITH value, column, targetField
+            SWITCH targetField
+                CASE traffic_source: CALL validateTrafficSource
+                CASE visits/sessions: CALL validateIntegerField
+                CASE engaged_sessions: CALL validateIntegerField
+                CASE bounce_rate: CALL validateEngagementRate
+                CASE avg_session_duration: CALL validateSessionDuration
+                CASE events_per_session: CALL validateEventsPerSession
+                CASE event_count: CALL validateEventCount
+                CASE key_events: CALL validateKeyEvents
+                CASE session_key_event_rate: CALL validatePercentageField
+                CASE total_revenue: CALL validateRevenueField
+                DEFAULT: CALL validateGenericField
+            END SWITCH
+        END FUNCTION
+
+        // ... (Helper validation functions for each field type, e.g., validateTrafficSource, validateIntegerField, etc.)
+
+        DEFINE FUNCTION suggestDataFix WITH value, expectedType, column
+            // Suggests possible corrections for common validation errors
+        END FUNCTION
+
+        DEFINE FUNCTION extractGa4Metadata WITH filePath
+            OPEN filePath for reading
+            FOR first 15 lines
+                IF line contains Account, Property, Report Type, Start date, End date
+                    EXTRACT and format values into metadata
+            END FOR
+            RETURN metadata
+        END FUNCTION
+
+    END CLASS
+
+END
+
+
+
+
+
+//upload_handler.php
+START
+
+    SUPPRESS PHP warnings and notices for AJAX responses
+
+    REQUIRE user authentication, configuration, CSV processor class, and functions
+
+    LOG "=== UPLOAD HANDLER START ==="
+    LOG request method, received files, and POST data
+
+    IF the request is not an AJAX request THEN
+        LOG error "Not an AJAX request"
+        RETURN HTTP 400 with JSON: {success: false, message: 'Bad Request - Not AJAX'}
+        EXIT
+    END IF
+
+    LOG "Upload handler called"
+
+    SET response header to 'application/json'
+
+    START session
+
+    IF session contains 'using_sample_data' THEN
+        LOG "Clearing sample data session for new upload"
+        UNSET 'using_sample_data', 'sample_upload_id', 'cached_metrics', 'cached_traffic_sources', 'pages_data_quality' in session
+    END IF
+
+    LOG current session state: using_sample_data, sample_upload_id, latest_upload_id
+
+    INITIALIZE response as {success: false, message: '', stage: 0, errors: []}
+
+    IF request method is POST AND 'csvFile' is present in uploaded files THEN
+        LOG "Processing file upload" with file name
+
+        CALL handleCsvUpload with database connection and uploaded file
+        LOG upload result
+
+        IF uploadMessage is an array THEN
+            LOG upload message type
+
+            IF uploadMessage type is 'success' THEN
+                SET 'upload_just_completed' in session to true
+
+                IF 'latest_upload_id' exists in session THEN
+                    QUERY database for row count in PROCESSED_DATA_POINT with UploadID
+                    SET totalRows to row count + 1
+                END IF
+
+                SET response: success = true, message, stage = 4, total_rows = totalRows
+                LOG success response with row count
+
+            ELSE IF uploadMessage type is 'warning' THEN
+                IF 'latest_upload_id' exists in session THEN
+                    QUERY database for row count in PROCESSED_DATA_POINT with UploadID
+                    SET totalRows to row count
+                END IF
+
+                SET response: success = true, message, stage = 4, total_rows = totalRows, validation_errors
+                LOG warning response with error count and row count
+
+            ELSE IF uploadMessage type is 'needs_mapping' THEN
+                SET response: success = true, message, redirect, stage = 4
+                LOG manual mapping response and redirect URL
+
+            ELSE
+                SET response: success = false, message
+                LOG error response
+
+                IF message contains 'Data validation errors found:' THEN
+                    EXTRACT and parse validation errors from message using regex or fallback
+                    ADD parsed errors to response['errors']
+                    SET response['stage'] = 2
+                    LOG parsed validation errors
+                ELSE
+                    SET response['stage'] = 1
+                END IF
+            END IF
+
+            LOG final response
+
+        ELSE
+            SET response: success = false, message = 'Invalid response from upload handler', stage = 0
+        END IF
+
+    ELSE
+        SET response['message'] = 'No file uploaded'
+    END IF
+
+    DEFINE FUNCTION addParsedError(parsedErrors, errorText)
+        TRIM errorText
+        IF errorText is empty THEN RETURN
+
+        IF errorText contains ' Suggestions: ' THEN
+            SPLIT errorText into mainError and suggestions
+            ADD {message: mainError, suggestions} to parsedErrors
+        ELSE IF errorText matches inline suggestions pattern THEN
+            EXTRACT mainError and suggestions
+            ADD {message: mainError, suggestions} to parsedErrors
+        ELSE
+            ADD {message: errorText, suggestions: ''} to parsedErrors
+        END IF
+    END FUNCTION
+
+    LOG "Final response" with response JSON
+    OUTPUT response as JSON
+
+END
+
+
+
+
+
+//upload_progress.js
+START
+
+    SUPPRESS PHP warnings and notices in output for AJAX responses
+
+    REQUIRE user authentication, configuration, CSV processor class, and functions
+
+    LOG "=== UPLOAD HANDLER START ==="
+    LOG request method, files received, and POST data
+
+    IF the request is not an AJAX request THEN
+        LOG "ERROR: Not an AJAX request"
+        SET HTTP response code to 400
+        RETURN JSON { success: false, message: 'Bad Request - Not AJAX' }
+        EXIT
+    END IF
+
+    LOG "Upload handler called"
+
+    SET response content type to JSON
+
+    START session
+
+    // Clear sample data session if present
+    IF session contains 'using_sample_data' THEN
+        LOG "Clearing sample data session for new upload"
+        REMOVE 'using_sample_data', 'sample_upload_id', 'cached_metrics', 'cached_traffic_sources', 'pages_data_quality' from session
+    END IF
+
+    LOG current session state (using_sample_data, sample_upload_id, latest_upload_id)
+
+    INITIALIZE response object with success: false, message: '', stage: 0, errors: []
+
+    IF request method is POST AND a file named 'csvFile' is uploaded THEN
+        LOG "Processing file upload" with file name
+
+        CALL handleCsvUpload with database connection and uploaded file
+        LOG upload result
+
+        IF upload result is an array THEN
+            LOG upload message type
+
+            IF upload result type is 'success' THEN
+                SET session 'upload_just_completed' to true
+
+                // Get actual row count from uploaded file
+                IF session contains 'latest_upload_id' THEN
+                    QUERY database for row count in PROCESSED_DATA_POINT with UploadID
+                    SET totalRows to row count + 1
+                END IF
+
+                SET response success to true, message, stage to 4, and total_rows
+                LOG "Success response prepared" with row count
+
+            ELSE IF upload result type is 'warning' THEN
+                // Handle validation warnings and row count
+                IF session contains 'latest_upload_id' THEN
+                    QUERY database for row count in PROCESSED_DATA_POINT with UploadID
+                    SET totalRows to row count
+                END IF
+
+                SET response success to true, message, stage to 4, total_rows, and validation_errors
+                LOG "Warning response prepared" with error count and row count
+
+            ELSE IF upload result type is 'needs_mapping' THEN
+                SET response success to true, message, redirect, and stage to 4
+                LOG "Manual mapping response prepared" and redirect URL
+
+            ELSE
+                SET response success to false, message
+                LOG "Error response prepared" with message
+
+                // Enhanced error parsing for validation errors
+                IF message contains 'Data validation errors found:' THEN
+                    EXTRACT error list from message
+                    PARSE each error using regex or fallback method
+                    ADD parsed errors to response
+                    SET response stage to 2
+                    LOG parsed validation errors
+                ELSE
+                    SET response stage to 1
+                END IF
+            END IF
+
+            LOG "Final response" with response object
+
+        ELSE
+            SET response success to false, message to 'Invalid response from upload handler', stage to 0
+        END IF
+
+    ELSE
+        SET response message to 'No file uploaded'
+    END IF
+
+    // Helper function to add parsed errors to error list
+    DEFINE FUNCTION addParsedError WITH parsedErrors, errorText
+        IF errorText contains 'Suggestions:' THEN
+            SPLIT error and suggestions, add to parsedErrors
+        ELSE IF errorText matches inline suggestions pattern THEN
+            SPLIT main error and suggestions, add to parsedErrors
+        ELSE
+            ADD errorText as message with empty suggestions to parsedErrors
+        END IF
+    END FUNCTION
+
+    LOG "Final response" with response object
+    OUTPUT response as JSON
+
+END
+
+
+
+
+
+//download_sample.php
+START
+
+    IMPORT session, user_auth, config
+
+    // Check if user is logged in
+    IF session does not have 'user_id'
+        REDIRECT to login page
+        EXIT
+
+    // Check if user is using sample data
+    IF session does not have 'using_sample_data' OR 'using_sample_data' is not True
+        REDIRECT to index page
+        EXIT
+
+    // Get sample upload ID from session
+    SET sampleUploadId to session['sample_upload_id'] OR None
+    IF sampleUploadId is None
+        REDIRECT to index page
+        EXIT
+
+    // Query database for sample file info
+    PREPARE SQL statement to SELECT FileName, AccountName, PropertyName FROM csv_upload WHERE UploadID = sampleUploadId AND IsSampleData = 1
+    EXECUTE statement
+    GET result
+
+    IF result is empty OR no row found
+        REDIRECT to index page
+        EXIT
+
+    SET fileName, accountName, propertyName from result row
+    SET filePath to uploads directory + fileName
+
+    // Check if file exists
+    IF file at filePath does not exist
+        LOG error "Sample CSV file not found"
+        REDIRECT to index page with error=file_not_found
+        EXIT
+
+    // Set headers for file download
+    SET downloadName to "TrafAnalyz_Sample_Data_" + current date + ".csv"
+    SET fileSize to size of file at filePath
+
+    SET HTTP header Content-Type to text/csv
+    SET HTTP header Content-Disposition to attachment with downloadName
+    SET HTTP header Content-Length to fileSize
+    SET HTTP header Cache-Control to no-cache, must-revalidate
+    SET HTTP header Expires to a past date
+
+    // Output file contents
+    OUTPUT contents of file at filePath
+
+    // Log the download
+    LOG "Sample CSV downloaded by user" + session['user_id'] + ": " + fileName
+
+    EXIT
+
+END
