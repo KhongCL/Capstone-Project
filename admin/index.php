@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position/Role: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: index.php
+// Description: Admin dashboard main page displaying system statistics, user management,
+//              CSV upload analytics, and quick access to administrative functions.
+// First Written On:  April 2025
+// Edited On: 14 July 2025
+
 require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 require_once '../functions.php';

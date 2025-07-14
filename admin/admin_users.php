@@ -1,6 +1,15 @@
 <?php
-// search, filter, sort user
 
+// Name: Mervin Ooi Zhian Yang
+// Position/Role: Developer
+// TP Number: TP076578
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: admin_users.php
+// Description: Admin user management page for viewing, searching, filtering, and managing
+//              user accounts with suspend, restore, and delete functionality.
+// First Written On: 20 April 2025
+// Edited On: 14 July 2025
 
 require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';

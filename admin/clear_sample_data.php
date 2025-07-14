@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position/Role: Developer
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: clear_sample_data.php
+// Description: Admin utility to clear sample data from the database and file system
+//              with transaction support for data integrity and error handling.
+// First Written On: 20 April 2025
+// Edited On: 14 July 2025
+
 require_once '../auth/admin_auth.php';
 require_once '../config.php';
 

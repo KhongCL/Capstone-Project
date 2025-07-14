@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position/Role: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: validate_format.php
+// Description: Admin CSV format validation API that validates format names, detection columns,
+//              and target fields for CSV mapping configuration with duplicate checking.
+// First Written On: 20 April 2025
+// Edited On: 29 June 2025
+
 require_once '../auth/admin_auth.php';
 require_once '../config.php';
 

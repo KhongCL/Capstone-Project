@@ -1,4 +1,16 @@
 <?php
+
+// Name: Mervin Ooi Zhian Yang
+// Position/Role: Developer
+// TP Number: TP076578
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: export_users_pdf.php
+// Description: Admin user management report generator that creates detailed PDF reports
+//              with user statistics, account analysis, and comprehensive export functionality.
+// First Written On: 20 April 2025
+// Edited On: 12 July 2025
+
 require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 require_once '../functions.php';
