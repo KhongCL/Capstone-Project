@@ -330,7 +330,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="../scripts.js"></script>
     <style>
-        /* ==================== UPLOAD BUTTON ANIMATIONS ==================== */
+				/* Upload Button Animations */
         #uploadBtn {
             display: none;
             opacity: 0;
@@ -338,14 +338,12 @@ error_log("=== END INDEX.PHP DEBUG ===");
             transition: all 0.3s ease;
         }
 
-        /* Show upload button when file is selected */
         #uploadBtn.show {
             display: inline-block;
             opacity: 1;
             transform: translateY(0);
         }
 
-        /* Enhanced button container styling */
         .button-container {
             margin-top: 15px;
             display: flex;
@@ -353,7 +351,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             align-items: center;
         }
         
-        /* ==================== SAMPLE DATA STATUS STYLES ==================== */
+        /* Sample Data Style */
         .sample-data-status {
             background-color: var(--primary-color);
             padding: 15px 20px;
@@ -383,7 +381,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
             flex-wrap: wrap;
         }
 
-        /* ==================== SAMPLE DATA DETAILS STYLES ==================== */
         .sample-data-details {
             margin-top: 10px;
             padding-top: 10px;
@@ -425,13 +422,13 @@ error_log("=== END INDEX.PHP DEBUG ===");
             min-width: 0;
         }
 
-        /* ==================== SAMPLE DATA PREVIEW STYLES ==================== */
         .sample-data-preview {
             margin-top: 15px;
             border-top: 1px solid rgba(255, 255, 255, 0.2);
             padding-top: 15px;
         }
 
+				/* Preview Styles */
         .preview-header {
             display: flex;
             align-items: center;
@@ -479,10 +476,10 @@ error_log("=== END INDEX.PHP DEBUG ===");
             font-style: italic;
         }
 
-        /* ==================== PREVIEW TABLE STYLES ==================== */
+        
         .preview-table-container {
             max-height: 400px;
-            overflow: auto; /* Both vertical and horizontal scrolling */
+            overflow: auto;
             border: 1px solid #ddd;
             border-radius: 5px;
             margin-bottom: 15px;
@@ -491,30 +488,30 @@ error_log("=== END INDEX.PHP DEBUG ===");
         .preview-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.85em; /* Optimized for multiple columns */
-            min-width: 600px; /* Ensure minimum width for scrolling */
+            font-size: 0.85em;
+            min-width: 600px;
         }
 
         .preview-table th {
             background: #f8f9fa;
-            padding: 8px 6px; /* Optimized for more columns */
+            padding: 8px 6px;
             text-align: left;
             font-weight: 600;
             border-bottom: 2px solid #dee2e6;
             position: sticky;
             top: 0;
             z-index: 10;
-            white-space: nowrap; /* Prevent header text wrapping */
-            min-width: 80px; /* Minimum column width */
+            white-space: nowrap;
+            min-width: 80px;
         }
 
         .preview-table td {
-            padding: 8px 6px; /* Consistent with headers */
+            padding: 8px 6px;
             border-bottom: 1px solid #f1f3f4;
-            white-space: nowrap; /* Prevent text wrapping */
-            max-width: 150px; /* Maximum column width */
+            white-space: nowrap;
+            max-width: 150px;
             overflow: hidden;
-            text-overflow: ellipsis; /* Show ... for long content */
+            text-overflow: ellipsis;
         }
 
         .preview-table tbody tr:hover {
@@ -529,7 +526,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
             background: #f8f9fa;
         }
 
-        /* Tooltip for truncated content */
         .preview-table td:hover {
             overflow: visible;
             white-space: normal;
@@ -538,7 +534,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
             z-index: 100;
         }
 
-        /* ==================== PREVIEW ACTIONS STYLES ==================== */
         .preview-actions {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -546,7 +541,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             margin-top: 15px;
         }
 
-        /* ==================== ERROR CONTAINER AND BASIC ERROR STYLES ==================== */
+        /* Error and Suggestion Styles */
         .error-container {
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
@@ -554,16 +549,78 @@ error_log("=== END INDEX.PHP DEBUG ===");
             padding: 20px;
             margin: 20px 0;
             border-left: 4px solid #dc3545;
-            max-height: 400px; /* Limit height */
-            overflow-y: auto; /* Make scrollable */
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+				.error-footer {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0,0,0,0.1);
+            font-weight: 600;
+            color: #721c24;
+            text-align: center;
+        }
+
+        .error-container h4 {
+            color: #721c24;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        .error-container h4 i {
+            color: #dc3545;
+            font-size: 1.1em;
+        }
+
+        .error-summary {
+            font-weight: 600;
+            color: #721c24;
+            margin-bottom: 15px;
+            font-size: 1.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .error-summary i {
+            color: #dc3545;
+            font-size: 1.1em;
+        }
+
+        .error-container div[style*="margin: 15px 0"] {
+            margin: 15px 0 !important;
+            padding: 15px !important;
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.05) 0%, rgba(220, 53, 69, 0.1) 100%) !important;
+            border: 1px solid rgba(220, 53, 69, 0.2) !important;
+            border-radius: 8px !important;
+            font-size: 0.9em !important;
+            border-left: 4px solid #dc3545 !important;
+            color: #721c24 !important;
+        }
+
+        .error-container div[style*="background: rgba(0,0,0,0.05)"] {
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.05) 0%, rgba(220, 53, 69, 0.1) 100%) !important;
+            border: 1px solid rgba(220, 53, 69, 0.2) !important;
+            border-left: 4px solid #dc3545 !important;
+            color: #721c24 !important;
+        }
+
+        .error-container div[style*="margin: 15px 0"] strong {
+            color: #721c24 !important;
+            font-weight: 600 !important;
         }
 
         .error-list {
             list-style: none;
             padding: 0;
             margin: 0;
-            max-height: 300px; /* Limit the list height */
-            overflow-y: auto; /* Make the list scrollable */
+            max-height: 300px;
+            overflow-y: auto;
             border: 1px solid rgba(0,0,0,0.1);
             border-radius: 6px;
             background-color: rgba(255,255,255,0.5);
@@ -582,7 +639,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
             margin-bottom: 0;
         }
 
-        /* ==================== ERROR MESSAGE AND SUGGESTIONS STYLING ==================== */
         .error-message {
             font-weight: 500;
             color: #721c24;
@@ -592,7 +648,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
             line-height: 1.4;
         }
 
-        /* Enhanced suggestions styling with proper yellow highlighting for ALL sources */
         .error-suggestions,
         .error-item strong + span {
             background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
@@ -615,7 +670,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
             font-weight: 600 !important;
         }
 
-        /* Style the text after "💡 Suggestions:" from map_columns.php */
         .error-item strong:contains("💡 Suggestions:") + * {
             background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
             border: 1px solid #ffeaa7 !important;
@@ -640,38 +694,34 @@ error_log("=== END INDEX.PHP DEBUG ===");
             display: inline !important;
         }
 
-        /* Styling for upload_progress.js generated errors */
         .error-suggestions .suggestions-text {
             color: #856404 !important;
             background: transparent !important;
         }
 
-        /* ==================== VALIDATION HELP SECTION ==================== */
+        /* Validation Styles */
         .validation-help {
             background: #e8f5e8;
             border: 2px solid #68d391;
             border-radius: 12px;
             padding: 20px;
             margin: 20px 0;
-            max-height: 500px; /* Limit height */
-            overflow-y: auto; /* Make scrollable */
+            max-height: 500px;
+            overflow-y: auto;
         }
 
         .validation-tips {
-            max-height: 350px; /* Limit the tips section */
-            overflow-y: auto; /* Make scrollable */
-            padding-right: 10px; /* Add space for scrollbar */
+            max-height: 350px;
+            overflow-y: auto;
+            padding-right: 10px;
         }
 
-        /* ==================== MAP_COLUMNS.PHP ERROR COMPATIBILITY ==================== */
-        
-        /* Style for validation errors list from map_columns.php */
         .validation-errors-list {
             list-style: none;
             padding: 0;
             margin: 15px 0;
-            max-height: 300px; /* Limit the list height */
-            overflow-y: auto; /* Make the list scrollable */
+            max-height: 300px;
+            overflow-y: auto;
             border: 1px solid rgba(0,0,0,0.1);
             border-radius: 6px;
             background-color: rgba(255,255,255,0.5);
@@ -689,97 +739,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
         .validation-errors-list .error-item:last-child {
             margin-bottom: 0;
         }
-
-        /* Error footer styling */
-        .error-footer {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid rgba(0,0,0,0.1);
-            font-weight: 600;
-            color: #721c24;
-            text-align: center;
-        }
-
-        /* ==================== ENHANCED ERROR HEADERS AND STRUCTURE ==================== */
-        
-        /* Enhanced error container for mapping validation failures */
-        .error-container h4 {
-            color: #721c24;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 1.2em;
-            font-weight: 600;
-        }
-
-        .error-container h4 i {
-            color: #dc3545;
-            font-size: 1.1em;
-        }
-
-        /* Enhanced error summary styling */
-        .error-summary {
-            font-weight: 600;
-            color: #721c24;
-            margin-bottom: 15px;
-            font-size: 1.05em;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .error-summary i {
-            color: #dc3545;
-            font-size: 1.1em;
-        }
-
-        /* ==================== FILE INFO BOX STYLING - FIXED FOR MAP_COLUMNS.PHP ==================== */
-        
-        /* Enhanced file info styling within error container AND standalone */
-        .error-container div[style*="margin: 15px 0"] {
-            margin: 15px 0 !important;
-            padding: 15px !important;
-            background: linear-gradient(135deg, rgba(220, 53, 69, 0.05) 0%, rgba(220, 53, 69, 0.1) 100%) !important;
-            border: 1px solid rgba(220, 53, 69, 0.2) !important;
-            border-radius: 8px !important;
-            font-size: 0.9em !important;
-            border-left: 4px solid #dc3545 !important;
-            color: #721c24 !important;
-        }
-
-        /* Target the specific inline style from map_columns.php */
-        .error-container div[style*="background: rgba(0,0,0,0.05)"] {
-            background: linear-gradient(135deg, rgba(220, 53, 69, 0.05) 0%, rgba(220, 53, 69, 0.1) 100%) !important;
-            border: 1px solid rgba(220, 53, 69, 0.2) !important;
-            border-left: 4px solid #dc3545 !important;
-            color: #721c24 !important;
-        }
-
-        .error-container div[style*="margin: 15px 0"] strong {
-            color: #721c24 !important;
-            font-weight: 600 !important;
-        }
-
-        /* Individual file info lines */
-        .file-info-line {
-            margin: 8px 0;
-            padding: 6px 0;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-        }
-
-        .file-info-line:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
-
-        .file-info-line strong {
-            display: inline-block;
-            min-width: 120px;
-            font-weight: 600;
-        }
-
-        /* ==================== VALIDATION HELP SECTION STYLING ==================== */
         
         /* Help section specific styling */
         .validation-help h4 {
@@ -821,10 +780,27 @@ error_log("=== END INDEX.PHP DEBUG ===");
             color: #2d6a4f;
         }
 
-        /* ==================== UPLOAD PROGRESS.JS ERROR COMPATIBILITY ==================== */
+				
+        /* Individual file info lines */
+        .file-info-line {
+            margin: 8px 0;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
 
+        .file-info-line:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .file-info-line strong {
+            display: inline-block;
+            min-width: 120px;
+            font-weight: 600;
+        }
+
+				/* upload_progress.js error compatibility */
         .upload-section .error-item .error-suggestions {
-            /* Enhanced styling for suggestions from upload_progress.js */
             background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
             border: 1px solid #ffeaa7 !important;
             border-radius: 6px !important;
@@ -846,9 +822,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             font-weight: 500 !important;
         }
 
-        /* ==================== CUSTOM SCROLLBAR STYLES ==================== */
-        
-        /* Custom scrollbar styles for better appearance */
+        /* Custom Scrollbar Styles */
         .error-container::-webkit-scrollbar,
         .error-list::-webkit-scrollbar,
         .validation-help::-webkit-scrollbar,
@@ -882,8 +856,6 @@ error_log("=== END INDEX.PHP DEBUG ===");
         .validation-errors-list::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
-
-        /* ==================== RESPONSIVE DESIGN ==================== */
         
         /* Responsive adjustments for sample data and error messages */
         @media (max-width: 768px) {
@@ -906,22 +878,22 @@ error_log("=== END INDEX.PHP DEBUG ===");
             }
 
             .error-container {
-                max-height: 300px; /* Smaller on mobile */
+                max-height: 300px;
                 padding: 15px;
             }
             
             .error-list,
             .validation-errors-list {
-                max-height: 200px; /* Smaller list on mobile */
+                max-height: 200px;
             }
             
             .validation-help {
-                max-height: 350px; /* Smaller on mobile */
+                max-height: 350px;
                 padding: 15px;
             }
             
             .validation-tips {
-                max-height: 250px; /* Smaller tips on mobile */
+                max-height: 250px;
             }
 
             .error-container h4,
@@ -938,7 +910,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
         @media (max-width: 480px) {
             .error-container {
-                max-height: 250px; /* Even smaller on very small screens */
+                max-height: 250px;
                 padding: 12px;
             }
             
@@ -1078,7 +1050,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             <?php endif; ?>
 
             <script>
-                // CRITICAL: Hide sample data UI immediately if upload was just completed
+                // Hide sample data UI immediately if upload was just completed
                 document.addEventListener('DOMContentLoaded', function() {
                     console.log('=== INDEX.PHP DOM CONTENT LOADED ===');
                     
@@ -1092,9 +1064,9 @@ error_log("=== END INDEX.PHP DEBUG ===");
                         fileInfo: !!fileInfo
                     });
                     
-                    // CRITICAL: Ensure upload button is in correct initial state
+                    // Ensure upload button is in correct initial state
                     if (uploadBtn) {
-                        // FIXED: Clear all inline styles first
+                        // Clear all inline styles first
                         uploadBtn.style.cssText = '';
                         uploadBtn.classList.remove('show');
                         uploadBtn.disabled = false;
@@ -1108,13 +1080,13 @@ error_log("=== END INDEX.PHP DEBUG ===");
                         console.log('Upload button reset to initial state');
                     }
                     
-                    // CRITICAL: Ensure file input is clean
+                    // Ensure file input is clean
                     if (csvFileInput) {
                         csvFileInput.value = '';
                         console.log('File input cleared');
                     }
                     
-                    // CRITICAL: Ensure file info is hidden
+                    // Ensure file info is hidden
                     if (fileInfo) {
                         fileInfo.style.display = 'none';
                         console.log('File info hidden');
@@ -1154,7 +1126,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
                     ?>
                     
                     <?php if ($uploadMessage['type'] === 'error' && isset($uploadMessage['show_detailed_errors']) && $uploadMessage['show_detailed_errors']): ?>
-                        <!-- ENHANCED: Detailed validation errors display -->
+                        <!-- Detailed validation errors display -->
                         <div class="error-container">
                             <h4><i class="fas fa-exclamation-triangle"></i> CSV File Validation Failed</h4>
                             <p><strong>Your file couldn't be processed due to data validation errors.</strong></p>
@@ -1184,7 +1156,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
                                     <ul class="error-list">
                                         <?php foreach ($uniqueErrors as $error): ?>
                                             <?php
-                                            // ENHANCED: Parse error message and suggestions more robustly
+                                            // Parse error message and suggestions more robustly
                                             $errorMessage = $error;
                                             $suggestions = '';
                                             
@@ -1284,7 +1256,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
 
                     
-                    <!-- Enhanced Progress Indicators -->
+                    <!-- Progress Indicators -->
                     <div class="upload-progress" id="uploadProgress" style="display: none;">
                         <div class="progress-container">
                             <div class="progress-stage active" id="stage1">
@@ -1401,13 +1373,12 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
     <script src="upload_progress.js"></script>
     <script>
-        // CRITICAL: Set global variables for upload_progress.js to use
+        // Set global variables for upload_progress.js to use
         window.sessionHasExistingData = <?php 
             // Check if user has actual data (not just session variables)
             $hasData = false;
             if (isset($_SESSION['latest_upload_id'])) {
                 $uploadId = $_SESSION['latest_upload_id'];
-                // FIX: Use correct table name 'processed_data_point' instead of 'analytics_data'
                 $stmt = $conn->prepare("SELECT COUNT(*) as count FROM processed_data_point WHERE UploadID = ?");
                 $stmt->bind_param("i", $uploadId);
                 $stmt->execute();
@@ -1426,7 +1397,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             echo $isSample ? 'true' : 'false'; 
         ?>;
         
-        // NEW: Add debug logging for global variables
+        // Debug logging for global variables
         console.log('=== GLOBAL VARIABLES SET ===');
         console.log('window.sessionHasExistingData:', window.sessionHasExistingData);
         console.log('window.sessionIsUsingSampleData:', window.sessionIsUsingSampleData);
@@ -1465,14 +1436,14 @@ error_log("=== END INDEX.PHP DEBUG ===");
                     console.log('File info displayed');
                 }
                 
-                // FIXED: Ensure upload button is properly shown
+                // Ensure upload button is properly shown
                 if (uploadBtn) {
-                    // CRITICAL: Clear all previous styles and classes first
+                    // Clear all previous styles and classes
                     uploadBtn.style.cssText = '';
                     uploadBtn.classList.remove('show');
                     uploadBtn.disabled = false;
                     
-                    // FIXED: Apply the correct styles immediately
+                    // Apply the correct styles
                     uploadBtn.style.display = 'inline-block';
                     uploadBtn.style.opacity = '1';
                     uploadBtn.style.transform = 'translateY(0)';
@@ -1565,14 +1536,14 @@ error_log("=== END INDEX.PHP DEBUG ===");
 
         // Global confirmation function for upload progress tracker
         function confirmDataReplacement() {
-            // ENHANCED: Use the global variables set by PHP
+            // Use the global variables set by PHP
             const hasExistingData = window.sessionHasExistingData;
             const isUsingSampleData = window.sessionIsUsingSampleData;
             
-            // NEW: Check if there are error messages displayed that would be helpful to keep
+            // Check if there are error messages displayed that would be helpful to keep
             const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
             
-            // ENHANCED DEBUG LOGGING
+						// Debug Logging
             console.log('=== CONFIRMATION DEBUG ===');
             console.log('hasExistingData:', hasExistingData);
             console.log('isUsingSampleData:', isUsingSampleData);
@@ -1580,32 +1551,30 @@ error_log("=== END INDEX.PHP DEBUG ===");
             console.log('Current URL:', window.location.href);
             console.log('Referrer:', document.referrer);
             
-            // NEW: Check if this is a page refresh after successful upload
+            // Check if this is a page refresh after successful upload
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('upload_success') === '1') {
                 console.log('Page loaded after successful upload - sample data should be cleared');
                 return true; // Proceed without confirmation on post-upload page loads
             }
             
-            // CRITICAL FIX: Check for mapping page return but STILL show confirmation if there are error messages
+            // Check for mapping page return but still show confirmation if there are error messages
             const isFromMappingPage = document.referrer && document.referrer.includes('map_columns.php');
             if (isFromMappingPage) {
                 console.log('Detected return from mapping page');
-                // FIXED: Even if from mapping page, we should ALWAYS confirm if there are error messages
-                // Only bypass confirmation if there are NO error messages AND no existing data
+                // Only bypass confirmation if there are no error messages and no existing data
                 if (!hasErrorMessages && !hasExistingData) {
                     console.log('No error messages or existing data from mapping page - proceeding');
                     return true;
                 }
                 console.log('Has error messages or existing data from mapping page - showing confirmation');
-                // Don't return here - fall through to show confirmation
             }
             
             console.log('Session latest_upload_id:', '<?php echo $_SESSION['latest_upload_id'] ?? 'not set'; ?>');
             console.log('Session using_sample_data:', '<?php echo isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'; ?>');
             console.log('========================');
             
-            // CRITICAL CHANGE: Show confirmation if there's existing data OR error messages
+            // Show confirmation if there's existing data or error messages
             if (!hasExistingData && !hasErrorMessages) {
                 console.log('No existing data or error messages - proceeding without confirmation');
                 return true; // No existing data or helpful messages, proceed
@@ -1613,7 +1582,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             
             let confirmMessage;
             
-            // NEW: Special messaging for mapping page returns with error messages
+            // Special messaging for mapping page returns with error messages
             if (isFromMappingPage && hasErrorMessages) {
                 confirmMessage = "⚠️ Upload Different File?\n\n" +
                             "You just came back from the column mapping page with validation errors displayed.\n\n" +
@@ -1674,10 +1643,10 @@ error_log("=== END INDEX.PHP DEBUG ===");
             return result;
         }
 
-        // CRITICAL: Ensure the function is available globally
+        // Ensure the function is available globally
         window.confirmDataReplacement = confirmDataReplacement;
 
-        // NEW: Browser refresh/navigation confirmation for error messages
+        // Browser refresh/navigation confirmation for error messages
         window.addEventListener('beforeunload', function(e) {
             console.log('=== BEFOREUNLOAD EVENT TRIGGERED ===');
             
@@ -1711,14 +1680,14 @@ error_log("=== END INDEX.PHP DEBUG ===");
                 const uploadForm = document.getElementById('uploadForm');
                 const uploadBtn = document.getElementById('uploadBtn');
                 
-                // FIXED: Ensure the upload button state is properly managed after upload_progress.js
+                // Ensure the upload button state is properly managed after upload_progress.js
                 if (uploadBtn && !uploadBtn.dataset.stateManaged) {
                     console.log('Managing upload button state after upload_progress.js initialization');
                     
                     // Mark as managed to avoid duplicate handlers
                     uploadBtn.dataset.stateManaged = 'true';
                     
-                    // CRITICAL: Don't override the button state if it's already properly set
+                    // Don't override the button state if it's already properly set
                     // Just ensure it's not disabled and has proper initial styling
                     if (!uploadBtn.classList.contains('show')) {
                         uploadBtn.style.display = 'none';
