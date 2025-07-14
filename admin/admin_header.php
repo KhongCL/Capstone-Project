@@ -1,4 +1,16 @@
 <?php
+
+// Name: Mervin Ooi Zhian Yang
+// Position/Role: Developer
+// TP Number: TP076578
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: admin_header.php
+// Description: Common header component included across all admin pages with navigation,
+//              title management, and authentication elements for admin dashboard.
+// First Written On: 20 April 2025
+// Edited On: 14 July 2025
+
 /**
  * Common header for admin pages
  * @param string $title - Page title
