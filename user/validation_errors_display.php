@@ -1,21 +1,21 @@
 <?php
-// CRITICAL FIX: Only manipulate session if it's safe to do so
+// Only manipulate session if it's safe to do so
 $currentPage = basename($_SERVER['PHP_SELF']);
 $isDashboardPage = in_array($currentPage, ['overview.php', 'traffic_sources.php', 'pages.php']);
 $isComparePage = ($currentPage === 'compare.php');
 $isIndexPage = ($currentPage === 'index.php');
 
-// CRITICAL FIX: Only clear validation errors if session is safely accessible
+// Only clear validation errors if session is safely accessible
 $canManipulateSession = (session_status() === PHP_SESSION_ACTIVE) || (!headers_sent() && session_status() === PHP_SESSION_NONE);
 
-// CRITICAL FIX: Check validation context to determine clearing behavior
+// Check validation context to determine clearing behavior
 $isComparisonContext = false;
 if ($canManipulateSession && session_status() === PHP_SESSION_ACTIVE) {
     $isComparisonContext = isset($_SESSION['validation_errors_comparison_context']) && $_SESSION['validation_errors_comparison_context'] === true;
     error_log("validation_errors_display.php: Comparison context = " . ($isComparisonContext ? 'true' : 'false'));
 }
 
-// CRITICAL FIX: Modified clearing logic based on context
+// Modified clearing logic based on context
 // For comparison context - clear on dashboard pages, preserve on compare.php
 if ($isComparisonContext && $isDashboardPage && $_SERVER['REQUEST_METHOD'] === 'GET' && 
     !isset($_GET['upload_success']) && function_exists('clearValidationErrorsOnPageLoad') && $canManipulateSession) {
@@ -23,7 +23,7 @@ if ($isComparisonContext && $isDashboardPage && $_SERVER['REQUEST_METHOD'] === '
     error_log("Cleared comparison validation errors on dashboard page: $currentPage");
 }
 
-// For regular context - DON'T clear on dashboard pages, clear on compare.php
+// For regular context - Don't clear on dashboard pages, clear on compare.php
 if (!$isComparisonContext && $isComparePage && $_SERVER['REQUEST_METHOD'] === 'GET' && 
     !isset($_GET['mapping_failed']) && empty($_GET) && 
     function_exists('clearValidationErrorsOnPageLoad') && $canManipulateSession) {
