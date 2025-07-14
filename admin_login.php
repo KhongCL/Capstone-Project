@@ -1,4 +1,16 @@
 <?php
+
+// Name: Justin Ng Ken Hong
+// Position/Role: Developer
+// TP Number: TP073469
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: admin_login.php
+// Description: Admin login page with secure authentication and access control.
+//              Provides admin-only login functionality with key validation.
+// First Written On: 14 April 2025
+// Edited On: 14 July 2025
+
 session_start();
 require_once 'config.php';
 

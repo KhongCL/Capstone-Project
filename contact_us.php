@@ -1,4 +1,16 @@
 <?php
+
+// Name: Lim Jia Jhen
+// Position/Role: Developer
+// TP Number: TP077404
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: contact_us.php
+// Description: Contact us page displaying team contact information, phone numbers,
+//              email addresses, and project location for user support and inquiries.
+// First Written On: 15 April 2025
+// Edited On: 14 July 2025
+
 session_start();
 ?>
 <!DOCTYPE html>

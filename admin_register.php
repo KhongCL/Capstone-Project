@@ -1,4 +1,16 @@
 <?php
+
+// Name: Justin Ng Ken Hong
+// Position/Role: Developer
+// TP Number: TP073469
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: admin_register.php
+// Description: Admin registration page for creating new administrator accounts.
+//              Provides secure registration with validation and access control.
+// First Written On: 15 April 2025
+// Edited On: 14 July 2025
+
 session_start();
 require_once 'config.php';
 
