@@ -565,6 +565,22 @@ $trafficData = getTrafficOverTime($conn, 'day', $uploadId);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
+      fetch('log_export.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `exportType=CSV&description=Exported overview dashboard table data (uploadId: ${uploadId}, sample: ${isSampleData})`
+      }).then(response => response.json())
+        .then(data => {
+          if (!data.success) {
+            console.warn('Export log failed:', data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error logging export:', error);
+        });
     }
 
     async function exportToPDF() {
