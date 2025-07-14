@@ -17,7 +17,7 @@ require_once '../config.php';
 include '../functions.php';
 require_once '../classes/CsvProcessor.php';
 
-$userID = $_SESSION['user_id']; // Make sure userID is defined
+$userID = $_SESSION['user_id'];
 
 $comparison_results = null;
 $error_message = null;
@@ -40,13 +40,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         unset($_SESSION['compare_files']);
         unset($_SESSION['compare_ready']);
         unset($_SESSION['compare_error']);
-        unset($_SESSION['comparison_context']); // CRITICAL FIX: Clear comparison context
+        unset($_SESSION['comparison_context']);
         
-        // CRITICAL FIX: Process files separately without session interference
+        // Process files separately without session interference
         error_log("=== PROCESSING FILE 1 ===");
         $upload_result1 = handleCsvUploadForComparison($conn, $file1);
         
-        // CRITICAL FIX: Clear any session state that might interfere with second file
+        // Clear any session state that might interfere with second file
         $file1_session_state = [
             'uploaded_csv' => $_SESSION['uploaded_csv'] ?? null,
             'latest_upload_id' => $_SESSION['latest_upload_id'] ?? null,
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         error_log("=== PROCESSING FILE 2 ===");
         $upload_result2 = handleCsvUploadForComparison($conn, $file2);
         
-        // ENHANCED DEBUGGING: Log detailed results
+        // Log detailed results
         error_log("=== COMPARISON FILE PROCESSING RESULTS ===");
         error_log("File 1 result: " . json_encode($upload_result1));
         error_log("File 2 result: " . json_encode($upload_result2));
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         error_log("COMPARISON: File 1 processed - valid: " . ($file1_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file1_needs_mapping ? 'YES' : 'NO') . ", has_warnings: " . ($file1_has_warnings ? 'YES' : 'NO') . ", upload_id: " . ($upload_result1['upload_id'] ?? 'NULL'));
         error_log("COMPARISON: File 2 processed - valid: " . ($file2_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file2_needs_mapping ? 'YES' : 'NO') . ", has_warnings: " . ($file2_has_warnings ? 'YES' : 'NO') . ", upload_id: " . ($upload_result2['upload_id'] ?? 'NULL'));
         
-        // CRITICAL FIX: Build comparison session structure properly
+        // Build comparison session structure properly
         $_SESSION['compare_files'] = [
             1 => [
                 'name' => $upload_result1['clean_filename'] ?? $file1['name'],
@@ -200,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
             header('Location: map_columns_compare.php?file=1');
             exit;
         } elseif (($file1_valid || $file1_needs_mapping) && !$file2_valid && !$file2_needs_mapping) {
-            // CRITICAL FIX: Create a clear success/failure message with icons
+            // Create a clear success/failure message with icons
             error_log("=== SCENARIO 5: File 1 SUCCESS, File 2 FAILED ===");
             error_log("File 1 upload_id: " . ($upload_result1['upload_id'] ?? 'NULL'));
             error_log("File 2 error: " . ($upload_result2['message'] ?? 'Unknown'));
@@ -210,7 +210,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
             
             $error_message = $file1_success_msg . ", but " . $file2_failure_msg . ":\n\n" . ($upload_result2['message'] ?? 'Unknown error');
             
-            // CRITICAL DEBUG: Log the exact error message being constructed
+            // Log the exact error message being constructed
             error_log("SCENARIO 5: File 1 success message: " . $file1_success_msg);
             error_log("SCENARIO 5: File 2 failure message: " . $file2_failure_msg);
             error_log("SCENARIO 5: Combined error message: " . $error_message);
@@ -238,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
             error_log("SCENARIO 5: Final error message set: " . substr($error_message, 0, 200) . "...");
             
         } elseif (!$file1_valid && !$file1_needs_mapping && ($file2_valid || $file2_needs_mapping)) {
-            // CRITICAL FIX: Create a clear success/failure message with icons
+            // Create a clear success/failure message with icons
             error_log("=== SCENARIO 6: File 1 FAILED, File 2 SUCCESS ===");
             error_log("File 1 error: " . ($upload_result1['message'] ?? 'Unknown'));
             error_log("File 2 upload_id: " . ($upload_result2['upload_id'] ?? 'NULL'));
@@ -248,7 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
             
             $error_message = $file1_failure_msg . ", but " . $file2_success_msg . ":\n\n" . ($upload_result1['message'] ?? 'Unknown error');
             
-            // CRITICAL DEBUG: Log the exact error message being constructed
+            // Log the exact error message being constructed
             error_log("SCENARIO 6: File 1 failure message: " . $file1_failure_msg);
             error_log("SCENARIO 6: File 2 success message: " . $file2_success_msg);
             error_log("SCENARIO 6: Combined error message: " . $error_message);
@@ -285,7 +285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
             
             $error_message = "❌ Both files failed validation:\n\n" . $file1_failure_msg . ":\n" . ($upload_result1['message'] ?? 'Unknown error') . "\n\n" . $file2_failure_msg . ":\n" . ($upload_result2['message'] ?? 'Unknown error');
             
-            // CRITICAL FIX: Set flags for detailed error display with file separation
+            // Set flags for detailed error display with file separation
             $file1_has_validation_errors = (strpos($upload_result1['message'] ?? '', 'Found ') === 0 && strpos($upload_result1['message'] ?? '', 'validation errors') !== false);
             $file2_has_validation_errors = (strpos($upload_result2['message'] ?? '', 'Found ') === 0 && strpos($upload_result2['message'] ?? '', 'validation errors') !== false);
             
@@ -401,18 +401,15 @@ if (isset($_SESSION['compare_ready']) && $_SESSION['compare_ready'] && isset($_S
         $_SESSION['compare_error'] = "Comparison session incomplete. Please upload your files again.";
         unset($_SESSION['compare_ready']);
         unset($_SESSION['compare_files']);
-        // Don't redirect here, just clear the error state
     } else {
         // Both files should now be mapped and have upload IDs
         $file1Ready = isset($compareFiles[1]['upload_id']) && $compareFiles[1]['upload_id'] !== null;
         $file2Ready = isset($compareFiles[2]['upload_id']) && $compareFiles[2]['upload_id'] !== null;
         
         if ($file1Ready && $file2Ready) {
-            // CRITICAL FIX: Use upload IDs instead of file paths
             error_log("COMPARISON: Upload IDs - File 1: " . $compareFiles[1]['upload_id'] . ", File 2: " . $compareFiles[2]['upload_id']);
             
             try {
-                // CRITICAL FIX: Pass upload IDs directly, not file paths
                 $comparison_results = compareCSVFiles($compareFiles[1]['upload_id'], $compareFiles[2]['upload_id']);
                 error_log("COMPARISON: Successfully compared uploads " . $compareFiles[1]['upload_id'] . " and " . $compareFiles[2]['upload_id']);
                 
@@ -444,7 +441,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['compare'])) {
     $upload2 = $_POST['upload2'];
     $comparisonName = trim($_POST['comparisonName']);
 
-    // CRITICAL FIX: Make comparison name mandatory when both files are selected
+    // Make comparison name mandatory when both files are selected
     if (empty($upload1) || empty($upload2)) {
         $error_message = "Please select both CSV files for comparison.";
     } elseif (empty($comparisonName)) {
@@ -507,11 +504,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['load_comparison'])) {
         $upload1 = $files[1]['UploadID'];
         $upload2 = $files[2]['UploadID'];
         
-        // CRITICAL FIX: Use upload IDs directly instead of file paths
         error_log("Loading saved comparison with Upload IDs - File 1: $upload1, File 2: $upload2");
         
         try {
-            // FIXED: Pass upload IDs instead of file paths
             $comparison_results = compareCSVFiles($upload1, $upload2);
             $success_message = "Saved comparison loaded successfully!";
             error_log("Successfully loaded saved comparison with uploads $upload1 and $upload2");
@@ -548,7 +543,7 @@ while ($row = $result->fetch_assoc()) {
 function compareCSVFiles($uploadId1, $uploadId2) {
     global $conn;
     
-    // CRITICAL FIX: Log the parameters we receive
+    //Log the parameters we receive
     error_log("=== COMPARE CSV FILES DEBUG ===");
     error_log("Upload ID 1: " . var_export($uploadId1, true));
     error_log("Upload ID 2: " . var_export($uploadId2, true));
@@ -588,14 +583,14 @@ function compareCSVFiles($uploadId1, $uploadId2) {
     
     $comparison = [
         'basic_metrics' => [
-            'file1_rows' => count($data1), // CRITICAL FIX: Add row counts
-            'file2_rows' => count($data2), // CRITICAL FIX: Add row counts
-            'file1_columns' => count($metrics1), // CRITICAL FIX: Add column counts
-            'file2_columns' => count($metrics2), // CRITICAL FIX: Add column counts
+            'file1_rows' => count($data1),
+            'file2_rows' => count($data2),
+            'file1_columns' => count($metrics1),
+            'file2_columns' => count($metrics2),
             'common_columns' => count($common_headers)
         ],
         'headers' => [
-            'common_headers' => array_values($common_headers), // CRITICAL FIX: Add this line
+            'common_headers' => array_values($common_headers),
             'unique_to_file1' => array_values($unique_to_file1),
             'unique_to_file2' => array_values($unique_to_file2)
         ],
@@ -607,11 +602,11 @@ function compareCSVFiles($uploadId1, $uploadId2) {
         ]
     ];
     
-    // Analyze analytics metrics with IMPROVED metric detection
+    // Analyze analytics metrics with improved metric detection
     error_log("Common headers for metrics analysis: " . json_encode($common_headers));
 
     foreach ($analytics_metrics as $metric) {
-        // IMPROVED: Use the findMetricColumn function for better matching
+        // Use the findMetricColumn function for better matching
         $found_metric = findMetricColumn($common_headers, $metric);
         
         if ($found_metric) {
@@ -705,7 +700,7 @@ function findMetricColumn($headers, $metric) {
         'traffic_source' => ['Traffic Source', 'traffic_source', 'Session primary channel group (Default channel group)', 'Channel', 'Source']
     ];
 
-    // FIXED: First try direct matching to avoid recursion
+    // First try direct matching to avoid recursion
     $variations = $metric_variations[$metric] ?? [$metric];
     
     foreach ($variations as $variation) {
@@ -716,7 +711,7 @@ function findMetricColumn($headers, $metric) {
         }
     }
     
-    // FIXED: Only try conversion if direct match failed AND to prevent infinite recursion
+    // Only try conversion if direct match failed and to prevent infinite recursion
     if ($metric === 'bounce_rate') {
         // Look for engagement rate variations directly (no recursive call)
         $engagement_variations = $metric_variations['engagement_rate'] ?? [];
@@ -792,7 +787,7 @@ function calculateSummaryComparison($data1, $data2, $analytics_metrics) {
         $column_name = $data['column_name'];
         error_log("Processing metric: $metric with column: $column_name");
         
-        // CRITICAL FIX: Handle traffic_source as a count, not sum
+        // Handle traffic_source as a count, not sum
         if ($metric === 'traffic_source') {
             $count1 = count($data1);
             $count2 = count($data2);
@@ -906,7 +901,7 @@ function parseCSV($file_path) {
             if ($row_number === 0) {
                 $headers = $row;
             } else {
-                // FIXED: Check if headers is not null and is an array before using it
+                // Check if headers is not null and is an array before using it
                 if ($headers !== null && is_array($headers) && is_array($row) && count($row) === count($headers)) {
                     $data[] = array_combine($headers, $row);
                 }
@@ -958,9 +953,6 @@ function calculateStats($values) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* =====================================================
-        BASIC COMPONENT STYLES
-        ===================================================== */
         .comparison-card {
             border: 1px solid #dee2e6;
             border-radius: 8px;
@@ -989,12 +981,12 @@ function calculateStats($values) {
         }
 
         .user-metric-box h4 {
-            color: #000 !important; /* Force black color */
+            color: #000 !important;
             margin: 0 0 5px 0;
         }
 
         .user-metric-box small {
-            color: #000 !important; /* Force black color */
+            color: #000 !important;
             font-weight: 500;
         }
 
@@ -1004,9 +996,7 @@ function calculateStats($values) {
         .unchanged { color: #6c757d; }
         .neutral { color: #17a2b8; }
 
-        /* =====================================================
-        LAYOUT AND GRID STYLES
-        ===================================================== */
+        /* Layout and Grid Styles */
         .stats-grid,
         .user-stats-grid {
             display: grid;
@@ -1023,9 +1013,7 @@ function calculateStats($values) {
             background: white;
         }
 
-        /* =====================================================
-        FORM AND INPUT STYLES
-        ===================================================== */
+        /* Form and Input Styles */
         .upload-form,
         .user-upload-form {
             background: white;
@@ -1068,41 +1056,7 @@ function calculateStats($values) {
             font-size: 12px;
         }
 
-        /* =====================================================
-        BUTTON STYLES
-        ===================================================== */
-        .btn-submit,
-        .user-btn-submit {
-            background: #007bff;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        .btn-submit:hover,
-        .user-btn-submit:hover {
-            background: #0056b3;
-        }
-
-        button {
-            background-color: #007cba;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #005a87;
-        }
-
-        /* =====================================================
-        EXPORT CONTROLS
-        ===================================================== */
+        /* Export Control Styles */
         .user-export-controls {
             display: flex;
             justify-content: flex-end;
@@ -1114,55 +1068,12 @@ function calculateStats($values) {
             border: 1px solid #dee2e6;
         }
 
-        .user-export-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .user-export-btn.csv {
-            background: #28a745;
-            color: white;
-        }
-
-        .user-export-btn.csv:hover {
-            background: #218838;
-            transform: translateY(-2px);
-        }
-
-        .user-export-btn.pdf {
-            background: #dc3545;
-            color: white;
-        }
-
-        .user-export-btn.pdf:hover {
-            background: #c82333;
-            transform: translateY(-2px);
-        }
-
-        /* =====================================================
-        ALERT AND MESSAGE STYLES
-        ===================================================== */
+        /* Alert and Message Style */
         .alert,
         .user-alert {
             padding: 12px;
             margin-bottom: 20px;
             border-radius: 4px;
-        }
-
-        .alert-danger,
-        .user-alert-danger {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
         }
 
         .alert-info {
@@ -1177,9 +1088,7 @@ function calculateStats($values) {
             border: 1px solid #c3e6cb;
         }
 
-        /* =====================================================
-        ERROR DISPLAY STYLES
-        ===================================================== */
+        /* Error Display Styles */
         .user-alert-danger {
             background: #f8d7da;
             color: #721c24;
@@ -1344,9 +1253,9 @@ function calculateStats($values) {
             display: block !important;
             width: 100% !important;
             clear: both !important;
-            max-height: 500px !important; /* Increased for better viewing */
+            max-height: 500px !important;
             overflow-y: auto !important;
-            scroll-behavior: smooth !important; /* Smooth scrolling */
+            scroll-behavior: smooth !important;
         }
 
         .user-alert-danger .error-item {
@@ -1402,7 +1311,7 @@ function calculateStats($values) {
             clear: both !important;
             word-wrap: break-word !important;
             line-height: 1.4 !important;
-            padding-right: 60px !important; /* Space for badge */
+            padding-right: 60px !important;
         }
 
         .user-alert-danger .error-suggestions {
@@ -1438,7 +1347,7 @@ function calculateStats($values) {
         }
 
         .file-section-header {
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important; /* Changed to blue */
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
             color: white !important;
             padding: 12px 16px !important;
             margin: 20px 0 15px 0 !important;
@@ -1446,8 +1355,8 @@ function calculateStats($values) {
             font-weight: bold !important;
             font-size: 1.1em !important;
             text-align: center !important;
-            border-left: 4px solid #007bff !important; /* Changed to blue */
-            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3) !important; /* Changed to blue shadow */
+            border-left: 4px solid #007bff !important;
+            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3) !important;
             position: sticky !important;
             top: 0 !important;
             z-index: 10 !important;
@@ -1468,7 +1377,7 @@ function calculateStats($values) {
 
         .file-section-header .error-count-badge {
             background: rgba(255, 255, 255, 0.9) !important;
-            color: #007bff !important; /* Changed to blue */
+            color: #007bff !important;
             padding: 4px 8px !important;
             border-radius: 12px !important;
             font-size: 0.85em !important;
@@ -1477,7 +1386,6 @@ function calculateStats($values) {
             border: 1px solid rgba(255, 255, 255, 0.3) !important;
         }
 
-        /* CRITICAL FIX: Override any gray styling that might be applied initially */
         .user-alert-danger .error-item[style*="background: #e9ecef"] {
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
             color: white !important;
@@ -1491,7 +1399,6 @@ function calculateStats($values) {
             color: white !important;
         }
 
-        /* Add active state for quick jump buttons */
         .quick-jump-btn.active {
             background: #dc3545 !important;
             transform: scale(1.1) !important;
@@ -1532,9 +1439,7 @@ function calculateStats($values) {
             transition: width 0.3s ease !important;
         }
 
-        /* =====================================================
-        VALIDATION HELP STYLES
-        ===================================================== */
+        /* Validation Help Styles */
         .user-alert-danger .validation-help {
             background: white !important;
             border-radius: 6px !important;
@@ -1644,9 +1549,7 @@ function calculateStats($values) {
             background: linear-gradient(to top, rgba(248,215,218,0.9), transparent) !important;
         }
 
-        /* =====================================================
-        ERROR DISPLAY FALLBACK STYLES
-        ===================================================== */
+        /* Error Display Fallback Styles */
         .error-container {
             margin-bottom: 20px;
             display: block !important;
@@ -1774,9 +1677,7 @@ function calculateStats($values) {
             width: 100%;
         }
 
-        /* =====================================================
-        METRIC SUMMARY STYLES
-        ===================================================== */
+        /* Metric Styles */
         .metric-summary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -1785,16 +1686,12 @@ function calculateStats($values) {
             margin-bottom: 20px;
         }
 
-        /* Override gradient background text color for metric boxes inside metric-summary */
         .metric-summary .user-metric-box h4,
         .metric-summary .user-metric-box small {
             color: #000 !important;
         }
 
-        /* =====================================================
-        METRIC CARD STYLES
-        ===================================================== */
-        .metric-card {
+				.metric-card {
             background: white;
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -1812,9 +1709,7 @@ function calculateStats($values) {
         .metric-header.primary { background: #007bff; color: white; }
         .metric-header.secondary { background: #6c757d; color: white; }
 
-        /* =====================================================
-        COMPARISON ITEM STYLES
-        ===================================================== */
+        /* Comparison Styles */
         .comparison-item {
             background: white;
             border: 1px solid #e9ecef;
@@ -1836,9 +1731,6 @@ function calculateStats($values) {
             text-transform: capitalize;
         }
 
-        /* =====================================================
-        PERIOD COMPARISON STYLES
-        ===================================================== */
         .period-comparison {
             display: flex;
             justify-content: space-between;
@@ -1885,9 +1777,7 @@ function calculateStats($values) {
             font-size: 0.8em;
         }
 
-        /* =====================================================
-        DETAILED VS SECTION STYLES
-        ===================================================== */
+        /* Detailed vs Section Styles */
         .detailed-vs-section {
             display: flex;
             justify-content: space-between;
@@ -1925,9 +1815,7 @@ function calculateStats($values) {
             font-weight: 500;
         }
 
-        /* =====================================================
-        CHANGE SUMMARY STYLES
-        ===================================================== */
+        /* Change Summary Styles */
         .change-summary {
             padding: 12px;
             background: #f8f9fa;
@@ -1971,9 +1859,7 @@ function calculateStats($values) {
             color: #383d41;
         }
 
-        /* =====================================================
-        DATA PREVIEW STYLES
-        ===================================================== */
+        /* Data Preview Styles */
         .data-preview-section {
             display: block;
         }
@@ -2036,9 +1922,7 @@ function calculateStats($values) {
             background-color: #f8f9fa;
         }
 
-        /* =====================================================
-        COMPARISON CONTAINER STYLES
-        ===================================================== */
+        /* Comparision Styles */
         .comparison-container {
             max-width: 800px;
             margin: 20px auto;
@@ -2071,9 +1955,7 @@ function calculateStats($values) {
             border-radius: 4px;
         }
 
-        /* =====================================================
-        SCROLLBAR STYLES
-        ===================================================== */
+        /* Scrollbar Styles */
         .table-container::-webkit-scrollbar,
         .user-alert-danger .error-list::-webkit-scrollbar {
             width: 8px;
@@ -2138,9 +2020,7 @@ function calculateStats($values) {
             }
         }
 
-        /* =====================================================
-        FILE INPUT CONTAINER STYLES
-        ===================================================== */
+        /* File Input Container Styles */
         .file-input-container {
             position: relative;
             margin-bottom: 10px;
@@ -2162,7 +2042,7 @@ function calculateStats($values) {
             background: #f8f9fa;
             border-radius: 6px;
             border: 1px solid #e9ecef;
-            display: none; /* Initially hidden */
+            display: none;
         }
 
         .file-details {
@@ -2199,7 +2079,6 @@ function calculateStats($values) {
             font-weight: 500;
         }
 
-        /* Selected state styling */
         .file-input-container.has-file .file-input-button {
             background: #28a745;
             border-color: #28a745;
@@ -2209,7 +2088,6 @@ function calculateStats($values) {
             background: #218838;
         }
 
-        /* Compare specific file input group styling */
         .compare-user-file-input-group {
             display: flex;
             gap: 20px;
@@ -2233,7 +2111,6 @@ function calculateStats($values) {
             display: block;
         }
 
-        /* Responsive design for mobile */
         @media (max-width: 768px) {
             .compare-user-file-input-group {
                 flex-direction: column;
@@ -2251,7 +2128,6 @@ function calculateStats($values) {
             }
         }
 
-        /* Enhanced Detailed Analytics Comparison Styles */
         .compare-comparison-item {
             background-color: white;
             border: 1px solid #e9ecef;
@@ -2289,7 +2165,7 @@ function calculateStats($values) {
         }
 
         .compare-detailed-period-data h6 {
-            font-size: 0.75em; /* Reduced from 0.85em */
+            font-size: 0.75em;
             color: #6c757d;
             margin-bottom: 8px;
             text-transform: uppercase;
@@ -2298,7 +2174,7 @@ function calculateStats($values) {
         }
 
         .compare-detailed-period-data .period-value {
-            font-size: 1.1em; /* Reduced from 1.4em */
+            font-size: 1.1em;
             font-weight: 700;
             color: #2c3e50;
             margin-bottom: 5px;
@@ -2306,7 +2182,7 @@ function calculateStats($values) {
 
         .compare-period-data small {
             color: #6c757d;
-            font-size: 0.7em; /* Reduced from 0.8em */
+            font-size: 0.7em;
         }
 
         .compare-vs-divider {
@@ -2316,14 +2192,14 @@ function calculateStats($values) {
             margin: 0 15px;
             color: #adb5bd;
             font-weight: bold;
-            font-size: 0.8em; /* Reduced from 0.9em */
+            font-size: 0.8em
         }
 
         .compare-change-summary {
             padding: 12px;
             background-color: #f8f9fa;
             border-radius: 6px;
-            font-size: 0.85em; /* Reduced from 0.95em */
+            font-size: 0.85em;
             border-left: 4px solid #dee2e6;
         }
 
@@ -2339,7 +2215,6 @@ function calculateStats($values) {
             border-left-color: var(--info);
         }
 
-        /* Grid layout for detailed comparison */
         .compare-detailed-analytics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -2347,7 +2222,6 @@ function calculateStats($values) {
             margin-bottom: 20px;
         }
 
-        /* Responsive adjustments */
         @media (max-width: 768px) {
             .compare-detailed-analytics-grid {
                 grid-template-columns: 1fr;
@@ -2398,26 +2272,25 @@ function calculateStats($values) {
                 
                 <?php if (!empty($error_message)): ?>
                     <?php
-                    // CRITICAL DEBUG: Log what we're about to display
+                    // Display error logging
                     error_log("=== ERROR MESSAGE DISPLAY DEBUG ===");
                     error_log("Error message to display: " . $error_message);
                     error_log("show_detailed_errors flag: " . (isset($show_detailed_errors) ? ($show_detailed_errors ? 'true' : 'false') : 'not set'));
                     error_log("compare_validation_errors count: " . (isset($compare_validation_errors) ? count($compare_validation_errors) : 'not set'));
                     ?>
                     <?php if (isset($show_detailed_errors) && $show_detailed_errors && isset($compare_validation_errors)): ?>
-                        <!-- Enhanced validation errors display for comparison -->
+                        <!-- Validation errors display for comparison -->
                         <div class="user-alert user-alert-danger">
                             <?php 
                             error_log("DISPLAY: Using detailed errors display path");
                             
-                            // CRITICAL FIX: Parse the error message to extract just the summary
+                            // Parse the error message to extract just the summary
                             $displayErrorMessage = $error_message;
                             
                             // Extract just the summary part using the same pattern as below
                             $summaryPattern = '/^(.*?)(Found \d+ validation errors.*)/s';
                             if (preg_match($summaryPattern, $displayErrorMessage, $matches)) {
                                 $summaryOnly = trim($matches[1]);
-                                // Remove any "Error processing files: " prefix
                                 $summaryOnly = str_replace("Error processing files: ", "", $summaryOnly);
                                 $displayErrorMessage = $summaryOnly;
                                 error_log("DISPLAY: Extracted summary only: " . $displayErrorMessage);
@@ -2525,7 +2398,7 @@ function calculateStats($values) {
                                 $file1Success = false;
                                 $file2Success = false;
 
-                                // ENHANCED: Check for "Both files failed" scenario first
+                                // Check for "Both files failed" scenario first
                                 if (strpos($errorMessage, '❌ Both files failed validation') === 0) {
                                     error_log("DETECTED: Both files failed scenario");
                                     $file1Success = false;
@@ -2554,7 +2427,7 @@ function calculateStats($values) {
                                         }
                                     }
                                 } else {
-                                    // STEP 1: Extract the summary message and separate it from detailed errors
+                                    // Extract the summary message and separate it from detailed errors
                                     $summaryPattern = '/^(.*?)(Found \d+ validation errors.*)/s';
                                     if (preg_match($summaryPattern, $errorMessage, $matches)) {
                                         $summaryMessage = trim($matches[1]);
@@ -2563,7 +2436,7 @@ function calculateStats($values) {
                                         error_log("PARSED: Summary message: " . $summaryMessage);
                                         error_log("PARSED: Detailed errors start: " . substr($detailedErrors, 0, 100) . "...");
                                         
-                                        // Use the summary as our main error message
+                                        // Use the summary as main error message
                                         $errorPrefix = $summaryMessage;
                                         
                                         // Determine file success/failure from summary
@@ -2656,14 +2529,14 @@ function calculateStats($values) {
                                             <?php endif; ?>
                                 
                                 <div class="error-container">
-                                    <!-- IMPROVED: Show proper error summary -->
+                                    <!-- Show proper error summary -->
                                     <?php if ($file1Success && !$file2Success): ?>
                                         <p class="error-summary">Found <?php echo count($allErrorList); ?> validation errors in File 2:</p>
                                     <?php elseif (!$file1Success && $file2Success): ?>
                                         <p class="error-summary">Found <?php echo count($allErrorList); ?> validation errors in File 1:</p>
                                     <?php elseif (!$file1Success && !$file2Success): ?>
                                         <?php 
-                                        // Check if we have file separation headers
+                                        // Check if have file separation headers
                                         $hasFileSeparation = false;
                                         foreach ($allErrorList as $error) {
                                             if (strpos($error, '--- File 1 Errors ---') === 0 || strpos($error, '--- File 2 Errors ---') === 0) {
@@ -2687,7 +2560,7 @@ function calculateStats($values) {
                                             <?php if(!empty($error)): ?>
                                                 <div class="error-item" style="padding: 8px 12px; margin: 5px 0; background: #f8f9fa; border-left: 3px solid #dc3545; border-radius: 4px;">
                                                     <?php
-                                                    // CRITICAL FIX: Parse error and suggestions properly
+                                                    // Parse error and suggestions properly
                                                     $parts = explode(' Suggestions: ', $error);
                                                     $mainError = $parts[0];
                                                     $suggestions = isset($parts[1]) ? $parts[1] : '';
@@ -3730,7 +3603,7 @@ function calculateStats($values) {
             
             // Style File 1 header
             if (errorText.includes('--- File 1 Errors ---')) {
-                currentFileSection = 1; // Set current section to File 1
+                currentFileSection = 1;
                 item.id = 'file-1-header';
                 item.style.cssText = `
                     background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
@@ -3753,7 +3626,7 @@ function calculateStats($values) {
             }
             // Style File 2 header  
             else if (errorText.includes('--- File 2 Errors ---')) {
-                currentFileSection = 2; // Set current section to File 2
+                currentFileSection = 2;
                 item.id = 'file-2-header';
                 item.style.cssText = `
                     background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%) !important;
@@ -3774,7 +3647,7 @@ function calculateStats($values) {
                     <span id="file2-count" style="background: rgba(255, 255, 255, 0.9); color: #28a745; padding: 4px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold; margin-left: 8px;">0</span>
                 `;
             }
-            // Count actual errors for each file - FIXED LOGIC
+            // Count actual errors for each file
             else if (item.classList.contains('error-item') && errorText.includes('Row ') && currentFileSection !== null) {
                 // Count errors based on current file section
                 if (currentFileSection === 1) {
@@ -3799,7 +3672,7 @@ function calculateStats($values) {
         if (file1CountBadge) file1CountBadge.textContent = fileErrorCount[1];
         if (file2CountBadge) file2CountBadge.textContent = fileErrorCount[2];
         
-        // CRITICAL FIX: Update the main error summary count to exclude headers
+        // Update the main error summary count to exclude headers
         const errorSummary = document.querySelector('.user-alert-danger .error-summary h5');
         if (errorSummary) {
             const totalActualErrors = fileErrorCount[1] + fileErrorCount[2];

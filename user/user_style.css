@@ -1787,23 +1787,6 @@ label {
     border-radius: 4px;
 }
 
-/* Status colors for compare page */
-.compare-improved { 
-    color: var(--success); 
-}
-
-.compare-declined { 
-    color: var(--danger); 
-}
-
-.compare-unchanged { 
-    color: #6c757d; 
-}
-
-.compare-neutral { 
-    color: var(--info); 
-}
-
 .compare-table-container {
     max-height: 400px;
     overflow-y: auto;
