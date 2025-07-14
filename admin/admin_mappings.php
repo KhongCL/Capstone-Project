@@ -201,7 +201,7 @@ function updateDatabaseMappings($conn, $mappings) {
     }
 }
 
-// NEW: Function to update metric types
+//Function to update metric types
 function updateMetricTypes($conn, $mappings) {
     error_log("=== Starting updateMetricTypes function ===");
     
