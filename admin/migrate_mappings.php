@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position/Role: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: migrate_mappings.php
+// Description: Database migration script that transfers existing JSON CSV mappings
+//              to database format with transaction support and error handling.
+// First Written On: 20 April 2025
+// Edited On: 14 July 2025
+
 require_once '../auth/admin_auth.php';
 require_once '../config.php';
 

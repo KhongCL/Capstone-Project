@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position/Role: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: upload_sample_data.php
+// Description: Admin sample data upload interface for managing CSV sample files with
+//              validation, preview functionality, and sample data management features.
+// First Written On: 20 April 2025
+// Edited On: 13 July 2025
+
 require_once '../auth/admin_auth.php'; // Admin Login Validation
 require_once '../config.php';
 require_once '../classes/CsvProcessor.php';

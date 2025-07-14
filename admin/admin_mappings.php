@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position/Role: Developer
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: admin_mappings.php
+// Description: Admin CSV mappings configuration page for managing format detection,
+//              column mappings, and data types for various analytics platforms.
+// First Written On: 20 April 2025
+// Edited On: 14 July 2025
+
 require_once '../auth/admin_auth.php';
 require_once '../config.php';
 require_once '../classes/CsvProcessor.php';
