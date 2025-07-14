@@ -1,3 +1,16 @@
+<!-- 
+Name: Mervin Ooi Zhian Yang
+Position: Developer
+TP Number: TP076578
+Intake: UCDF2308ICT(SE)
+Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+Program Name: footer.php
+Description: Footer component included across all pages containing copyright information,
+             navigation links, and styling for consistent site-wide footer design.
+First Written On: 16 April 2025
+Edited On: 14 July 2025 
+-->
+
 <style>
 		footer {
 		    background-color: #1e3c72;

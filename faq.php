@@ -1,4 +1,16 @@
 <?php
+
+// Name: Lim Jia Jhen
+// Position: Developer
+// TP Number: TP077404
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: faq.php
+// Description: Frequently Asked Questions page providing answers to common user
+//              queries about TrafAnalyz features, usage, and troubleshooting.
+// First Written On: 15 April 2025
+// Edited On: 14 July 2025
+
 session_start();
 ?>
 <!DOCTYPE html>

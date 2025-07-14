@@ -6,6 +6,7 @@ require_once '../functions.php';
 // Get summary statistics
 $userStats = getUserStats($conn);
 $csvStats = getCsvStats($conn);
+$exportStats = getExportStats($conn);
 $supportedFormats = getSupportedFormats();
 
 // Helper functions to get statistics
@@ -80,6 +81,50 @@ function getCsvStats($conn) {
     return $stats;
 }
 
+function getExportStats($conn) {
+    $stats = [
+        'total_exports' => 0,
+        'pdf_exports' => 0,
+        'csv_exports' => 0,
+        'recent' => []
+    ];
+    
+    // Get total exports
+    $sql = "SELECT COUNT(*) as count FROM export_history";
+    $result = $conn->query($sql);
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['total_exports'] = $row['count'];
+    }
+    
+    // Get PDF exports
+    $sql = "SELECT COUNT(*) as count FROM export_history WHERE ExportType = 'PDF'";
+    $result = $conn->query($sql);
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['pdf_exports'] = $row['count'];
+    }
+    
+    // Get CSV exports
+    $sql = "SELECT COUNT(*) as count FROM export_history WHERE ExportType = 'CSV'";
+    $result = $conn->query($sql);
+    if ($result && $row = $result->fetch_assoc()) {
+        $stats['csv_exports'] = $row['count'];
+    }
+    
+    // Get most recent exports
+    $sql = "SELECT eh.ExportID, eh.ExportType, eh.ExportTimestamp, eh.ExportedDataDescription, u.Username 
+            FROM export_history eh 
+            JOIN user u ON eh.UserID = u.UserID 
+            ORDER BY eh.ExportTimestamp DESC LIMIT 5";
+    $result = $conn->query($sql);
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $stats['recent'][] = $row;
+        }
+    }
+    
+    return $stats;
+}
+
 function getSupportedFormats() {
     $supportedFormats = [];
     
@@ -143,9 +188,10 @@ function getSupportedFormats() {
                     <div class="trend"><?php echo $csvStats['validated']; ?> validated</div>
                 </div>
                 <div class="stat-card">
-                    <i class="fas fa-chart-line icon"></i>
-                    <div class="label">Supported Formats</div>
-                    <div class="value"><?php echo count($supportedFormats); ?></div>
+                    <i class="fas fa-download icon"></i>
+                    <div class="label">Total Exports</div>
+                    <div class="value"><?php echo $exportStats['total_exports']; ?></div>
+                    <div class="trend"><?php echo $exportStats['pdf_exports']; ?> PDF, <?php echo $exportStats['csv_exports']; ?> CSV</div>
                 </div>
             </section>
 
@@ -207,6 +253,49 @@ function getSupportedFormats() {
                         <?php else: ?>
                             <tr>
                                 <td colspan="5" style="text-align: center;">No recent uploads found</td>
+                            </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="admin-section" id="recent-exports">
+                <h3><i class="fas fa-download"></i> Recent Exports</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>User</th>
+                            <th>Description</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (count($exportStats['recent']) > 0): ?>
+                            <?php foreach ($exportStats['recent'] as $export): ?>
+                            <tr>
+                                <td>
+                                    <span class="badge badge-<?php echo strtolower($export['ExportType']); ?>">
+                                        <?php echo htmlspecialchars($export['ExportType']); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo htmlspecialchars($export['Username']); ?></td>
+                                <td>
+                                    <?php 
+                                    $description = $export['ExportedDataDescription'];
+                                    echo htmlspecialchars(strlen($description) > 50 ? substr($description, 0, 50) . '...' : $description); 
+                                    ?>
+                                </td>
+                                <td><?php echo date('M d, Y H:i', strtotime($export['ExportTimestamp'])); ?></td>
+                                <td>
+                                    <span class="badge badge-success">Completed</span>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <tr>
+                                <td colspan="5" style="text-align: center;">No recent exports found</td>
                             </tr>
                         <?php endif; ?>
                     </tbody>

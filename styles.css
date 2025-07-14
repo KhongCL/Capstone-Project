@@ -1,3 +1,16 @@
+/*
+ * Name: Mervin Ooi Zhian Yang
+ * Position/Role: Developer
+ * TP Number: TP076578
+ * Intake: UCDF2308ICT(SE)
+ * Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+ * Program Name: styles.css
+ * Description: Main stylesheet containing all CSS styles for responsive design,
+ *              animations, components, and theme variables for TrafAnalyz system.
+ * First Written On: 14 April 2025
+ * Edited On: 14 July 2025
+ */
+
 /* Root Variable */
 :root {
   --primary-color: #0ea5e9;

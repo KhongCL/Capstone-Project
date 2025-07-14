@@ -1,4 +1,16 @@
 <?php
+
+// Name: JUSTIN NG KEN HONG
+// Position/Role: Developer
+// TP Number: TP073469
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: register.php
+// Description: User registration page with form validation, account creation functionality,
+//              and secure password handling for new end-user account registration.
+// First Written On: 14 April 2025
+// Edited On: 14 July 2025
+
 session_start();
 require_once 'config.php';
 

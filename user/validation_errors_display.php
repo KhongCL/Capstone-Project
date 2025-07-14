@@ -1,4 +1,44 @@
 <?php
+// CRITICAL FIX: Only manipulate session if it's safe to do so
+$currentPage = basename($_SERVER['PHP_SELF']);
+$isDashboardPage = in_array($currentPage, ['overview.php', 'traffic_sources.php', 'pages.php']);
+$isComparePage = ($currentPage === 'compare.php');
+$isIndexPage = ($currentPage === 'index.php');
+
+// CRITICAL FIX: Only clear validation errors if session is safely accessible
+$canManipulateSession = (session_status() === PHP_SESSION_ACTIVE) || (!headers_sent() && session_status() === PHP_SESSION_NONE);
+
+// CRITICAL FIX: Check validation context to determine clearing behavior
+$isComparisonContext = false;
+if ($canManipulateSession && session_status() === PHP_SESSION_ACTIVE) {
+    $isComparisonContext = isset($_SESSION['validation_errors_comparison_context']) && $_SESSION['validation_errors_comparison_context'] === true;
+    error_log("validation_errors_display.php: Comparison context = " . ($isComparisonContext ? 'true' : 'false'));
+}
+
+// CRITICAL FIX: Modified clearing logic based on context
+// For comparison context - clear on dashboard pages, preserve on compare.php
+if ($isComparisonContext && $isDashboardPage && $_SERVER['REQUEST_METHOD'] === 'GET' && 
+    !isset($_GET['upload_success']) && function_exists('clearValidationErrorsOnPageLoad') && $canManipulateSession) {
+    clearValidationErrorsOnPageLoad();
+    error_log("Cleared comparison validation errors on dashboard page: $currentPage");
+}
+
+// For regular context - DON'T clear on dashboard pages, clear on compare.php
+if (!$isComparisonContext && $isComparePage && $_SERVER['REQUEST_METHOD'] === 'GET' && 
+    !isset($_GET['mapping_failed']) && empty($_GET) && 
+    function_exists('clearValidationErrorsOnPageLoad') && $canManipulateSession) {
+    clearValidationErrorsOnPageLoad();
+    error_log("Cleared regular validation errors on compare.php normal load");
+}
+
+// Clear validation errors on index.php page refresh (both contexts)
+if ($isIndexPage && $_SERVER['REQUEST_METHOD'] === 'GET' && 
+    !isset($_GET['upload_success']) && !isset($_GET['mapping_failed']) && 
+    empty($_GET) && function_exists('clearValidationErrorsOnPageLoad') && $canManipulateSession) {
+    clearValidationErrorsOnPageLoad();
+    error_log("Cleared validation errors on index.php page refresh");
+}
+
 // Get persistent validation errors if they exist
 $persistentErrors = null;
 if (function_exists('getPersistentValidationErrors')) {
@@ -6,7 +46,6 @@ if (function_exists('getPersistentValidationErrors')) {
     error_log("getPersistentValidationErrors() returned: " . ($persistentErrors ? 'DATA' : 'NULL'));
     if ($persistentErrors) {
         error_log("Error count: " . $persistentErrors['error_count']);
-        error_log("Valid rows: " . $persistentErrors['valid_rows']);
     }
 } else {
     error_log("Cannot call getPersistentValidationErrors - function not available");
@@ -15,7 +54,6 @@ if (function_exists('getPersistentValidationErrors')) {
 if ($persistentErrors && !empty($persistentErrors['errors'])):
     $validationErrors = $persistentErrors['errors'];
     $errorCount = $persistentErrors['error_count'];
-    $validRows = $persistentErrors['valid_rows'];
 ?>
 <div class="validation-warnings-banner" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107;">
     <div class="warning-header" style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -27,7 +65,7 @@ if ($persistentErrors && !empty($persistentErrors['errors'])):
     </div>
     
     <p style="margin: 0 0 10px 0; color: #856404; font-weight: 500;">
-        Successfully imported <?php echo $validRows; ?> valid row<?php echo $validRows !== 1 ? 's' : ''; ?> with <?php echo $errorCount; ?> validation warning<?php echo $errorCount !== 1 ? 's' : ''; ?>.
+        Data successfully imported with <?php echo $errorCount; ?> validation warning<?php echo $errorCount !== 1 ? 's' : ''; ?>.
     </p>
     
     <details style="margin-top: 10px;">

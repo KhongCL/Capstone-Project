@@ -67,13 +67,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         error_log("File 2 result: " . json_encode($upload_result2));
         
         // Initialize variables for different scenarios
-        $file1_valid = ($upload_result1['type'] === 'success' || $upload_result1['type'] === 'warning');
-        $file2_valid = ($upload_result2['type'] === 'success' || $upload_result2['type'] === 'warning');
+        $file1_valid = ($upload_result1['type'] === 'success' || $upload_result1['type'] === 'warning' || $upload_result1['type'] === 'warning_with_errors');
+        $file2_valid = ($upload_result2['type'] === 'success' || $upload_result2['type'] === 'warning' || $upload_result2['type'] === 'warning_with_errors');
         $file1_needs_mapping = ($upload_result1['type'] === 'needs_mapping');
         $file2_needs_mapping = ($upload_result2['type'] === 'needs_mapping');
+        $file1_has_warnings = ($upload_result1['type'] === 'warning_with_errors');
+        $file2_has_warnings = ($upload_result2['type'] === 'warning_with_errors');
         
-        error_log("COMPARISON: File 1 processed - valid: " . ($file1_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file1_needs_mapping ? 'YES' : 'NO') . ", upload_id: " . ($upload_result1['upload_id'] ?? 'NULL'));
-        error_log("COMPARISON: File 2 processed - valid: " . ($file2_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file2_needs_mapping ? 'YES' : 'NO') . ", upload_id: " . ($upload_result2['upload_id'] ?? 'NULL'));
+        error_log("COMPARISON: File 1 processed - valid: " . ($file1_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file1_needs_mapping ? 'YES' : 'NO') . ", has_warnings: " . ($file1_has_warnings ? 'YES' : 'NO') . ", upload_id: " . ($upload_result1['upload_id'] ?? 'NULL'));
+        error_log("COMPARISON: File 2 processed - valid: " . ($file2_valid ? 'YES' : 'NO') . ", needs_mapping: " . ($file2_needs_mapping ? 'YES' : 'NO') . ", has_warnings: " . ($file2_has_warnings ? 'YES' : 'NO') . ", upload_id: " . ($upload_result2['upload_id'] ?? 'NULL'));
         
         // Build comparison session structure properly
         $_SESSION['compare_files'] = [
@@ -109,27 +111,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         session_start();
         error_log("Session data written and restarted before redirect logic");
         
-        // Handle all 8 scenarios (4 original + 4 with mapping)
+        // Handle all scenarios including validation warnings
         if ($file1_valid && $file2_valid) {
-            // Use upload IDs for comparison
-            $uploadId1 = $upload_result1['upload_id'] ?? null;
-            $uploadId2 = $upload_result2['upload_id'] ?? null;
-            
-            error_log("COMPARISON: Upload IDs - File 1: $uploadId1, File 2: $uploadId2");
-            
-            if ($uploadId1 && $uploadId2) {
-                try {
-                    $comparison_results = compareCSVFiles($uploadId1, $uploadId2);
+            // Check if either file has validation warnings
+            if ($file1_has_warnings || $file2_has_warnings) {
+                error_log("COMPARISON: One or both files have validation warnings - showing warnings before comparison");
+                
+                // CRITICAL FIX: Use validation_errors_display.php instead of manual error handling
+                // Set up the validation errors for display using the existing system
+                if ($file1_has_warnings && $file2_has_warnings) {
+                    // Both files have warnings - combine for display
+                    $combined_errors = [];
+                    if (!empty($upload_result1['validation_errors'])) {
+                        foreach ($upload_result1['validation_errors'] as $error) {
+                            $combined_errors[] = "[File 1] " . $error;
+                        }
+                    }
+                    if (!empty($upload_result2['validation_errors'])) {
+                        foreach ($upload_result2['validation_errors'] as $error) {
+                            $combined_errors[] = "[File 2] " . $error;
+                        }
+                    }
                     
-                    error_log("COMPARISON: Successfully compared upload IDs $uploadId1 and $uploadId2");
-                    $success_message = "Files compared successfully!";
-                } catch (Exception $e) {
-                    error_log("COMPARISON ERROR: " . $e->getMessage());
-                    $error_message = "Error comparing files: " . $e->getMessage();
+                    // Store combined errors for validation_errors_display.php
+                    preserveValidationErrorsForDisplay($combined_errors, ($upload_result1['valid_rows'] ?? 0) + ($upload_result2['valid_rows'] ?? 0));
+
+                    error_log("valid rows for file1: " . (($upload_result1['valid_rows'] ?? 0)) . " for file 1 and " . ($upload_result2['valid_rows'] ?? 0) . " for file 2");
+
+                    $success_message = "Both files uploaded with validation warnings but compared successfully! Check the validation warnings above.";
+                    
+                } elseif ($file1_has_warnings) {
+                    // Only file 1 has warnings
+                    preserveValidationErrorsForDisplay($upload_result1['validation_errors'], $upload_result1['valid_rows'] ?? 0);
+                    $success_message = "Files compared successfully! First file had validation warnings (shown above).";
+                    
+                } elseif ($file2_has_warnings) {
+                    // Only file 2 has warnings
+                    preserveValidationErrorsForDisplay($upload_result2['validation_errors'], $upload_result2['valid_rows'] ?? 0);
+                    $success_message = "Files compared successfully! Second file had validation warnings (shown above).";
                 }
+                
+                // Proceed with comparison
+                $uploadId1 = $upload_result1['upload_id'] ?? null;
+                $uploadId2 = $upload_result2['upload_id'] ?? null;
+                
+                if ($uploadId1 && $uploadId2) {
+                    try {
+                        $comparison_results = compareCSVFiles($uploadId1, $uploadId2);
+                        error_log("COMPARISON: Successfully compared upload IDs $uploadId1 and $uploadId2 with warnings displayed");
+                    } catch (Exception $e) {
+                        error_log("COMPARISON ERROR: " . $e->getMessage());
+                        $error_message = "Error comparing files: " . $e->getMessage();
+                        $success_message = null; // Clear success message on comparison error
+                    }
+                }
+                
             } else {
-                error_log("ERROR: Missing upload IDs - File 1: $uploadId1, File 2: $uploadId2");
-                $error_message = "Upload IDs not found for comparison.";
+                // Both files are valid without warnings - proceed normally
+                $uploadId1 = $upload_result1['upload_id'] ?? null;
+                $uploadId2 = $upload_result2['upload_id'] ?? null;
+                
+                error_log("COMPARISON: Upload IDs - File 1: $uploadId1, File 2: $uploadId2");
+                
+                if ($uploadId1 && $uploadId2) {
+                    try {
+                        $comparison_results = compareCSVFiles($uploadId1, $uploadId2);
+                        error_log("COMPARISON: Successfully compared upload IDs $uploadId1 and $uploadId2");
+                        $success_message = "Files compared successfully!";
+                    } catch (Exception $e) {
+                        error_log("COMPARISON ERROR: " . $e->getMessage());
+                        $error_message = "Error comparing files: " . $e->getMessage();
+                    }
+                } else {
+                    error_log("ERROR: Missing upload IDs - File 1: $uploadId1, File 2: $uploadId2");
+                    $error_message = "Upload IDs not found for comparison.";
+                }
             }
         } elseif ($file1_needs_mapping && $file2_valid) {
             error_log("Scenario 2: File 1 needs mapping, File 2 is valid");
@@ -2203,6 +2259,8 @@ function calculateStats($values) {
     <div class="container">
         <?php include 'user_header.php'; ?>
 
+        <?php include 'validation_errors_display.php'; ?>
+
         <main>
 			<section class="user-section">
             		<h2>Analytics CSV Comparison</h2>
@@ -2250,15 +2308,6 @@ function calculateStats($values) {
                             ?>
                             <h4><i class="fas fa-exclamation-triangle"></i> File Validation Failed</h4>
                             <p><strong><?php echo htmlspecialchars($displayErrorMessage); ?></strong></p>
-                            
-                            <?php if (isset($_SESSION['failed_compare_file_info'])): ?>
-                                <?php $fileInfo = $_SESSION['failed_compare_file_info']; ?>
-                                <div style="margin: 15px 0; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 5px;">
-                                    <strong>File:</strong> <?php echo htmlspecialchars($fileInfo['name']); ?> (File <?php echo $fileInfo['file_index']; ?>)<br>
-                                    <strong>Mapping Status:</strong> Column mapping was successful<br>
-                                    <strong>Issue:</strong> Data validation failed during processing (<?php echo $fileInfo['error_count']; ?> errors, <?php echo $fileInfo['unique_error_count']; ?> unique types)
-                                </div>
-                            <?php endif; ?>
                             
                             <div class="error-container" style="margin-top: 15px;">
                                 <div class="error-summary">
@@ -4002,6 +4051,60 @@ function calculateStats($values) {
         // Initial state update
         updateSaveButtonState();
     }
+
+    function clearValidationWarnings() {
+        fetch('clear_validation_warnings.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            }
+        }).then(() => {
+            document.querySelector('.validation-warnings-banner').style.display = 'none';
+        }).catch(error => {
+            console.error('Error clearing warnings:', error);
+            document.querySelector('.validation-warnings-banner').style.display = 'none';
+        });
+    }
+
+    // CRITICAL FIX: Auto-clear validation warnings on page visibility change and navigation
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get current page info
+        const currentPage = window.location.pathname.split('/').pop();
+        const isDashboardPage = ['overview.php', 'traffic_sources.php', 'pages.php'].includes(currentPage);
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        // Auto-clear on dashboard pages (unless coming from upload success)
+        if (isDashboardPage && !urlParams.get('upload_success')) {
+            const banner = document.querySelector('.validation-warnings-banner');
+            if (banner) {
+                setTimeout(() => {
+                    banner.style.display = 'none';
+                    clearValidationWarnings();
+                }, 1000); // 1 second delay to let user see the transition
+            }
+        }
+        
+        // Clear warnings when user navigates back to page
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                // Page was loaded from cache (back/forward button)
+                const banner = document.querySelector('.validation-warnings-banner');
+                if (banner && !urlParams.get('mapping_failed')) {
+                    banner.style.display = 'none';
+                    clearValidationWarnings();
+                }
+            }
+        });
+        
+        // Auto-expire warnings after 2 minutes of display (except on compare.php with mapping failures)
+        const banner = document.querySelector('.validation-warnings-banner');
+        if (banner && !(currentPage === 'compare.php' && urlParams.get('mapping_failed'))) {
+            setTimeout(function() {
+                banner.style.display = 'none';
+                clearValidationWarnings();
+            }, 120000); // 2 minutes
+        }
+    });
     </script>    
 </body>
 </html>
