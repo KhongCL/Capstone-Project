@@ -41,6 +41,7 @@
             <a href="../terms.php">Terms & Conditions</a>
             <a href="../contact_us.php">Contact Us</a>
             <a href="../faq.php">FAQ</a>
+            <a href="../supported_formats.php">Supported Formats</a>
         </div>
     </div>
 </footer>
