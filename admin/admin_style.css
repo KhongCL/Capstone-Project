@@ -255,11 +255,15 @@
 /* Specific column width controls for Recent Uploads table */
 .data-table th:nth-child(1),
 .data-table td:nth-child(1) {
-  width: 35%;
+  width: 10%;
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.data-table td:nth-child(1) {
+  text-align: center;
 }
 
 .data-table th:nth-child(2),
@@ -270,7 +274,7 @@
 
 .data-table th:nth-child(3),
 .data-table td:nth-child(3) {
-  width: 25%;
+  width: 40%;
   max-width: 150px;
   word-wrap: break-word;
 }
@@ -284,10 +288,14 @@
 
 .data-table th:nth-child(5),
 .data-table td:nth-child(5) {
-  width: 10%;
+  width: 15%;
   max-width: 80px;
+}
+
+.data-table td:nth-child(5) {
   text-align: center;
 }
+
 
 /* Tooltip for full filename on hover */
 .data-table td:nth-child(1) {

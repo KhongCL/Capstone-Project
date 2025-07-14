@@ -31,7 +31,7 @@ function getUserStats($conn) {
         'users' => 0
     ];
     
-    // FIXED: Get actual user counts, not group counts
+    // Get actual user counts, not group counts
     $sql = "SELECT Role, AccountStatus, COUNT(*) as count FROM user GROUP BY Role, AccountStatus";
     $result = $conn->query($sql);
     
