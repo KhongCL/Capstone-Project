@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position/Role: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: supported_formats.php
+// Description: Supported CSV formats guide displaying format specifications, column mappings,
+//              and export instructions for various analytics platforms integration.
+// First Written On: 14 April 2025
+// Edited On: 14 July 2025
+
 // Load supported formats from config
 $mappingsFile = __DIR__ . '/config/csv_mappings.json';
 $supportedFormats = [];

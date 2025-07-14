@@ -1,4 +1,16 @@
 <?php
+
+// Name: Lim Jia Jhen
+// Position/Role: Developer
+// TP Number: TP077404
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: terms.php
+// Description: Terms and conditions page displaying legal terms, usage agreements,
+//              and service policies for TrafAnalyz web analytics platform.
+// First Written On: 14 April 2025
+// Edited On: 10 July 2025
+
 session_start();
 ?>
 <!DOCTYPE html>

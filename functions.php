@@ -1,4 +1,16 @@
 <?php
+// Name: Khong Chee Leong
+// Position/Role: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: functions.php
+// Description: Core function library containing CSV processing, data handling, user management,
+//              and utility functions for the TrafAnalyz web analytics dashboard system.
+// First Written On: 16 April 2025
+// Edited On: 14 July 2025
+
+
 // Handle CSV file upload and import data to database
 require_once 'classes/CsvProcessor.php';
 
