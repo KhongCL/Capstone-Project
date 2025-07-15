@@ -1,7 +1,7 @@
 <?php
 
 // Name: Mervin Ooi Zhian Yang
-// Position/Role: Developer
+// Position: Developer
 // TP Number: TP076578
 // Intake: UCDF2308ICT(SE)
 // Project Name: TrafAnalyz - Complementary Web Analytics Dashboard

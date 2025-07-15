@@ -1,7 +1,7 @@
 <?php
 
 // Name: Khong Chee Leong
-// Position/Role: Developer
+// Position: Developer
 // TP Number: TP075846
 // Intake: UCDF2308ICT(SE)
 // Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
