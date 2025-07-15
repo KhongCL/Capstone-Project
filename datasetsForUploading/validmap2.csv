@@ -1,0 +1,13 @@
+# ----------------------------------------,,,,,,,,,
+# Web Analytics Report: Traffic Analysis,,,,,,,,,
+# Account: DemoAccount1,,,,,,,,,
+# Property: DemoWebsite1,,,,,,,,,
+# ----------------------------------------,,,,,,,,,
+# Start date: 20240301,,,,,,,,,
+# End date: 20240331,,,,,,,,,
+Channel,Visits,Active Sessions,Exit Rate,Session Length,Events/Session,Event Total,Goals,Goal Rate,Sales Revenue
+Organic Search,1200,850,0.22,51.3,4.5,5400,25,0.0208,520.75
+Direct Traffic,1050,720,0.31,38.9,3.8,3990,20,0.0190,445.30
+Social Networks,480,350,0.27,42.7,3.2,1536,12,0.0250,235.60
+Email Campaigns,350,280,0.20,62.4,4.1,1435,18,0.0514,385.40
+Referral Sites,220,140,0.36,35.8,2.8,616,6,0.0273,125.95

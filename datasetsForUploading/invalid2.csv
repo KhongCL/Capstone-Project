@@ -1,0 +1,15 @@
+# ----------------------------------------,,,,,,,,,
+# Traffic acquisition: Session primary channel group (Default channel group),,,,,,,,,
+# Account: SuggestionTestAccount,,,,,,,,,
+# Property: ValidationSuggestions,,,,,,,,,
+# ----------------------------------------,,,,,,,,,
+# ,,,,,,,,,
+# All Users,,,,,,,,,
+# Start date: 20250801,,,,,,,,,
+# End date: 20250805,,,,,,,,,
+Session primary channel group (Default channel group),Sessions,Engaged sessions,Engagement rate,Average engagement time per session,Events per session,Event count,Key events,Session key event rate,Total revenue
+Direct,42+3,7,150%,12:75,5.6,120,2,0.17,125.50
+Organic Search,15a,8,0.5.5,5m30s,6.3,240,3,0.12,350
+Social,５０,22,high,invalid,8.5,180,4,0.22,500
+Email,38,19,0.75%,12m30s,99999.99999,455,-2,0.33,1200
+Referral,52,31,-0.3,24:30,~5.3,210,1000,123%,500.abc
