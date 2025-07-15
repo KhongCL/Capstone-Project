@@ -255,7 +255,7 @@
 /* Specific column width controls for Recent Uploads table */
 .data-table th:nth-child(1),
 .data-table td:nth-child(1) {
-  width: 10%;
+  width: 15%;
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
