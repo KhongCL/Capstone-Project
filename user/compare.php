@@ -2722,7 +2722,7 @@ function calculateStats($values) {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <button type="submit" name="load_comparison" class="compare-button">Load Comparison</button>
+                        <button type="submit" name="load_comparison" class="btn">Load Comparison</button>
                     </form>
                     <hr>
                 </div>
