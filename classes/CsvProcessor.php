@@ -1,4 +1,16 @@
 <?php
+
+// Name: Lim Jia Jhen
+// Position/Role: Developer
+// TP Number: TP077404
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: CsvProcessor.php
+// Description: Core CSV processing class that handles file validation, format detection,
+//              data transformation, and field validation for various analytics platforms.
+// First Written On: 20 April 2025
+// Edited On: 15 July 2025
+
 ini_set('default_charset', 'UTF-8');
 mb_internal_encoding('UTF-8');
 class CsvProcessor {
