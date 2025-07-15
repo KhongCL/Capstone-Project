@@ -11,12 +11,6 @@
 // First Written On: 20 April 2025
 // Edited On: 14 July 2025
 
-/**
- * Common header for admin pages
- * @param string $title - Page title
- * @param string $active_page - Current active page for navigation
- */
-
 // Set defaults if not provided
 $title = isset($title) ? $title . ' - TrafAnalyz Admin' : 'TrafAnalyz Admin Dashboard';
 $active_page = isset($active_page) ? $active_page : 'dashboard';
