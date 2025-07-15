@@ -203,7 +203,7 @@ function updateDatabaseMappings($conn, $mappings) {
 
 //Function to update metric types
 function updateMetricTypes($conn, $mappings) {
-    error_log("=== Starting updateMetricTypes function ===");
+    error_log("Starting updateMetricTypes function");
     
     $predefinedSystemFields = [
         'traffic_source' => 'Traffic Source',
@@ -276,11 +276,11 @@ function updateMetricTypes($conn, $mappings) {
     }
     
     error_log("Metric types update complete. Inserted: $insertedCount, Skipped: $skippedCount");
-    error_log("=== End updateMetricTypes function ===");
+    error_log("End updateMetricTypes function");
 }
 
 function cleanupOrphanedMetricTypes($conn, $mappings) {
-    error_log("=== Starting cleanup of orphaned metric types ===");
+    error_log("Starting cleanup of orphaned metric types");
     
     // Get all system fields currently in use
     $usedSystemFields = [];
@@ -319,7 +319,7 @@ function cleanupOrphanedMetricTypes($conn, $mappings) {
         error_log("No orphaned metric types found");
     }
     
-    error_log("=== End cleanup of orphaned metric types ===");
+    error_log("End cleanup of orphaned metric types");
 }
 
 function validateSystemFieldName($fieldName) {

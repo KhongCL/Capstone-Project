@@ -101,7 +101,7 @@ if (isset($_GET['uploaded']) && $_GET['uploaded'] == '1') {
 $title = "Overview Dashboard";
 $active_page = "overview";
 
-error_log("=== OVERVIEW PAGE DEBUG ===");
+error_log("Overview Page Debug");
 error_log("Session latest_upload_id: " . ($_SESSION['latest_upload_id'] ?? 'NOT SET'));
 error_log("User ID: " . ($_SESSION['user_id'] ?? 'NOT SET'));
 

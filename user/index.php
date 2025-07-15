@@ -39,19 +39,19 @@ $title = "Dashboard Home";
 $active_page = "home";
 
 // Debugging for sample data
-error_log("=== INDEX.PHP SAMPLE DATA DEBUG ===");
+error_log("Index.php Sample Data Debug");
 error_log("GET parameters: " . print_r($_GET, true));
 error_log("Current session state:");
 error_log("- using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
 error_log("- sample_upload_id: " . ($_SESSION['sample_upload_id'] ?? 'not set'));
 error_log("- latest_upload_id: " . ($_SESSION['latest_upload_id'] ?? 'not set'));
 
-error_log("=== INDEX.PHP SESSION DEBUG ===");
+error_log("Index.php Session Debug");
 error_log("Current session ID: " . session_id());
 error_log("Session latest_upload_id: " . ($_SESSION['latest_upload_id'] ?? 'not set'));
 error_log("Session using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
 error_log("All session vars: " . print_r($_SESSION, true));
-error_log("=== END SESSION DEBUG ===");
+error_log("End Session Debug");
 
 // Handle successful upload redirect
 if (isset($_GET['upload_success']) && $_GET['upload_success'] == '1') {
@@ -327,7 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile']) && !isset
     $uploadMessage = handleCsvUpload($conn, $_FILES['csvFile']);
 }
 
-error_log("=== END INDEX.PHP DEBUG ===");
+error_log("End Index.php Debug");
 ?>
 
 <!DOCTYPE html>

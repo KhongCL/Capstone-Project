@@ -26,7 +26,7 @@ if (isset($_SESSION['using_sample_data'])) {
 }
 
 // Debugging for form submission
-error_log("=== MAP_COLUMNS_COMPARE.PHP DEBUG ===");
+error_log("map_columns_compare.php Debug");
 error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
 error_log("POST data: " . print_r($_POST, true));
 error_log("GET data: " . print_r($_GET, true));
@@ -233,7 +233,7 @@ foreach ($allSystemFields as $field => $label) {
 
 // Handle form submission for manual mapping
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
-    error_log("=== PROCESSING FORM SUBMISSION FOR FILE $currentFileIndex ===");
+    error_log("Processing File Submission For File $currentFileIndex");
     
     $columnMapping = [];
     foreach ($_POST['mapping'] as $sourceCol => $targetCol) {
@@ -497,7 +497,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
     }
 }
     
-    error_log("=== END FORM PROCESSING ===");
+    error_log("End Form Processing");
 }
 
 // Function to save transformed data specifically for comparison
@@ -582,7 +582,7 @@ function saveTransformedDataForComparison($conn, $transformedData, $fileIndex) {
                     $actualPath = $currentFile['path'] ?? 'No path';
                     $extractedFromPath = $actualPath ? basename($actualPath) : 'No path';
                     
-                    error_log("=== FILE NAME DEBUG for File $currentFileIndex ===");
+                    error_log("File Name Debug for File $currentFileIndex");
                     error_log("currentFile['name']: " . ($currentFile['name'] ?? 'NOT SET'));
                     error_log("currentFile['path']: " . ($currentFile['path'] ?? 'NOT SET'));
                     error_log("extracted from path: " . $extractedFromPath);

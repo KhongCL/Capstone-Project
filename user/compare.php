@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         unset($_SESSION['comparison_context']);
         
         // Process files separately without session interference
-        error_log("=== PROCESSING FILE 1 ===");
+        error_log("Processing File 1");
         $upload_result1 = handleCsvUploadForComparison($conn, $file1);
         
         // Clear any session state that might interfere with second file
@@ -70,11 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
         unset($_SESSION['latest_upload_id']);
         unset($_SESSION['uploaded_file_name']);
         
-        error_log("=== PROCESSING FILE 2 ===");
+        error_log("Processing File 2");
         $upload_result2 = handleCsvUploadForComparison($conn, $file2);
         
         // Log detailed results
-        error_log("=== COMPARISON FILE PROCESSING RESULTS ===");
+        error_log("Comparison File Processing Results");
         error_log("File 1 result: " . json_encode($upload_result1));
         error_log("File 2 result: " . json_encode($upload_result2));
         
@@ -200,20 +200,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
                 }
             }
         } elseif ($file1_needs_mapping && $file2_valid) {
-            error_log("Scenario 2: File 1 needs mapping, File 2 is valid");
+            error_log("SCENARIO 2: File 1 needs mapping, File 2 is valid");
             header('Location: map_columns_compare.php?file=1');
             exit;
         } elseif ($file1_valid && $file2_needs_mapping) {
-            error_log("Scenario 3: File 1 is valid, File 2 needs mapping");
+            error_log("SCENARIO 3: File 1 is valid, File 2 needs mapping");
             header('Location: map_columns_compare.php?file=2');
             exit;
         } elseif ($file1_needs_mapping && $file2_needs_mapping) {
-            error_log("Scenario 4: Both files need mapping");
+            error_log("SCENARIO 4: Both files need mapping");
             header('Location: map_columns_compare.php?file=1');
             exit;
         } elseif (($file1_valid || $file1_needs_mapping) && !$file2_valid && !$file2_needs_mapping) {
             // Create a clear success/failure message with icons
-            error_log("=== SCENARIO 5: File 1 SUCCESS, File 2 FAILED ===");
+            error_log("SCENARIO 5: File 1 Success, File 2 Failed");
             error_log("File 1 upload_id: " . ($upload_result1['upload_id'] ?? 'NULL'));
             error_log("File 2 error: " . ($upload_result2['message'] ?? 'Unknown'));
             
@@ -251,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
             
         } elseif (!$file1_valid && !$file1_needs_mapping && ($file2_valid || $file2_needs_mapping)) {
             // Create a clear success/failure message with icons
-            error_log("=== SCENARIO 6: File 1 FAILED, File 2 SUCCESS ===");
+            error_log("SCENARIO 6: File 1 Failed, File 2 Success");
             error_log("File 1 error: " . ($upload_result1['message'] ?? 'Unknown'));
             error_log("File 2 upload_id: " . ($upload_result2['upload_id'] ?? 'NULL'));
             
@@ -288,7 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
             error_log("SCENARIO 6: Final error message set: " . substr($error_message, 0, 200) . "...");
             
         } else {
-            error_log("=== SCENARIO 7/8: BOTH FILES FAILED ===");
+            error_log("SCENARIO 7/8: Both Files Failed");
             error_log("File 1 error: " . ($upload_result1['message'] ?? 'Unknown'));
             error_log("File 2 error: " . ($upload_result2['message'] ?? 'Unknown'));
             
@@ -556,7 +556,7 @@ function compareCSVFiles($uploadId1, $uploadId2) {
     global $conn;
     
     //Log the parameters we receive
-    error_log("=== COMPARE CSV FILES DEBUG ===");
+    error_log("Compare CSV Files Debug");
     error_log("Upload ID 1: " . var_export($uploadId1, true));
     error_log("Upload ID 2: " . var_export($uploadId2, true));
     
@@ -641,7 +641,7 @@ function compareCSVFiles($uploadId1, $uploadId2) {
     // Calculate summary totals for key metrics
     $comparison['summary_comparison'] = calculateSummaryComparison($data1, $data2, $comparison['analytics_metrics']);
     
-    error_log("=== END COMPARE CSV FILES DEBUG ===");
+    error_log("End Compare CSV Files Debug");
     return $comparison;
 }
 
@@ -783,7 +783,7 @@ function determineImprovement($metric, $value2, $value1) {
 }
 
 function calculateSummaryComparison($data1, $data2, $analytics_metrics) {
-    error_log("=== CALCULATE SUMMARY COMPARISON DEBUG ===");
+    error_log("Caluculate Summary Comparison Debug");
     error_log("Data1 count: " . count($data1));
     error_log("Data2 count: " . count($data2));
     error_log("Analytics metrics: " . json_encode(array_keys($analytics_metrics)));
@@ -898,7 +898,7 @@ function calculateSummaryComparison($data1, $data2, $analytics_metrics) {
     }
     
     error_log("Final summary structure: " . json_encode(array_keys($summary)));
-    error_log("=== END CALCULATE SUMMARY COMPARISON DEBUG ===");
+    error_log("End Caluculate Summary Comparison Debug");
     
     return $summary;
 }
@@ -2285,7 +2285,7 @@ function calculateStats($values) {
                 <?php if (!empty($error_message)): ?>
                     <?php
                     // Display error logging
-                    error_log("=== ERROR MESSAGE DISPLAY DEBUG ===");
+                    error_log("Error Message Display Debug");
                     error_log("Error message to display: " . $error_message);
                     error_log("show_detailed_errors flag: " . (isset($show_detailed_errors) ? ($show_detailed_errors ? 'true' : 'false') : 'not set'));
                     error_log("compare_validation_errors count: " . (isset($compare_validation_errors) ? count($compare_validation_errors) : 'not set'));
@@ -2398,7 +2398,7 @@ function calculateStats($values) {
                                 $errorMessage = $error_message;
                                 $errorMessage = str_replace("Error processing files: ", "", $errorMessage);
 
-                                error_log("=== COMPARE.PHP ERROR PARSING DEBUG ===");
+                                error_log("Compare.php Error Parsing Debug ===");
                                 error_log("Original error message: " . $error_message);
                                 error_log("Cleaned error message: " . $errorMessage);
 
