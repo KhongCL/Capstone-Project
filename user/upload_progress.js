@@ -19,7 +19,7 @@ function confirmDataReplacement() {
     const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
     
     // Debug Logging
-    console.log('=== CONFIRMATION DEBUG ===');
+    console.log('Confirmation Debug');
     console.log('hasExistingData:', hasExistingData);
     console.log('isUsingSampleData:', isUsingSampleData);
     console.log('hasErrorMessages:', hasErrorMessages);
@@ -46,7 +46,6 @@ function confirmDataReplacement() {
         console.log('Has existing data or error messages from mapping page - showing confirmation');
     }
     
-    console.log('========================');
     
     // Always show confirmation if there's existing data, regardless of error messages
     if (!hasExistingData && !hasErrorMessages) {

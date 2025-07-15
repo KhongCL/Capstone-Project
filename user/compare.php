@@ -3406,7 +3406,7 @@ function calculateStats($values) {
             const hasErrorMessages = window.compareHasErrorMessages;
             const hasComparisonResults = window.compareHasComparisonResults;
             
-            console.log('=== COMPARISON UPLOAD CONFIRMATION ===');
+            console.log('Comparison Upload Confirmation');
             console.log('hasErrorMessages:', hasErrorMessages);
             console.log('hasComparisonResults:', hasComparisonResults);
             
@@ -3466,7 +3466,7 @@ function calculateStats($values) {
         
         // Browser refresh/navigation confirmation for error messages and comparison results
         window.addEventListener('beforeunload', function(e) {
-            console.log('=== COMPARE BEFOREUNLOAD EVENT TRIGGERED ===');
+            console.log('Compare Before Unload Event Triggered');
             
             const hasErrorMessages = document.querySelector('.user-alert-danger, .error-container, .validation-help') !== null;
             const hasComparisonResults = document.querySelector('.compare-comparison-card, .compare-metric-summary') !== null;
@@ -3793,7 +3793,7 @@ function calculateStats($values) {
     });
 
     function handleFileSelection(fileInput, fileInfoDiv, inputId) {
-        console.log(`=== FILE SELECTION HANDLER for ${inputId} ===`);
+        console.log(`File Selection Handler for ${inputId}`);
         console.log('Files selected:', fileInput.files.length);
         
         const container = fileInput.closest('.file-input-container');
@@ -3858,7 +3858,7 @@ function calculateStats($values) {
             }
         }
         
-        console.log(`=== END FILE SELECTION HANDLER for ${inputId} ===`);
+        console.log(`End File Selection Handler for ${inputId}`);
     }
 
     function formatFileSize(bytes) {

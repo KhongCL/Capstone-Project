@@ -1064,7 +1064,7 @@ error_log("End Index.php Debug");
             <script>
                 // Hide sample data UI immediately if upload was just completed
                 document.addEventListener('DOMContentLoaded', function() {
-                    console.log('=== INDEX.PHP DOM CONTENT LOADED ===');
+                    console.log('index.php Dom Content Laoded');
                     
                     const uploadBtn = document.getElementById('uploadBtn');
                     const csvFileInput = document.getElementById('csvFile');
@@ -1117,7 +1117,7 @@ error_log("End Index.php Debug");
                         }
                     }
                     
-                    console.log('=== INDEX.PHP DOM CONTENT LOADED COMPLETE ===');
+                    console.log('index.php Dom Content Laoded Complete');
                 });
             </script>
             
@@ -1410,12 +1410,11 @@ error_log("End Index.php Debug");
         ?>;
         
         // Debug logging for global variables
-        console.log('=== GLOBAL VARIABLES SET ===');
+        console.log('Global Variables Set');
         console.log('window.sessionHasExistingData:', window.sessionHasExistingData);
         console.log('window.sessionIsUsingSampleData:', window.sessionIsUsingSampleData);
         console.log('Current session latest_upload_id:', '<?php echo $_SESSION['latest_upload_id'] ?? 'not set'; ?>');
         console.log('Current session using_sample_data:', '<?php echo isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'; ?>');
-        console.log('=============================');
         
         // File info display
         document.getElementById('csvFile').addEventListener('change', function() {
@@ -1424,7 +1423,7 @@ error_log("End Index.php Debug");
             const fileSize = fileInfo.querySelector('.file-size');
             const uploadBtn = document.getElementById('uploadBtn');
 
-            console.log('=== FILE INPUT CHANGE EVENT ===');
+            console.log('File Input Change Event');
             console.log('Files selected:', this.files.length);
             console.log('File info element found:', !!fileInfo);
             console.log('Upload button found:', !!uploadBtn);
@@ -1495,11 +1494,11 @@ error_log("End Index.php Debug");
                 }
             }
             
-            console.log('=== END FILE INPUT CHANGE EVENT ===');
+            console.log('End File Input Change Event');
         });
 
         window.addEventListener('beforeunload', function(e) {
-            console.log('=== BEFOREUNLOAD EVENT TRIGGERED ===');
+            console.log('Before Unload Event Triggered');
             
             const hasExistingData = window.sessionHasExistingData;
             const isUsingSampleData = window.sessionIsUsingSampleData;
@@ -1556,7 +1555,7 @@ error_log("End Index.php Debug");
             const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
             
 						// Debug Logging
-            console.log('=== CONFIRMATION DEBUG ===');
+            console.log('Confirmation Debug');
             console.log('hasExistingData:', hasExistingData);
             console.log('isUsingSampleData:', isUsingSampleData);
             console.log('hasErrorMessages:', hasErrorMessages);
@@ -1584,7 +1583,6 @@ error_log("End Index.php Debug");
             
             console.log('Session latest_upload_id:', '<?php echo $_SESSION['latest_upload_id'] ?? 'not set'; ?>');
             console.log('Session using_sample_data:', '<?php echo isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'; ?>');
-            console.log('========================');
             
             // Show confirmation if there's existing data or error messages
             if (!hasExistingData && !hasErrorMessages) {
@@ -1660,7 +1658,7 @@ error_log("End Index.php Debug");
 
         // Browser refresh/navigation confirmation for error messages
         window.addEventListener('beforeunload', function(e) {
-            console.log('=== BEFOREUNLOAD EVENT TRIGGERED ===');
+            console.log('Before Unload Event Triggered');
             
             const hasExistingData = window.sessionHasExistingData;
             const isUsingSampleData = window.sessionIsUsingSampleData;

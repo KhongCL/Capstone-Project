@@ -894,7 +894,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
 
         // Single DOMContentLoaded event handler
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('=== MAP COLUMNS PAGE INITIALIZATION ===');
+            console.log('Map Columns Page Initialization');
             
             const errorItems = document.querySelectorAll('.error-item');
             errorItems.forEach(function(errorItem) {
@@ -961,7 +961,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
             }
             
 						// Confidence System and Dropdown Locking
-            console.log('=== CONFIDENCE SYSTEM DEBUG START ===');
+            console.log('Confidence System Debug Start');
             
             const fieldSelects = document.querySelectorAll('.user-field-select');
             console.log('Found field selects:', fieldSelects.length);
@@ -1052,7 +1052,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
 
             // Function to update confidence
             function updateConfidence(selectElement) {
-                console.log('=== UPDATE CONFIDENCE DEBUG ===');
+                console.log('Update Confidence Debug');
                 
                 const row = selectElement.closest('tr');
                 if (!row) {
@@ -1116,12 +1116,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 console.log('Setting confidence HTML:', confidenceHTML);
                 confidenceCell.innerHTML = confidenceHTML;
                 
-                console.log('=== UPDATE CONFIDENCE COMPLETE ===');
+                console.log('Update Confidence Complete');
             }
             
             // Function to update available options (prevent duplicate selections)
             function updateAvailableOptions() {
-                console.log('=== UPDATE AVAILABLE OPTIONS DEBUG ===');
+                console.log('Update Available Options Debug');
                 
                 // Get all currently selected values
                 const selectedValues = Array.from(fieldSelects).map(select => select.value).filter(Boolean);
@@ -1153,7 +1153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                     });
                 });
                 
-                console.log('=== UPDATE AVAILABLE OPTIONS COMPLETE ===');
+                console.log('Update Available Options Complete');
             }
             
             // Add change event listeners to all selects
@@ -1179,7 +1179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 }
             });
             
-            console.log('=== CONFIDENCE SYSTEM DEBUG END ===');
+            console.log('Confidence System Debug End');
 
 						// Form Submission and Progress Animation
             const form = document.querySelector('form');
@@ -1379,7 +1379,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                 }
             });
             
-            console.log('=== MAP COLUMNS PAGE INITIALIZATION COMPLETE ===');
+            console.log('Map Column Pages Initialization Complete');
         });
     </script>
 </body>

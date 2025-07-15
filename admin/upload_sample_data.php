@@ -672,7 +672,7 @@ function formatFileSize(bytes) {
 
 // Form validation function
 function validateSampleFile() {
-    console.log('=== VALIDATE SAMPLE FILE START ===');
+    console.log('Validate Sample File Start');
     
     const fileInput = document.getElementById('sampleCsv');
     const reportType = document.getElementById('reportType');
@@ -767,17 +767,17 @@ function validateSampleFile() {
     if (hasErrors) {
         console.log('Showing validation messages...');
         showValidationMessages(errorMessages);
-        console.log('=== VALIDATE SAMPLE FILE END (FALSE) ===');
+        console.log('Validate Sample File End (False)');
         return false;
     }
     
-    console.log('=== VALIDATE SAMPLE FILE END (TRUE) ===');
+    console.log('Validate Sample File End (True)');
     return true;
 }
 
 // Show validation messages function
 function showValidationMessages(errorMessages) {
-    console.log('=== SHOW VALIDATION MESSAGES START ===');
+    console.log('Show Validation Messages Start');
     console.log('Error messages to show:', errorMessages);
     
     // Remove existing messages
@@ -838,11 +838,11 @@ function showValidationMessages(errorMessages) {
         }
     }, 8000);
     
-    console.log('=== SHOW VALIDATION MESSAGES END ===');
+    console.log('Show Validation Messages End');
 }
 
 function clearValidationMessages() {
-    console.log('=== CLEAR VALIDATION MESSAGES ===');
+    console.log('Clear Validation Messages');
     const existingValidationMsg = document.getElementById('validationErrorMessage');
     if (existingValidationMsg && existingValidationMsg.parentNode) {
         existingValidationMsg.parentNode.removeChild(existingValidationMsg);
@@ -853,7 +853,7 @@ function clearValidationMessages() {
 }
 
 function removeExistingMessages() {
-    console.log('=== REMOVE EXISTING MESSAGES ===');
+    console.log('Remove Existing Messages');
     const existingMessages = document.querySelectorAll('.message, .error-container, .validation-help');
     console.log('Found existing messages:', existingMessages.length);
     existingMessages.forEach(msg => {
@@ -864,7 +864,7 @@ function removeExistingMessages() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('=== DOM CONTENT LOADED ===');
+    console.log('DOM Content Loaded');
     
     // File input handling for admin sample upload - needs to be first
     const fileInput = document.getElementById('sampleCsv');
@@ -937,7 +937,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Disabled HTML5 validation on form');
         
         uploadForm.addEventListener('submit', function(e) {
-            console.log('=== FORM SUBMIT EVENT ===');
+            console.log('Form Submit Event');
             e.preventDefault();
             
             // Validation with user-friendly messages
@@ -1061,7 +1061,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // File selection handler function (moved inside DOMContentLoaded)
     function handleFileSelection(input) {
-        console.log('=== HANDLE FILE SELECTION ===');
+        console.log('Handle File Selection');
         console.log('Input files length:', input.files.length);
         
         if (input.files.length > 0) {
@@ -1179,7 +1179,7 @@ function confirmSampleDataUpload() {
     const hasExistingSampleData = window.adminHasExistingSampleData;
     const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
     
-    console.log('=== ADMIN SAMPLE UPLOAD CONFIRMATION ===');
+    console.log('Admin Sample Upload Confirmation');
     console.log('hasExistingSampleData:', hasExistingSampleData);
     console.log('hasErrorMessages:', hasErrorMessages);
     
@@ -1227,7 +1227,7 @@ function confirmSampleDataUpload() {
 
 // Browser refresh/navigation confirmation for error messages (like user/index.php)
 window.addEventListener('beforeunload', function(e) {
-    console.log('=== ADMIN BEFOREUNLOAD EVENT TRIGGERED ===');
+    console.log('Admin Before Upload Event Triggered');
     
     const hasExistingSampleData = window.adminHasExistingSampleData;
     const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
