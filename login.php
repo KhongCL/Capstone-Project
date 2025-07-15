@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Process login if no errors
     if (empty($errors)) {
-        // FIXED: Only check for End-User role in user login
+        // Only check for End-User role in user login
         $stmt = $conn->prepare("SELECT UserID, Username, PasswordHash, Role, AccountStatus FROM user WHERE Username = ? AND Role = 'End-User'");
         $stmt->bind_param("s", $username);
         $stmt->execute();
@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors['general'] = 'Invalid username or password.';
             }
         } else {
-            // ENHANCED: More specific error message for user login
+            // Rrror message for user login
             $errors['general'] = 'Invalid user credentials. If you\'re an administrator, please use the admin login.';
         }
     }
@@ -144,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 overlay.classList.add('show');
                 popup.classList.add('show');
                 
-                // FIXED: Use window.location.replace() instead of href for same-tab redirect
+                // Use window.location.replace() instead of href for same-tab redirect
                 setTimeout(function() {
                     <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'Admin'): ?>
                         window.location.replace('admin/index.php');

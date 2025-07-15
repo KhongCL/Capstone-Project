@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 overlay.classList.add('show');
                 popup.classList.add('show');
                 
-                // FIXED: Use window.location.replace() instead of href for same-tab redirect
+                // Use window.location.replace() instead of href for same-tab redirect
                 setTimeout(function() {
                     window.location.replace('admin/index.php');
                 }, 1500);

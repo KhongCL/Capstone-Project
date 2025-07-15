@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && empty($_GET) && !isset($_SESSION['up
 $title = "Dashboard Home";
 $active_page = "home";
 
-// Enhanced debugging for sample data
+// Debugging for sample data
 error_log("=== INDEX.PHP SAMPLE DATA DEBUG ===");
 error_log("GET parameters: " . print_r($_GET, true));
 error_log("Current session state:");
@@ -69,7 +69,7 @@ if (isset($_GET['upload_success']) && $_GET['upload_success'] == '1') {
         unset($_SESSION['pages_data_quality']);
     }
     
-    // CRITICAL: Force session write to ensure changes are saved
+    // Force session write to ensure changes are saved
     session_write_close();
     session_start();
     
@@ -138,7 +138,7 @@ if (isset($_GET['load_sample']) && $_GET['load_sample'] == '1') {
         $sampleUploadId = $row['UploadID'];
         error_log("Found sample data: UploadID = $sampleUploadId, FileName = " . $row['FileName']);
         
-        // CRITICAL: Set session variables
+        // Set session variables
         $_SESSION['using_sample_data'] = true;
         $_SESSION['sample_upload_id'] = $sampleUploadId;
         $_SESSION['latest_upload_id'] = $sampleUploadId; // For compatibility
@@ -148,7 +148,7 @@ if (isset($_GET['load_sample']) && $_GET['load_sample'] == '1') {
         unset($_SESSION['cached_traffic_sources']);
         unset($_SESSION['pages_data_quality']);
         
-        // CRITICAL: Force session save
+        // Force session save
         session_write_close();
         
         // Restart session for continued use
@@ -191,7 +191,7 @@ if (isset($_SESSION['upload_just_completed'])) {
 if (isset($_GET['clear_sample']) && $_GET['clear_sample'] == '1') {
     error_log("Clearing sample data requested");
     
-    // CRITICAL: Clear sample data session variables FIRST
+    // Clear sample data session variables FIRST
     unset($_SESSION['using_sample_data']);
     unset($_SESSION['sample_upload_id']);
 
@@ -222,7 +222,7 @@ if (isset($_GET['clear_sample']) && $_GET['clear_sample'] == '1') {
             'message' => 'Sample data cleared. You\'re now viewing your own data.'
         ];
         
-        // CRITICAL: Force session write multiple times to ensure it takes
+        // Force session write multiple times to ensure it takes
         session_write_close();
         session_start();
         session_write_close();
@@ -243,7 +243,7 @@ if (isset($_GET['clear_sample']) && $_GET['clear_sample'] == '1') {
             'message' => 'Sample data cleared. Please upload your CSV file to view your own analytics data.'
         ];
         
-        // CRITICAL: Force session write for staying on index too
+        // Force session write for staying on index too
         session_write_close();
         session_start();
         
@@ -998,7 +998,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
                         </div>
                     </div>
                     
-                    <!-- NEW: Data Preview Section -->
+                    <!-- Data Preview Section -->
                     <?php if (!empty($sampleDataPreview)): ?>
                     <div class="sample-data-preview">
                         <div class="preview-header" onclick="toggleDataPreview()">
@@ -1742,7 +1742,7 @@ error_log("=== END INDEX.PHP DEBUG ===");
             return { errorMessage, suggestions };
         }
 
-        // Enhanced DOM observer for dynamically added error messages
+        // DOM observer for dynamically added error messages
         const errorObserver = new MutationObserver(function(mutations) {
             mutations.forEach(function(mutation) {
                 mutation.addedNodes.forEach(function(node) {

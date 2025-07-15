@@ -39,11 +39,7 @@ class CsvProcessor {
         }
     }
     
-    /**
-     * Process the uploaded CSV file and detect its format
-     * @param string $filePath Path to the uploaded CSV file
-     * @return array Processing result with status and mapping information
-     */
+
     public function processFile($filePath) {
         // Check if file is empty
         if (filesize($filePath) === 0) {
@@ -200,9 +196,7 @@ class CsvProcessor {
         ];
     }
     
-    /**
-     * Process the uploaded CSV file with Google Analytics format
-     */
+    /* Process the uploaded CSV file with Google Analytics format */
     private function processGoogleAnalyticsFormat($filePath) {
         $this->validateRawCsvStructure($filePath);
 
@@ -255,7 +249,7 @@ class CsvProcessor {
             }
             fclose($handle);
             
-            // If we don't find at least 3 of the required metadata patterns, reject the file
+            // If don't find at least 3 of the required metadata patterns, reject the file
             if ($foundMetadataCount < 3) {
                 return [
                     'status' => 'error',
@@ -311,7 +305,7 @@ class CsvProcessor {
                 $requiredColumns = $format['format_detection'];
                 
             foreach ($requiredColumns as $column) {
-                    // CRITICAL FIX: Use case-insensitive comparison
+                    // Use case-insensitive comparison
                     $found = false;
                     foreach ($header as $headerCol) {
                         if (strcasecmp(trim($headerCol), trim($column)) === 0) {
@@ -329,7 +323,7 @@ class CsvProcessor {
                 if ($matched || ($matchCount >= count($requiredColumns) * 0.7)) {
                     error_log("Matched format: " . $formatKey);
                     
-                    // Use ALL mappings directly from configuration
+                    // Use all mappings directly from configuration
                     $mappingToUse = $format['column_mappings'];
                     $dataTypesToUse = $format['data_types'];
                     
@@ -375,12 +369,11 @@ class CsvProcessor {
                             $unfoundColumns[] = $csvColumn;
                         } else {
                             // Ensure the mapping uses the exact CSV column name
-                            // This is critical for the subsequent processing
                             $mappingToUse[$csvColumn] = $format['column_mappings'][$matchedConfigCol];
                         }
                     }
 
-                    // Important: Add CSV columns to config mapping if they exist in config but with different case
+                    // Add CSV columns to config mapping if they exist in config but with different case
                     foreach ($unfoundColumns as $csvColumn) {
                         foreach ($format['column_mappings'] as $configCol => $targetCol) {
                             if (strcasecmp(trim($csvColumn), trim($configCol)) === 0) {
@@ -420,7 +413,6 @@ class CsvProcessor {
                         } else {
                             error_log("Config column '$configCol' has NO match in CSV - but keeping it in the mapping");
                             // Keep the column in the mapping even if it doesn't exist in the CSV
-                            // This is crucial for the problematic columns
                             $mappingToUse[$configCol] = $targetCol;
                         }
                     }
@@ -437,7 +429,7 @@ class CsvProcessor {
             }
         }
         
-        // If we got here, format not recognized but file appears to be valid analytics data
+        // Format not recognized but file appears to be valid analytics data
         error_log("No format matched");
         return [
             'status' => 'needs_mapping',
@@ -447,9 +439,7 @@ class CsvProcessor {
         ];
     }
 
-    /**
-     * Validate the raw CSV file for structural issues before processing
-     */
+    /* Validate the raw CSV file for structural issues before processing */
     private function validateRawCsvStructure($filePath) {
         $content = file_get_contents($filePath);
         $lines = explode("\n", $content);
@@ -499,7 +489,7 @@ class CsvProcessor {
             }
         }
         
-        // If we found any structure errors, throw an exception with all of them
+        // If found any structure errors, throw an exception with all of them
         if (!empty($structureErrors)) {
             if (count($structureErrors) == 1) {
                 // Single error - throw as before for backwards compatibility
@@ -512,9 +502,7 @@ class CsvProcessor {
         }
     }
     
-    /**
-     * Detect the CSV format based on headers
-     */
+    /* Detect the CSV format based on headers */
     private function detectFormat($headers) {
         // Validate headers input
         if (!is_array($headers) || empty($headers)) {
@@ -531,7 +519,7 @@ class CsvProcessor {
             $detectionHeaders = $config['format_detection'];
             
             foreach ($detectionHeaders as $expectedHeader) {
-                // CRITICAL FIX: Use case-insensitive comparison
+                // Use case-insensitive comparison
                 foreach ($headers as $csvHeader) {
                     if (strcasecmp(trim($csvHeader), trim($expectedHeader)) === 0) {
                         $matchCount++;
@@ -556,13 +544,11 @@ class CsvProcessor {
         return null;
     }
     
-    /**
-     * Suggest column mappings using fuzzy matching
-     */
+    /* Suggest column mappings using fuzzy matching */
     private function suggestColumnMapping($headers) {
         $suggestions = [];
         
-        // Enhanced keyword mapping for better accuracy - handles multiple CSV formats
+        // Keyword mapping - handles multiple CSV formats
         $keywords = [
             'traffic_source' => [
                 'traffic source', 
@@ -700,16 +686,14 @@ class CsvProcessor {
         return $suggestions;
     }
     
-    /**
-     * Transform data based on mapping
-     */
+    /* Transform data based on mapping */
     public function transformData($filePath, $columnMapping, $format = null) {
         error_log("=== TRANSFORM DATA DEBUG START ===");
         error_log("File path: $filePath");
         error_log("Column mapping: " . json_encode($columnMapping));
         error_log("Format: " . ($format ?? 'null'));
         
-        // CRITICAL FIX: Clear any existing validation errors at the start of new upload
+        // Clear any existing validation errors at the start of new upload
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
@@ -721,7 +705,7 @@ class CsvProcessor {
         
         $this->columnMap = $columnMapping;
 
-        // CRITICAL FIX: Only add config mappings ONCE and avoid duplicates
+        // Only add config mappings ONCE and avoid duplicates
         if ($format && isset($this->mappings[$format]['column_mappings'])) {
             // Get all mappings from configuration
             foreach ($this->mappings[$format]['column_mappings'] as $sourceCol => $targetCol) {
@@ -735,7 +719,7 @@ class CsvProcessor {
             }
         }
 
-        // CRITICAL FIX: Remove duplicate mappings that point to the same target field
+        // Remove duplicate mappings that point to the same target field
         $finalColumnMap = [];
         $usedTargets = [];
         
@@ -927,7 +911,7 @@ class CsvProcessor {
                             // Log the error with more context about which row had the issue
                             error_log("❌ Data validation error at row $rowNumber, column '$sourceCol': " . $e->getMessage());
                             
-                            // CRITICAL FIX: Use the actual CSV column name in error message
+                            // Use the actual CSV column name in error message
                             $originalErrorMessage = $e->getMessage();
                             
                             // Replace any reference to the source column with the actual CSV column name
@@ -979,8 +963,8 @@ class CsvProcessor {
                     $totalRowsProcessed++;
                     $rowNumber++;
                     $row = [];
-                    $criticalErrors = 0; // Count only critical errors
-                    $nonCriticalErrors = 0; // Count non-critical errors
+                    $criticalErrors = 0;
+                    $nonCriticalErrors = 0;
                     
                     error_log("=== PROCESSING STANDARD CSV ROW $rowNumber ===");
                     error_log("Raw data: " . json_encode($data));
@@ -1080,7 +1064,7 @@ class CsvProcessor {
                     error_log("- Has traffic_source: " . (isset($row['traffic_source']) ? 'YES' : 'NO'));
                     error_log("- Traffic source value: " . ($row['traffic_source'] ?? 'NOT SET'));
                     
-                    // CRITICAL FIX: Only reject rows with critical field errors
+                    // Only reject rows with critical field errors
                     if ($criticalErrors === 0 && !empty($row) && isset($row['traffic_source'])) {
                         $transformed[] = $row;
                         $validRows++;
@@ -1169,7 +1153,7 @@ class CsvProcessor {
                 session_start();
             }
             
-            // CRITICAL FIX: Only discard data if NO valid rows were processed
+            // Only discard data if NO valid rows were processed
             if (count($transformed) === 0) {
                 // No valid data at all - return error
                 $_SESSION['upload_message'] = [
@@ -1190,7 +1174,7 @@ class CsvProcessor {
                 $_SESSION['validation_errors'] = $validationErrors;
                 error_log("Stored " . count($validationErrors) . " validation errors as warnings - processing " . count($transformed) . " valid rows");
                 
-                // NEW: Preserve validation errors for display across all pages
+                // Preserve validation errors for display across all pages
                 require_once __DIR__ . '/../functions.php';
                 preserveValidationErrorsForDisplay($validationErrors, count($transformed));
                 
@@ -1209,13 +1193,11 @@ class CsvProcessor {
         }
     }
 
-    /**
-     * Format value based on data type with enhanced validation - no auto-fixing
-     */
+    /* Format value based on data type with validation - no auto-fixing */
     private function formatValue($value, $column) {
         error_log("Validating value: '$value' for column: '$column'");
         
-        // CRITICAL FIX: Check if we're in manual mapping mode
+        // Check if we're in manual mapping mode
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
@@ -1223,7 +1205,7 @@ class CsvProcessor {
         // Always get target field for validation rules that need it
         $targetField = $this->columnMap[$column] ?? null;
         
-        // CRITICAL FIX: Always use proper GA4 validation instead of manual mapping validation
+        // Always use proper GA4 validation instead of manual mapping validation
         if ($this->detectedFormat === 'ga4_traffic_acquisition' || $this->detectedFormat === 'manual_mapping') {
             error_log("Using GA4 validation for: $column -> $targetField");
             return $this->validateGa4Field($value, $column, $targetField);
@@ -1232,11 +1214,11 @@ class CsvProcessor {
         // Original value for error messages
         $originalValue = $value;
 
-        // DEBUG: Log the target field mapping
+        // Log the target field mapping
         error_log("DEBUG: Column '$column' maps to target field: " . ($targetField ? "'$targetField'" : "NULL"));
         error_log("DEBUG: Available column mappings: " . json_encode($this->columnMap));
         
-        // IMPORTANT: Check for CSV row structure issues (commas in unquoted values)
+        // Check for CSV row structure issues (commas in unquoted values)
         // This detection needs to apply to all fields, not just traffic source
         if (strpos($value, ',') !== false) {
             throw new Exception("CSV parsing error detected: Value '$originalValue' contains commas which breaks the CSV structure");
@@ -1302,7 +1284,7 @@ class CsvProcessor {
                 throw new Exception("Invalid events per session value: '$originalValue' for column '$column' - Contains multiple decimal points");
             }
             
-            // Enhanced special character detection - check for non-numeric characters
+            // Special character detection - check for non-numeric characters
             if (preg_match('/[^0-9.\-]/', $value)) {
                 $suggestions = $this->suggestDataFix($value, 'float', $column);
                 $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
@@ -1364,12 +1346,12 @@ class CsvProcessor {
         // If no data type is specified in the mappings, use special logic for certain target fields
         if (!isset($this->mappings[$this->detectedFormat]['data_types'][$column])) {
             if ($targetField === 'total_revenue') {
-                // Handle revenue field specifically - NOT as a rate!
+                // Handle revenue field specifically
                 if (trim($value) === '') {
                     throw new Exception("Empty value for column '$column' - Total revenue must have a value");
                 }
                 
-                // Enhanced currency symbol detection
+                // Currency symbol detection
                 if (preg_match('/[$€£¥]/', $value)) {
                     throw new Exception("Invalid revenue format: '$originalValue' for column '$column' - Contains currency symbols");
                 }
@@ -1388,7 +1370,7 @@ class CsvProcessor {
                 
                 return (float) $cleanValue;
             } else if ($targetField === 'session_key_event_rate' || $targetField === 'bounce_rate') {
-                // ONLY apply rate validation to actual rate fields - remove the generic "rate" check
+                // Only apply rate validation to actual rate fields - remove the generic "rate" check
                 if (trim($value) === '') {
                     throw new Exception("Empty value for column '$column' - Rate fields must have a value");
                 }
@@ -1430,7 +1412,7 @@ class CsvProcessor {
                         throw new Exception("Negative value '$originalValue' not allowed for column '$column' - Rate must be zero or positive");
                     }
                     
-                    // Enhanced check for Engagement rate > 1
+                    // Check for Engagement rate > 1
                     if ($floatValue > 1) {
                         throw new Exception("Rate value '$originalValue' exceeds maximum (1.0) for column '$column' - Decimal rates must be between 0-1");
                     }
@@ -1484,7 +1466,7 @@ class CsvProcessor {
                     throw new Exception("Invalid integer value: '$originalValue' for column '$column' - Cannot contain decimal points");
                 }
                 
-                // Check for unicode/full-width digits - improved detection
+                // Check for unicode/full-width digits
                 if (preg_match('/[^\x00-\x7F]/', $value)) {
                     $suggestions = $this->suggestDataFix($value, 'integer', $column);
                     $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
@@ -1546,7 +1528,7 @@ class CsvProcessor {
                     throw new Exception("Invalid float value: '$originalValue' for column '$column' - Cannot have multiple decimal points$suggestionText");
                 }
                 
-                // Improved float validation - properly formatted
+                // Float validation
                 if (!preg_match('/^-?\d+(\.\d+)?$/', $value)) {
                     $suggestions = $this->suggestDataFix($value, 'float', $column);
                     $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
@@ -1558,10 +1540,7 @@ class CsvProcessor {
                     throw new Exception("Negative value '$originalValue' not allowed for column '$column' - Must be zero or positive");
                 }
                 
-                // CRITICAL FIX: Remove the problematic rate check from float validation
-                // This was causing revenue values to be treated as rates
-                // The rate check should ONLY be in the specific rate field handlers above
-                
+                // Remove the problematic rate check from float validation                
                 return (float) $value;
                 
             case 'percentage':
@@ -1615,7 +1594,7 @@ class CsvProcessor {
                 }
                 
             case 'currency':
-                // Enhanced currency symbol detection
+                // Currency symbol detection
                 if (preg_match('/[$€£¥]/', $value)) {
                     $suggestions = $this->suggestDataFix($value, 'currency', $column);
                     $suggestionText = !empty($suggestions) ? " Suggestions: " . implode("; ", $suggestions) : "";
@@ -1708,9 +1687,7 @@ class CsvProcessor {
         }
     }
 
-    /**
-     * Enhanced GA4 field validation with suggestions
-     */
+    /*  GA4 field validation with suggestions */
     private function validateGa4Field($value, $column, $targetField) {
         $originalValue = $value;
         
@@ -1759,9 +1736,7 @@ class CsvProcessor {
         }
     }
 
-    /**
-     * Validate traffic source field
-     */
+    /* Validate traffic source field */
     private function validateTrafficSource($value, $column) {
         // Check for trademark symbols
         if (preg_match('/[\x{2122}\x{00AE}\x{00A9}™®©]/u', $value)) {
@@ -1827,7 +1802,7 @@ class CsvProcessor {
         return (int)$value;
     }
 
-    // Add this helper method to get the proper column name
+    // Get the proper column name
     private function getProperColumnName($csvColumn, $targetField) {
         // Map target fields to their proper GA4 names
         $ga4ColumnNames = [
@@ -1852,9 +1827,7 @@ class CsvProcessor {
         return $ga4ColumnNames[$targetField] ?? $csvColumn;
     }
 
-    /**
-     * Validate engagement rate (bounce rate equivalent)
-     */
+    /* Validate engagement rate (bounce rate equivalent) */
     private function validateEngagementRate($value, $column) {
         $columnName = $this->getProperColumnName($column, 'bounce_rate');
         
@@ -1884,9 +1857,7 @@ class CsvProcessor {
         return (float)$value;
     }
 
-    /**
-     * Validate session duration (time fields)
-     */
+    /* Validate session duration (time fields) */
     private function validateSessionDuration($value, $column) {
         $columnName = $this->getProperColumnName($column, 'avg_session_duration');
         
@@ -1925,9 +1896,7 @@ class CsvProcessor {
         return (float)$value;
     }
 
-    /**
-     * Validate events per session
-     */
+    /* Validate events per session */
     private function validateEventsPerSession($value, $column) {
         $columnName = $this->getProperColumnName($column, 'events_per_session');
         
@@ -1969,9 +1938,7 @@ class CsvProcessor {
         return (float)$value;
     }
 
-    /**
-     * Validate key events field
-     */
+    /* Validate key events field */
     private function validateKeyEvents($value, $column) {
         $columnName = $this->getProperColumnName($column, 'key_events');
         
@@ -2005,9 +1972,7 @@ class CsvProcessor {
         return (int)$value;
     }
 
-    /**
-     * Validate percentage fields
-     */
+    /* Validate percentage fields */
     private function validatePercentageField($value, $column) {
         $columnName = $this->getProperColumnName($column, 'session_key_event_rate');
         
@@ -2032,9 +1997,7 @@ class CsvProcessor {
         return (float)str_replace('%', '', $value) / (strpos($value, '%') !== false ? 100 : 1);
     }
 
-    /**
-     * Validate revenue field
-     */
+    /* Validate revenue field */
     private function validateRevenueField($value, $column) {
         $columnName = $this->getProperColumnName($column, 'total_revenue');
         
@@ -2063,9 +2026,7 @@ class CsvProcessor {
         return (float)$value;
     }
 
-    /**
-     * Validate event count field
-     */
+    /* Validate event count field */
     private function validateEventCount($value, $column) {
         $columnName = $this->getProperColumnName($column, 'event_count');
         
@@ -2113,11 +2074,9 @@ class CsvProcessor {
         return (int)$value;
     }
 
-    /**
-     * Validate generic field (fallback for unknown fields)
-     */
+    /* Validate generic field (fallback for unknown fields) */
     private function validateGenericField($value, $column) {
-        // FIXED: Get the target field from column mapping to use proper GA4 name
+        // Get the target field from column mapping to use proper GA4 name
         $targetField = $this->columnMap[$column] ?? null;
         $columnName = $targetField ? $this->getProperColumnName($column, $targetField) : $column;
         
@@ -2170,9 +2129,7 @@ class CsvProcessor {
         return trim($value);
     }
 
-    /**
-     * Suggest data fixes for common validation errors
-     */
+    /* Suggest data fixes for common validation errors */
     private function suggestDataFix($value, $expectedType, $column = '') {
         $suggestions = [];
         
@@ -2285,9 +2242,7 @@ class CsvProcessor {
         return $suggestions;
     }
     
-    /**
-     * Evaluate simple mathematical expressions
-     */
+    /* Evaluate simple mathematical expressions */
     private function evaluateSimpleExpression($expression) {
         // Only handle simple + and - operations for security
         if (preg_match('/^(\d+)\s*[\+]\s*(\d+)$/', $expression, $matches)) {
@@ -2299,20 +2254,14 @@ class CsvProcessor {
         return null;
     }
     
-    /**
-     * Convert Unicode digits to ASCII digits
-     */
+    /* Convert Unicode digits to ASCII digits */
     private function convertUnicodeDigits($value) {
         $unicodeDigits = ['０', '１', '２', '３', '４', '５', '６', '７', '８', '９'];
         $asciiDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
         return str_replace($unicodeDigits, $asciiDigits, $value);
     }
 
-    /**
-     * Extract metadata from GA4 format CSV
-     * @param string $filePath Path to the CSV file
-     * @return array Metadata including dates, account name, property name
-     */
+
     public function extractGa4Metadata($filePath) {
         
         $metadata = [

@@ -431,7 +431,7 @@ if ($row = $result->fetch_assoc()) {
             }
         }
 
-        /* Enhanced validation message styles */
+        /* Validation message styles */
         .validation-message {
             border-left-color: #dc3545 !important;
         }
@@ -927,7 +927,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Enhanced form submission with confirmation and validation error handling
+    // Form submission with confirmation and validation error handling
     const uploadForm = document.getElementById('sampleUploadForm');
     console.log('Upload form found:', uploadForm);
 
@@ -1305,7 +1305,7 @@ function showErrorMessage(message) {
     }
 }
 
-// Enhanced validation error display like user/index.php
+// Validation error display like user/index.php
 function showValidationErrors(errorMessage) {
     // Remove existing messages
     removeExistingMessages();

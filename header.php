@@ -11,11 +11,6 @@
 // First Written On: 16 April 2025
 // Edited On: 14 July 2025
 
-/**
- * Common header for user pages
- * @param string $title - Page title
- * @param string $active_page - Current active page for navigation
- */
 
 // Set defaults if not provided
 $title = isset($title) ? $title . ' - TrafAnalyz' : 'Web Traffic Analysis Dashboard';

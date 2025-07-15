@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file1']) && isse
             if ($file1_has_warnings || $file2_has_warnings) {
                 error_log("COMPARISON: One or both files have validation warnings - showing warnings before comparison");
                 
-                // CRITICAL FIX: Use validation_errors_display.php instead of manual error handling
+                // Use validation_errors_display.php instead of manual error handling
                 // Set up the validation errors for display using the existing system
                 if ($file1_has_warnings && $file2_has_warnings) {
                     // Both files have warnings - combine for display
@@ -560,7 +560,7 @@ function compareCSVFiles($uploadId1, $uploadId2) {
     error_log("Upload ID 1: " . var_export($uploadId1, true));
     error_log("Upload ID 2: " . var_export($uploadId2, true));
     
-    // CRITICAL FIX: Ensure we have valid upload IDs
+    // Ensure we have valid upload IDs
     if (!is_numeric($uploadId1) || !is_numeric($uploadId2)) {
         error_log("ERROR: Invalid upload IDs provided - ID1: $uploadId1, ID2: $uploadId2");
         throw new Exception("Invalid upload IDs provided for comparison.");
@@ -3894,7 +3894,7 @@ function calculateStats($values) {
         });
     });
 
-    // Enhanced file upload confirmation with better state tracking
+    // File upload confirmation with better state tracking
     document.addEventListener('DOMContentLoaded', function() {
         // Track file selection state
         let filesSelected = {
@@ -4000,7 +4000,7 @@ function calculateStats($values) {
                     return false;
                 }
                 
-                // Optional: Check for duplicate comparison names
+                // Check for duplicate comparison names
                 const existingComparisons = [
                     <?php 
                     if (!empty($savedComparisons)) {
@@ -4078,7 +4078,7 @@ function calculateStats($values) {
         });
     }
 
-    // CRITICAL FIX: Auto-clear validation warnings on page visibility change and navigation
+    // Auto-clear validation warnings on page visibility change and navigation
     document.addEventListener('DOMContentLoaded', function() {
         // Get current page info
         const currentPage = window.location.pathname.split('/').pop();

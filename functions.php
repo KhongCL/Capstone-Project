@@ -18,22 +18,22 @@ require_once 'classes/CsvProcessor.php';
 function handleCsvUpload($conn, $file) {
     error_log("=== HANDLE CSV UPLOAD START ===");
 
-    // CRITICAL FIX: Clear any existing validation errors when starting new upload
+    // Clear any existing validation errors when starting new upload
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
     
-    // CRITICAL FIX: Clear validation errors for new uploads (both regular and comparison)
+    // Clear validation errors for new uploads (both regular and comparison)
     if (isset($_SESSION['persistent_validation_errors'])) {
         clearPersistentValidationErrors();
         error_log("Cleared existing validation errors for new upload");
     }
     
-    // CRITICAL FIX: Check if this is a comparison upload
+    // Check if this is a comparison upload
     $isComparisonUpload = isset($_POST['comparison_context']) && $_POST['comparison_context'] === true;
     error_log("Is comparison upload: " . ($isComparisonUpload ? 'YES' : 'NO'));
     
-    // CRITICAL FIX: Clear sample data session when user uploads their own file
+    // Clear sample data session when user uploads their own file
     if (isset($_SESSION['using_sample_data']) && !$isComparisonUpload) {
         error_log("CRITICAL: User uploading new file - clearing sample data session");
         unset($_SESSION['using_sample_data']);
@@ -108,13 +108,13 @@ function handleCsvUpload($conn, $file) {
         ];
     }
 
-    // FIXED: Store file information in session for later use
+    // Store file information in session for later use
     if (session_status() == PHP_SESSION_NONE) {
         session_start();
     }
     $_SESSION['uploaded_file_name'] = $fileName;
     $_SESSION['original_file_name'] = $originalName;
-    $_SESSION['uploaded_file_size'] = $file['size']; // Store the actual file size
+    $_SESSION['uploaded_file_size'] = $file['size'];
 
     error_log("STORED FILE INFO: original_name=$originalName, hashed_name=$fileName, size={$file['size']}");
 
@@ -143,7 +143,7 @@ function handleCsvUpload($conn, $file) {
             $_SESSION['uploaded_csv'] = $filePath;
             $_SESSION['uploaded_file_name'] = $fileName; // Use the unique filename with hash
 
-            // CRITICAL FIX: Actually check the result from saveTransformedData
+            // Actually check the result from saveTransformedData
             $saveResult = saveTransformedData($conn, $transformedData);
             error_log("Save result: " . json_encode($saveResult));
             
@@ -152,20 +152,19 @@ function handleCsvUpload($conn, $file) {
                 if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
                     $validationErrors = $_SESSION['validation_errors'];
                     $errorCount = count($validationErrors);
-                    
                     // DON'T delete the file - keep it in uploads directory for future comparisons
                 }
                 
                 // Normal success case (no warnings)
                 // DON'T delete the file - keep it in uploads directory for future comparisons
                 
-                // CRITICAL: Clear ALL session data for clean state AND comparison data
+                // Clear ALL session data for clean state AND comparison data
                 unset($_SESSION['uploaded_csv']);
                 unset($_SESSION['csv_metadata']);
                 unset($_SESSION['uploaded_file_name']);
                 unset($_SESSION['uploaded_file_size']);
                 
-                // CRITICAL FIX: Clear comparison session data when doing regular upload
+                // Clear comparison session data when doing regular upload
                 unset($_SESSION['compare_files']);
                 unset($_SESSION['compare_ready']);
                 unset($_SESSION['compare_error']);
@@ -178,10 +177,10 @@ function handleCsvUpload($conn, $file) {
                     'message' => 'CSV file successfully uploaded and processed.'
                 ];
             } else {
-                // CRITICAL: Return the actual error message from saveTransformedData
+                // Return the actual error message from saveTransformedData
                 error_log("Save failed with message: " . $saveResult['message']);
                 
-                // CRITICAL FIX: Clear session data when upload fails
+                // Clear session data when upload fails
                 if (session_status() == PHP_SESSION_NONE) {
                     session_start();
                 }
@@ -191,7 +190,7 @@ function handleCsvUpload($conn, $file) {
                 unset($_SESSION['using_sample_data']);
                 unset($_SESSION['sample_upload_id']);
                 
-                // CRITICAL FIX: Also clear comparison session data on failure
+                // Also clear comparison session data on failure
                 unset($_SESSION['compare_files']);
                 unset($_SESSION['compare_ready']);
                 unset($_SESSION['compare_error']);
@@ -221,14 +220,14 @@ function handleCsvUpload($conn, $file) {
             
             error_log("MAPPING: Stored session data for mapping page - uploaded_csv: $filePath");
             
-            // CRITICAL FIX: Clear sample data session when user uploads their own file
+            // Clear sample data session when user uploads their own file
             if (isset($_SESSION['using_sample_data']) && !$isComparisonUpload) {
                 unset($_SESSION['using_sample_data']);
                 unset($_SESSION['sample_upload_id']);
                 error_log("CRITICAL: Cleared sample data session for manual mapping");
             }
             
-            // CRITICAL FIX: Only clear comparison session data for regular uploads
+            // Only clear comparison session data for regular uploads
             if (!$isComparisonUpload) {
                 unset($_SESSION['compare_files']);
                 unset($_SESSION['compare_ready']);
@@ -244,12 +243,12 @@ function handleCsvUpload($conn, $file) {
             $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
                     strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
             
-            // IMPROVED: More precise comparison context detection
+            // More precise comparison context detection
             $isComparison = $isComparisonUpload;
 
-            // CRITICAL FIX: Handle session clearing differently based on context
+            // Handle session clearing differently based on context
             if (!$isComparison) {
-                // CRITICAL FIX: For regular uploads, preserve mapping session data
+                // For regular uploads, preserve mapping session data
                 // These variables are needed by map_columns.php:
                 // - $_SESSION['uploaded_csv'] (file path)
                 // - $_SESSION['mapping_result'] (mapping analysis)
@@ -259,7 +258,7 @@ function handleCsvUpload($conn, $file) {
                 unset($_SESSION['latest_upload_id']);
                 error_log("MAPPING: Preserved session data for regular mapping page, cleared only latest_upload_id");
             } else {
-                // CRITICAL FIX: For comparison uploads, don't clear session data
+                // For comparison uploads, don't clear session data
                 // The session data will be handled by compare.php
                 error_log("COMPARISON: Preserving all session data for comparison upload");
             }
@@ -271,9 +270,9 @@ function handleCsvUpload($conn, $file) {
                     'redirect' => $isComparison ? 'map_columns_compare.php?file=1' : 'map_columns.php'
                 ];
             } else {
-                // CRITICAL FIX: Different handling for comparison vs regular uploads
+                // Different handling for comparison vs regular uploads
                 if ($isComparison) {
-                    // CRITICAL FIX: For comparison uploads, return result instead of redirecting
+                    // For comparison uploads, return result instead of redirecting
                     // Let compare.php handle the redirect logic
                     return [
                         'type' => 'needs_mapping',
@@ -306,7 +305,7 @@ function handleCsvUpload($conn, $file) {
             unlink($filePath);
         }
         
-        // Enhanced error logging
+        // Error logging
         error_log("CSV Processing Error: " . $e->getMessage());
         error_log("Stack trace: " . $e->getTraceAsString());
         
@@ -678,7 +677,7 @@ function getTrafficSourcesDistribution($conn, $uploadId = null) {
     return $data;
 }
 
-// Get top visited pages data (since you don't have page data, this is a placeholder)
+// Get top visited pages data (This is a placeholder)
 function getTopVisitedPages($conn, $limit = 10) {
     $data = [];
     $dataQuality = [
@@ -855,11 +854,11 @@ function saveTransformedData($conn, $transformedData) {
     error_log("=== SAVE TRANSFORMED DATA DEBUG ===");
     error_log("Received " . count($transformedData) . " transformed data rows");
     
-    // CRITICAL: Check for empty data and return proper error
+    // Check for empty data and return proper error
     if (empty($transformedData)) {
         error_log("ERROR: No transformed data received - likely validation errors");
         
-        // CRITICAL FIX: Check if we have validation errors in session
+        // Check if we have validation errors in session
         if (session_status() == PHP_SESSION_NONE) {
             session_start();
         }
@@ -869,7 +868,7 @@ function saveTransformedData($conn, $transformedData) {
             $validationErrors = $_SESSION['validation_errors'];
             error_log("Found validation errors in session: " . print_r($validationErrors, true));
             
-            // NEW: Store file information for re-upload display  
+            // Store file information for re-upload display  
             $_SESSION['failed_file_info'] = [
                 'name' => $_SESSION['original_file_name'] ?? ($_SESSION['uploaded_file_name'] ?? 'unknown.csv'),
                 'size' => $_SESSION['uploaded_file_size'] ?? (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv']) ? filesize($_SESSION['uploaded_csv']) : 0),
@@ -877,7 +876,7 @@ function saveTransformedData($conn, $transformedData) {
                 'total_columns' => count($csvHeaders ?? [])
             ];
             
-            // CRITICAL FIX: Format validation errors with proper separation and count
+            // Format validation errors with proper separation and count
             $uniqueErrors = array_unique($validationErrors);
             $errorCount = count($validationErrors);
             $uniqueCount = count($uniqueErrors);
@@ -889,7 +888,7 @@ function saveTransformedData($conn, $transformedData) {
             }
 
             // DON'T clear validation errors here - let map_columns_compare.php handle them
-            // IMPORTANT: Don't clear session data here - let the user see the errors and try again
+            // Don't clear session data here - let the user see the errors and try again
             return ['type' => 'error', 'message' => $errorMessage];
         }
         
@@ -932,7 +931,7 @@ function saveTransformedData($conn, $transformedData) {
         error_log("User $userId uploading new file - no cleanup performed");
         
         
-        // Insert NEW CSV upload record
+        // Insert new CSV upload record
         $stmt = $conn->prepare("INSERT INTO CSV_UPLOAD (UserID, FileName, FileSize, IsValidated, ReportType, DataDateStart, DataDateEnd, AccountName, PropertyName) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)");
 
         if (!$stmt) {
@@ -941,12 +940,12 @@ function saveTransformedData($conn, $transformedData) {
 
         $fileName = $_SESSION['uploaded_file_name'] ?? 'manual_upload.csv';
 
-        // FIXED: Get the actual file size from the uploaded file
+        // Get the actual file size from the uploaded file
         $fileSize = 0;
         if (isset($_SESSION['uploaded_file_size'])) {
             $fileSize = $_SESSION['uploaded_file_size'];
         } else {
-            // Fallback: try to get file size from the uploaded file if it still exists
+            // try to get file size from the uploaded file if it still exists
             if (isset($_SESSION['uploaded_csv']) && file_exists($_SESSION['uploaded_csv'])) {
                 $fileSize = filesize($_SESSION['uploaded_csv']);
             }
@@ -955,7 +954,7 @@ function saveTransformedData($conn, $transformedData) {
         // Debug logging
         error_log("Binding parameters: UserID=$userId, FileName=$fileName, FileSize=$fileSize, ReportType=$reportType");
 
-        // FIXED: Correct the bind_param type string
+        // Correct the bind_param type string
         $bindResult = $stmt->bind_param("isisssss", $userId, $fileName, $fileSize, $reportType, $startDate, $endDate, $accountName, $propertyName);
 
         if (!$bindResult) {
@@ -971,7 +970,7 @@ function saveTransformedData($conn, $transformedData) {
         $uploadId = $conn->insert_id;
         error_log("CSV Upload record created with ID: $uploadId");
         
-        // CRITICAL: Store the NEW upload ID in session immediately
+        // Store the new upload ID in session immediately
         $_SESSION['latest_upload_id'] = $uploadId;
         
         // Process each row of transformed data
@@ -985,7 +984,7 @@ function saveTransformedData($conn, $transformedData) {
             $sourceTypeId = getSourceTypeId($conn, $sourceName);
             error_log("Processing source: '$sourceName' (ID: $sourceTypeId)");
             
-            // Process ALL the metrics properly - FIXED: Allow 0 values
+            // Process all the metrics properly - allow 0 values
             $metricsToProcess = [
                 'visits' => 'Sessions',
                 'unique_visitors' => 'Users', 
@@ -1001,7 +1000,7 @@ function saveTransformedData($conn, $transformedData) {
             ];
             
             foreach ($metricsToProcess as $rowKey => $metricName) {
-                // FIXED: Allow 0 values - only check if numeric and exists
+                // Allow 0 values - only check if numeric and exists
                 if (isset($row[$rowKey]) && is_numeric($row[$rowKey])) {
                     $result = insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $row[$rowKey], $startDate);
                     error_log("Inserted $metricName data point: VALUE={$row[$rowKey]}, RESULT=" . ($result ? 'SUCCESS' : 'FAILED'));
@@ -1023,7 +1022,7 @@ function saveTransformedData($conn, $transformedData) {
         $verification = $result->fetch_assoc();
         error_log("VERIFICATION: Inserted {$verification['count']} data points with total value {$verification['total_value']}");
         
-        // CRITICAL: Clear any cached session data to force refresh
+        // Clear any cached session data to force refresh
         if (isset($_SESSION['cached_metrics'])) {
             unset($_SESSION['cached_metrics']);
         }
@@ -1079,10 +1078,10 @@ function getMetricTypeId($conn, $metricName) {
 
 // Helper function to insert a data point
 function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $dataDate = null) {
-    // Enhanced debugging
+    // Debugging
     error_log("insertDataPoint called: Upload=$uploadId, Source=$sourceTypeId, Metric='$metricName', Value=$value, Date=$dataDate");
     
-    // Validate input - FIXED: Allow 0 values, only reject non-numeric values
+    // Validate input - Allow 0 values, only reject non-numeric values
     if (!is_numeric($value)) {
         error_log("ERROR: Non-numeric value provided: $value");
         return false;
@@ -1111,15 +1110,13 @@ function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $
     // Default period type (can be customized if needed)
     $periodType = 'Daily';
     
-    // Convert value to proper decimal format - FIXED: Allow 0 values
+    // Convert value to proper decimal format - Allow 0 values
     $numericValue = floatval($value);
     
     error_log("Final values: Upload=$uploadId, Source=$sourceTypeId, Metric=$metricTypeId ($metricName), Value=$numericValue, Date=$dataDate");
     
     try {
-        $stmt = $conn->prepare("INSERT INTO PROCESSED_DATA_POINT 
-                              (UploadID, SourceTypeID, MetricTypeID, DataDate, Value, PeriodType) 
-                              VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt = $conn->prepare("INSERT INTO PROCESSED_DATA_POINT (UploadID, SourceTypeID, MetricTypeID, DataDate, Value, PeriodType) VALUES (?, ?, ?, ?, ?, ?)");
         
         if (!$stmt) {
             error_log("Error preparing statement: " . $conn->error);
@@ -1150,16 +1147,11 @@ function insertDataPoint($conn, $uploadId, $sourceTypeId, $metricName, $value, $
 
 // User Management Functions
 
-/**
- * Get all users from the database
- * @param object $conn - Database connection
- * @return array - Array of users
- */
 function getAllUsers($conn) {
     $users = [];
     
     try {
-        // FIXED: Remove FullName since it doesn't exist in your schema
+        // Remove FullName since it doesn't exist in your schema
         $query = "SELECT UserID, Username, Email, Role, AccountStatus, CreatedAt 
                  FROM user 
                  ORDER BY UserID";
@@ -1178,13 +1170,7 @@ function getAllUsers($conn) {
     return $users;
 }
 
-/**
- * Update user account status
- * @param object $conn - Database connection
- * @param int $userId - User ID to update
- * @param string $status - New status ('Active' or 'Suspended')
- * @return bool - True if successful, false otherwise
- */
+
 function updateUserStatus($conn, $userId, $status) {
     try {
         // Validate status
@@ -1202,12 +1188,6 @@ function updateUserStatus($conn, $userId, $status) {
     }
 }
 
-/**
- * Delete a user account
- * @param object $conn - Database connection
- * @param int $userId - User ID to delete
- * @return bool - True if successful, false otherwise
- */
 function deleteUser($conn, $userId) {
     try {
         // Start transaction
@@ -1294,9 +1274,7 @@ function deleteUser($conn, $userId) {
     }
 }
 
-/**
- * Get current upload ID (sample-aware)
- */
+/* Get current upload ID (sample-aware) */
 function getCurrentUploadId($conn, $userId) {
     error_log("=== GET CURRENT UPLOAD ID DEBUG ===");
     error_log("User ID: $userId");
@@ -1340,16 +1318,12 @@ function getCurrentUploadId($conn, $userId) {
     return $uploadId;
 }
 
-/**
- * Check if current data is sample data
- */
+/* Check if current data is sample data */
 function isUsingSampleData() {
     return isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data'] === true;
 }
 
-/**
- * Get sample data notice for display
- */
+/* Get sample data notice for display */
 function getSampleDataNotice() {
     error_log("=== GET SAMPLE DATA NOTICE DEBUG ===");
     error_log("Session using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
@@ -1377,16 +1351,16 @@ function getSampleDataNotice() {
 }
 
 function handleCsvUploadForComparison($conn, $file) {
-    // CRITICAL FIX: Set comparison context flag BEFORE calling handleCsvUpload
+    // Set comparison context flag BEFORE calling handleCsvUpload
     $_POST['comparison_context'] = true;
     
-    // CRITICAL FIX: Store original filename and create unique identifier for comparison context
+    // Store original filename and create unique identifier for comparison context
     $originalFileName = $file['name'];
     $comparisonFileId = uniqid('comp_', true);
     
     error_log("COMPARISON: Processing file with original name: $originalFileName, ID: $comparisonFileId");
     
-    // CRITICAL FIX: Store comparison context in session before processing
+    // Store comparison context in session before processing
     if (!isset($_SESSION['comparison_context'])) {
         $_SESSION['comparison_context'] = [];
     }
@@ -1398,7 +1372,7 @@ function handleCsvUploadForComparison($conn, $file) {
     // Use the same logic as handleCsvUpload but with comparison context
     $result = handleCsvUpload($conn, $file);
     
-    // CRITICAL FIX: Check if we have validation errors in comparison context
+    // Check if we have validation errors in comparison context
     if ($result['type'] === 'success' && isset($_SESSION['persistent_validation_errors']) && !empty($_SESSION['persistent_validation_errors'])) {
         error_log("COMPARISON: File processed with validation warnings - converting success to warning");
         
@@ -1410,11 +1384,11 @@ function handleCsvUploadForComparison($conn, $file) {
         error_log("COMPARISON: Converted to warning_with_errors type with " . count($_SESSION['persistent_validation_errors']) . " total unique errors");
     }
     
-    // CRITICAL FIX: Update comparison context after processing
+    // Update comparison context after processing
     $_SESSION['comparison_context'][$comparisonFileId]['processed'] = true;
     $_SESSION['comparison_context'][$comparisonFileId]['result'] = $result;
     
-    // CRITICAL FIX: Ensure clean filename is preserved in result
+    // Ensure clean filename is preserved in result
     $result['original_filename'] = $originalFileName;
     $result['clean_filename'] = $originalFileName;
     $result['comparison_id'] = $comparisonFileId;
@@ -1425,7 +1399,7 @@ function handleCsvUploadForComparison($conn, $file) {
         error_log("Added upload_id to result: " . $_SESSION['latest_upload_id']);
     }
     
-    // CRITICAL FIX: Add file path to result if available
+    // Add file path to result if available
     if (isset($_SESSION['uploaded_file_name'])) {
         $result['file_path'] = __DIR__ . '/uploads/' . $_SESSION['uploaded_file_name'];
         error_log("COMPARISON: Added file_path to result: " . $result['file_path']);
@@ -1435,7 +1409,7 @@ function handleCsvUploadForComparison($conn, $file) {
 }
 
 function preserveValidationErrorsForDisplay($validationErrors, $validRowCount) {
-    // CRITICAL FIX: Only proceed if session is available
+    // Only proceed if session is available
     if (session_status() === PHP_SESSION_NONE) {
         if (!headers_sent()) {
             session_start();
@@ -1445,15 +1419,15 @@ function preserveValidationErrorsForDisplay($validationErrors, $validRowCount) {
         }
     }
     
-    // CRITICAL FIX: For comparison context, merge errors without duplicates
+    // For comparison context, merge errors without duplicates
     $isComparisonContext = isset($_POST['comparison_context']) && $_POST['comparison_context'] === true;
     
-    // CRITICAL FIX: Track the upload context for display logic
+    // Track the upload context for display logic
     $_SESSION['validation_errors_comparison_context'] = $isComparisonContext;
     error_log("PRESERVED: Set validation_errors_comparison_context = " . ($isComparisonContext ? 'true' : 'false'));
     
     if ($isComparisonContext && isset($_SESSION['persistent_validation_errors'])) {
-        // CRITICAL FIX: Only merge errors if we actually have new validation errors
+        // Only merge errors if we actually have new validation errors
         if (!empty($validationErrors)) {
             error_log("PRESERVED comparison: Processing new validation errors");
             
@@ -1501,7 +1475,7 @@ function preserveValidationErrorsForDisplay($validationErrors, $validRowCount) {
 
 // Add this function to check if validation errors should be displayed
 function shouldShowValidationErrors() {
-    // CRITICAL FIX: Don't try to start session if headers are sent or session already active
+    // Don't try to start session if headers are sent or session already active
     $sessionActive = (session_status() === PHP_SESSION_ACTIVE);
     
     if (!$sessionActive) {
@@ -1510,7 +1484,7 @@ function shouldShowValidationErrors() {
             error_log("shouldShowValidationErrors: Started session");
         } else {
             error_log("shouldShowValidationErrors: Cannot start session - headers already sent");
-            // CRITICAL FIX: For headers already sent, check if session data is still accessible
+            // For headers already sent, check if session data is still accessible
             if (isset($_SESSION) && is_array($_SESSION)) {
                 error_log("shouldShowValidationErrors: Session data still accessible despite headers sent");
                 // Continue with validation - session data is still available
@@ -1523,18 +1497,18 @@ function shouldShowValidationErrors() {
         error_log("shouldShowValidationErrors: Session already active");
     }
     
-    // CRITICAL FIX: Check upload context to determine behavior
+    // Check upload context to determine behavior
     $currentPage = basename($_SERVER['PHP_SELF']);
     $dashboardPages = ['overview.php', 'traffic_sources.php', 'pages.php'];
     $isComparisonContext = isset($_SESSION['validation_errors_comparison_context']) && $_SESSION['validation_errors_comparison_context'] === true;
     
     error_log("shouldShowValidationErrors: Current page: $currentPage, Comparison context: " . ($isComparisonContext ? 'YES' : 'NO'));
     
-    // CRITICAL FIX: For comparison context - only show on compare.php, clear on dashboard pages
+    // For comparison context - only show on compare.php, clear on dashboard pages
     if ($isComparisonContext) {
         if (in_array($currentPage, $dashboardPages) && $_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['upload_success'])) {
             error_log("shouldShowValidationErrors: Comparison context - auto-clearing validation errors on dashboard page: $currentPage");
-            // CRITICAL FIX: Only clear if session is writable (not if headers sent)
+            // Only clear if session is writable (not if headers sent)
             if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
                 clearPersistentValidationErrors();
             } else {
@@ -1549,17 +1523,17 @@ function shouldShowValidationErrors() {
             // Don't auto-clear on compare.php for comparison uploads
         }
     } else {
-        // CRITICAL FIX: For regular index.php uploads - DON'T auto-clear on dashboard pages
+        // For regular index.php uploads - DON'T auto-clear on dashboard pages
         if (in_array($currentPage, $dashboardPages) && $_SERVER['REQUEST_METHOD'] === 'GET' && !isset($_GET['upload_success'])) {
             error_log("shouldShowValidationErrors: Regular upload context - preserving validation errors for dashboard page: $currentPage");
             // Don't clear - let dashboard pages show the warnings
         }
         
-        // CRITICAL FIX: For regular uploads - clear on compare.php
+        // For regular uploads - clear on compare.php
         if ($currentPage === 'compare.php' && $_SERVER['REQUEST_METHOD'] === 'GET' && 
             !isset($_GET['mapping_failed']) && empty($_GET)) {
             error_log("shouldShowValidationErrors: Regular upload context - clearing validation errors on compare.php");
-            // CRITICAL FIX: Only clear if session is writable (not if headers sent)
+            // Only clear if session is writable (not if headers sent)
             if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
                 clearPersistentValidationErrors();
             } else {
@@ -1569,11 +1543,11 @@ function shouldShowValidationErrors() {
         }
     }
     
-    // CRITICAL FIX: Clear errors on page refresh for index.php (but preserve for compare.php)
+    // Clear errors on page refresh for index.php (but preserve for compare.php)
     if ($currentPage === 'index.php' && $_SERVER['REQUEST_METHOD'] === 'GET' && 
         !isset($_GET['upload_success']) && !isset($_GET['mapping_failed']) && empty($_GET)) {
         error_log("shouldShowValidationErrors: Page refresh detected on index.php, clearing validation errors");
-        // CRITICAL FIX: Only clear if session is writable (not if headers sent)
+        // Only clear if session is writable (not if headers sent)
         if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
             clearPersistentValidationErrors();
         } else {
@@ -1582,7 +1556,7 @@ function shouldShowValidationErrors() {
         return false;
     }
     
-    // CRITICAL FIX: Only proceed if session is properly accessible
+    // Only proceed if session is properly accessible
     if (!isset($_SESSION['persistent_validation_errors']) || !isset($_SESSION['validation_errors_timestamp'])) {
         error_log("shouldShowValidationErrors: Missing session variables");
         error_log("- persistent_validation_errors: " . (isset($_SESSION['persistent_validation_errors']) ? 'SET' : 'NOT SET'));
@@ -1629,12 +1603,12 @@ function getPersistentValidationErrors() {
 
 // Add this function to clear validation errors
 function clearPersistentValidationErrors() {
-    // CRITICAL FIX: Only clear if session is active and writable and headers not sent
+    // Only clear if session is active and writable and headers not sent
     if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) {
         unset($_SESSION['persistent_validation_errors']);
         unset($_SESSION['persistent_validation_count']);
         unset($_SESSION['validation_errors_timestamp']);
-        unset($_SESSION['validation_errors_comparison_context']); // CRITICAL FIX: Clear context flag
+        unset($_SESSION['validation_errors_comparison_context']); // Clear context flag
         error_log("Cleared persistent validation errors and context");
         return true;
     } else if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
@@ -1642,7 +1616,7 @@ function clearPersistentValidationErrors() {
         unset($_SESSION['persistent_validation_errors']);
         unset($_SESSION['persistent_validation_count']);
         unset($_SESSION['validation_errors_timestamp']);
-        unset($_SESSION['validation_errors_comparison_context']); // CRITICAL FIX: Clear context flag
+        unset($_SESSION['validation_errors_comparison_context']); // Clear context flag
         error_log("Started session and cleared persistent validation errors and context");
         return true;
     } else {
@@ -1652,7 +1626,7 @@ function clearPersistentValidationErrors() {
 }
 
 function clearValidationErrorsOnPageLoad() {
-    // CRITICAL FIX: Only proceed if session is safely accessible
+    // Only proceed if session is safely accessible
     if (session_status() === PHP_SESSION_ACTIVE) {
         // Clear validation errors if they exist
         if (isset($_SESSION['persistent_validation_errors'])) {

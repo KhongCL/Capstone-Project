@@ -31,7 +31,7 @@ if (isset($_SESSION['using_sample_data'])) {
     error_log("Cleared sample data session in map_columns.php");
 }
 
-// Enhanced debugging for form submission
+// Debugging for form submission
 error_log("=== MAP_COLUMNS.PHP DEBUG ===");
 error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
 error_log("POST data: " . print_r($_POST, true));
@@ -599,7 +599,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                         $errors = preg_split('/(?=Row \d+)/', $errorText);
                         $errors = array_filter(array_map('trim', $errors)); // Remove empty elements
                     ?>
-                        <!-- Enhanced error container matching index.php style -->
+                        <!-- Error container matching index.php style -->
                         <div class="error-container">
                             <h4><i class="fas fa-exclamation-triangle"></i> CSV File Validation Failed</h4>
                             <p><strong>Your file couldn't be processed due to data validation errors.</strong></p>

@@ -557,7 +557,7 @@ class UploadProgressTracker {
                 uploadSpeed.textContent = this.formatFileSize(speed) + '/s';
             }
             
-            // FIXED: Always show time remaining during upload
+            // Always show time remaining during upload
             if (timeRemaining && remaining > 0 && loaded < total) {
                 timeRemaining.textContent = this.formatTime(remaining);
             } else if (timeRemaining && loaded >= total) {

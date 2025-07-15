@@ -119,7 +119,7 @@ header {
   margin-bottom: 2rem;
   border: 1px solid rgba(226, 232, 240, 0.6);
   animation: slideInDown 0.8s ease-out 0.2s both;
-  min-height: 80px; /* Fixed header height */
+  min-height: 80px;
 }
 
 @keyframes slideInDown {
@@ -489,7 +489,7 @@ select:focus {
   box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
 }
 
-/* Enhanced hero section title */
+/* Hero section title */
 .hero h1 {
   font-size: 3.5rem;
   font-weight: 700;
@@ -500,7 +500,7 @@ select:focus {
   letter-spacing: -0.02em;
 }
 
-/* Enhanced section headers within content */
+/* Section headers within content */
 .faq-content h2,
 .about-content h2,
 .content-section h2,
@@ -514,7 +514,7 @@ select:focus {
   font-size: 1.5rem;
 }
 
-/* Enhanced FAQ question styling */
+/* FAQ question styling */
 .faq-question {
   background: var(--light-blue);
   padding: 1.25rem;
@@ -938,7 +938,7 @@ select:focus {
   color: var(--info-dark);
 }
 
-/* Enhanced error message styling */
+/* Error message styling */
 .message.error h3 {
   margin-top: 0;
   color: var(--danger);

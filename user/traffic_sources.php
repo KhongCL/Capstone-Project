@@ -48,13 +48,13 @@ $backUrl = $isAdmin ? '../admin/upload_sample_data.php' : 'index.php';
 $title = "Traffic Sources";
 $active_page = "traffic_sources";
 
-// Get uploadId using sample-aware function (enhanced from current)
+// Get uploadId using sample-aware function
 $uploadId = getCurrentUploadId($conn, $_SESSION['user_id']);
 
 // Get sample data notice (from current)
 $sampleNotice = getSampleDataNotice();
 
-// Get traffic sources data (enhanced to pass uploadId)
+// Get traffic sources data
 $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
 ?>
 
@@ -414,7 +414,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
   </div>
 
   <script>
-    // Parse PHP data to JavaScript (enhanced from current)
+    // Parse PHP data to JavaScript
     const sourcesData = <?php echo json_encode($sourcesData); ?>;
     const uploadId = <?php echo $uploadId ? $uploadId : 'null'; ?>;
     const isSampleData = <?php echo $sampleNotice['is_sample'] ? 'true' : 'false'; ?>;
@@ -490,7 +490,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         noDataMsg.style.display = 'none';
       }
       
-      // Chart configuration (enhanced from current with sample data support)
+      // Chart configuration
       const config = {
         type: type,
         data: {
@@ -1049,7 +1049,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
       }
     }
 
-    // Export table to CSV (enhanced with filtering support)
+    // Export table to CSV
     function exportTableToCSV() {
       // Check if there's data to export
       if (filteredData.length === 0) {
@@ -1106,7 +1106,7 @@ $sourcesData = getTrafficSourcesDistribution($conn, $uploadId);
         });
     }
 
-    // Export chart to PDF (enhanced with filtering support)
+    // Export chart to PDF
     async function exportChartToPDF() {
       // Check if there's data to export
       if (filteredData.length === 0) {

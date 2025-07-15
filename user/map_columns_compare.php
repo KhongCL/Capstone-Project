@@ -25,7 +25,7 @@ if (isset($_SESSION['using_sample_data'])) {
     error_log("Cleared sample data session in map_columns_compare.php");
 }
 
-// Enhanced debugging for form submission
+// Debugging for form submission
 error_log("=== MAP_COLUMNS_COMPARE.PHP DEBUG ===");
 error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
 error_log("POST data: " . print_r($_POST, true));
@@ -168,7 +168,7 @@ if (!$currentFilePath || !file_exists($currentFilePath)) {
         $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
         $_SESSION['compare_files'][$currentFileIndex]['name'] = $cleanName;
         $currentFile['name'] = $cleanName;
-        error_log("FIXED: Set clean filename for existing file: $cleanName");
+        error_log("Set clean filename for existing file: $cleanName");
     }
 }
 
@@ -373,7 +373,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                             // Remove the hash prefix (e.g., "dd09fba0_" from "dd09fba0_test70_90.csv")
                             $cleanName = preg_replace('/^[a-f0-9]{8}_/', '', $extractedName);
                             $_SESSION['compare_files'][$currentFileIndex]['name'] = $cleanName;
-                            error_log("FIXED: Restored filename for file $currentFileIndex: $cleanName");
+                            error_log("Restored filename for file $currentFileIndex: $cleanName");
                         }
                     } else {
                         error_log("Filename already preserved for file $currentFileIndex: " . $_SESSION['compare_files'][$currentFileIndex]['name']);

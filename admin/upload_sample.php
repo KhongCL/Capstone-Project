@@ -22,7 +22,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
     exit;
 }
 
-// Enhanced error logging
+// Error logging
 error_log("=== SAMPLE UPLOAD START ===");
 error_log("POST data: " . print_r($_POST, true));
 error_log("FILES data: " . print_r($_FILES, true));
@@ -38,7 +38,7 @@ $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     error_log("Processing POST request for sample upload");
     
-    // Enhanced file validation
+    //  File validation
     if (!isset($_FILES['sampleCsv']) || $_FILES['sampleCsv']['error'] !== UPLOAD_ERR_OK) {
         $response['message'] = "Error uploading file: " . getUploadErrorMessage($_FILES['sampleCsv']['error'] ?? UPLOAD_ERR_NO_FILE);
         error_log("File upload error: " . $response['message']);
@@ -283,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     unset($_SESSION['validation_errors']);
                     
                 } else {
-                    // Enhanced error response for validation errors from exception message
+                    // Error response for validation errors from exception message
                     if (strpos($e->getMessage(), 'Data validation errors') !== false ||
                         strpos($e->getMessage(), 'No valid data') !== false ||
                         strpos($e->getMessage(), 'CSV parsing error') !== false) {

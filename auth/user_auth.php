@@ -11,7 +11,7 @@
 // First Written On: 20 April 2025
 // Edited On: 19 June 2025
 
-// CRITICAL FIX: Only start session if not already started AND no output has been sent
+// Only start session if not already started AND no output has been sent
 if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
     session_start();
 }
@@ -51,7 +51,7 @@ if (empty($_SESSION['user_id'])) {
     redirectToIndex();
 }
 
-// CRITICAL FIX: Only close session if it was started successfully
+// Only close session if it was started successfully
 if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }

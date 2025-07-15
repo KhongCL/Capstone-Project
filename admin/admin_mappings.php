@@ -713,7 +713,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
     console.log('Predefined Data Types:', <?php echo json_encode($dataTypes); ?>);
     console.log('Custom Data Types:', <?php echo json_encode($customDataTypes); ?>);
 
-    // Enhanced function to create target field select with custom option
+    // Function to create target field select with custom option
     function createTargetFieldSelect(formatId, timestamp, selectedValue = '') {
         let systemFieldsOptions = '<option value="">-- Select Target --</option>';
         
@@ -741,7 +741,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
         `;
     }
     
-    // Enhanced function to create data type select with custom option
+    // Function to create data type select with custom option
     function createDataTypeSelect(formatId, timestamp, selectedValue = 'string') {
         let dataTypesOptions = '';
         
@@ -758,7 +758,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
             dataTypesOptions += `<option value="${value}" ${selected}>${label}</option>`;
         }
         
-        // Add option to create NEW custom data type
+        // Add option to create new custom data type
         const customSelected = (selectedValue === '__custom_type__') ? 'selected' : '';
         dataTypesOptions += `<option value="__custom_type__" ${customSelected}>-- Create New Data Type --</option>`;
         
@@ -832,7 +832,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
         }
     }
 
-    // Enhanced event listeners for custom fields
+    // Event listeners for custom fields
     document.addEventListener('change', function(e) {
         // Handle custom target field creation
         if (e.target.classList.contains('target-select')) {
@@ -884,7 +884,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
         }
     });
     
-    // Enhanced validation for custom fields
+    //  Validation for custom fields
     document.addEventListener('input', function(e) {
         if (e.target.classList.contains('custom-field-input')) {
             const value = e.target.value;
@@ -1282,7 +1282,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
             updateAvailableTargetFields(formatElement);
         });
         
-        // Enhanced form validation
+        // Form validation
         document.getElementById('mappingsForm').addEventListener('submit', function(e) {
             const formats = document.querySelectorAll('.format-section');
             let hasValidFormat = false;

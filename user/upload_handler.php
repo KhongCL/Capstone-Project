@@ -129,7 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csvFile'])) {
             $response['message'] = $uploadMessage['message'];
             error_log("UPLOAD_HANDLER: Error response prepared: " . $uploadMessage['message']);
             
-            // Enhanced error parsing for validation errors
+            // Error parsing for validation errors
             if (strpos($uploadMessage['message'], 'Data validation errors found:') !== false) {
                 // Extract the detailed validation errors
                 $errorMessage = $uploadMessage['message'];
