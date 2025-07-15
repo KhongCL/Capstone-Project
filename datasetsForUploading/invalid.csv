@@ -1,0 +1,19 @@
+# ----------------------------------------,,,,,,,,,
+# Traffic acquisition: Session primary channel group (Default channel group),,,,,,,,,
+# Account: AdvancedValidationTest,,,,,,,,,
+# Property: ErrorDetection,,,,,,,,,
+# ----------------------------------------,,,,,,,,,
+# ,,,,,,,,,
+# All Users,,,,,,,,,
+# Start date: 20250701,,,,,,,,,
+# End date: 20250710,,,,,,,,,
+Session primary channel group (Default channel group),Sessions,Engaged sessions,Engagement rate,Average engagement time per session,Events per session,Event count,Key events,Session key event rate,Total revenue
+Direct,42+3,7,0.269230769,16.5,11.73076923,305,0,0,0
+Organic Search,15,8.3,1.5,12:45,5.6,120,2.5,0.17,125.50
+Social,45,22,0.65,10:65:30,8..5,1.2e3,1,0.22,200
+Email,38,19,0.75%, 12m30s,6.3,240,3,0.12%,350
+Referral,52,31,-0.3,24:30, 5.2,180,4,123%,500.abc
+Paid Search,67,4e2,0.62,5:30:45,99999.99999,455,-2,0.33,$1200
+Display,29,13,0.45,3:75,~5.3,210,1000,0,150
+(not set),18,0,,0,-5.2,0,0,,0
+Direct™,５０,7,0.5 ,,,0,0,0,0

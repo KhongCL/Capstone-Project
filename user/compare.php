@@ -1,4 +1,16 @@
 <?php
+
+// Name: Kum Yong Jun
+// Position: Developer
+// TP Number: TP077408
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: compare.php
+// Description: Analytics CSV comparison tool that allows users to upload, compare, and analyze
+//              two CSV files with detailed metrics comparison, data visualization, and export capabilities.
+// First Written On: 14 April 2025
+// Edited On: 14 July 2025
+
 session_start();
 
 // Check if user is logged in
@@ -2722,7 +2734,7 @@ function calculateStats($values) {
                                 </option>
                             <?php endforeach; ?>
                         </select>
-                        <button type="submit" name="load_comparison" class="compare-button">Load Comparison</button>
+                        <button type="submit" name="load_comparison" class="btn">Load Comparison</button>
                     </form>
                     <hr>
                 </div>

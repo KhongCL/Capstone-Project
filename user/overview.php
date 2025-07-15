@@ -1,4 +1,16 @@
 <?php
+
+// Name: Kum Yong Jun
+// Position: Developer
+// TP Number: TP077408
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: overview.php
+// Description: Overview dashboard page displaying key metrics, traffic trends, interactive charts,
+//              and annotation management with comprehensive export capabilities for data analysis.
+// First Written On: 14 April 2025
+// Edited On: 14 July 2025
+
 require_once '../auth/flexible_auth.php';
 require_once '../config.php';
 include '../functions.php';

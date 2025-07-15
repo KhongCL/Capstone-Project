@@ -1,4 +1,16 @@
 <?php
+
+// Name: Justin Yong Cheng Xun
+// Position: Developer
+// TP Number: TP077360
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: download_sample.php
+// Description: End-user sample data download utility that allows users to download
+//              sample CSV files they are currently viewing with secure validation.
+// First Written On: 14 April 2025
+// Edited On: 3 July 2025
+
 require_once '../auth/user_auth.php';
 require_once '../config.php';
 

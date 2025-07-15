@@ -1,3 +1,16 @@
+<!-- 
+Name: Mervin Ooi Zhian Yang
+Position: Developer
+TP Number: TP076578
+Intake: UCDF2308ICT(SE)
+Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+Program Name: user_footer.php
+Description: User dashboard footer component with navigation links, copyright information,
+             and responsive styling for consistent footer display across all user pages.
+First Written On: 14 April 2025
+Edited On: 12 July 2025 
+-->
+
 <style>
 	/* Footer */
 	footer {

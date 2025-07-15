@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: setup_config.php
+// Description: Configuration setup utility that creates CSV mapping configuration files
+//              for various analytics platforms including Google Analytics and GA4 formats.
+// First Written On: 9July 2025
+// Edited On: 14 July 2025
+
 // Create config directory if it doesn't exist
 if (!is_dir('config')) {
     mkdir('config', 0755, true);

@@ -1,4 +1,16 @@
 <?php
+
+// Name: Kum Yong Jun
+// Position: Developer
+// TP Number: TP077408
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: save_annotation.php
+// Description: AJAX endpoint for saving user annotations with support for both creating new
+//              and updating existing annotations with secure validation and JSON response handling.
+// First Written On: 25 June 2025
+// Edited On: 26 June 2025
+
 require_once '../auth/user_auth.php';
 require_once '../config.php';
 

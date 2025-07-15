@@ -143,5 +143,37 @@
             "Sessions": "string",
             "Engagement Rate": "float"
         }
+    },
+    "social_media_analytics": {
+        "format_detection": [
+            "Platform",
+            "Followers",
+            "Impressions",
+            "Engagement Score"
+        ],
+        "column_mappings": {
+            "Platform": "traffic_source",
+            "Followers": "unique_visitors",
+            "Posts Published": "page_views",
+            "Impressions": "visits",
+            "Engagement Score": "bounce_rate",
+            "Avg Watch Time": "avg_session_duration",
+            "Likes": "key_events",
+            "Comments": "events_per_session",
+            "Shares": "event_count",
+            "Revenue Generated": "total_revenue"
+        },
+        "data_types": {
+            "Platform": "string",
+            "Followers": "integer",
+            "Posts Published": "integer",
+            "Impressions": "integer",
+            "Engagement Score": "float",
+            "Avg Watch Time": "float",
+            "Likes": "integer",
+            "Comments": "float",
+            "Shares": "integer",
+            "Revenue Generated": "currency"
+        }
     }
 }

@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: upload_handler.php
+// Description: AJAX CSV file upload handler that processes file uploads, validates data format,
+//              handles column mapping, and provides progress feedback with comprehensive error handling.
+// First Written On: 14 April 2025
+// Edited On: 14 July 2025
+
 // Suppress PHP warnings/notices in output for AJAX responses
 ini_set('display_errors', 0);
 error_reporting(E_ERROR | E_PARSE);

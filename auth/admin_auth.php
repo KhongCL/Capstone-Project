@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: admin_auth.php
+// Description: Admin authentication middleware that validates admin access, manages sessions,
+//              and provides secure authorization for administrative functions.
+// First Written On: 20 April 2025
+// Edited On: 19 June 2025
+
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
