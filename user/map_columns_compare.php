@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: map_columns_compare.php
+// Description: CSV column mapping interface for comparison files that handles manual column mapping,
+//              data validation, and transformation for files requiring mapping during comparison workflow.
+// First Written On: 8 July 2025
+// Edited On: 14 July 2025
+
 require_once '../auth/user_auth.php';
 require_once '../config.php';
 require_once '../classes/CsvProcessor.php';

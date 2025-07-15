@@ -1,4 +1,16 @@
 <?php
+
+// Name: Khong Chee Leong
+// Position: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: validation_errors_display.php
+// Description: Validation errors display component that shows persistent validation warnings
+//              with context-aware clearing logic and interactive dismissal functionality.
+// First Written On: 3 July 2025
+// Edited On: 12 July 2025
+
 // Only manipulate session if it's safe to do so
 $currentPage = basename($_SERVER['PHP_SELF']);
 $isDashboardPage = in_array($currentPage, ['overview.php', 'traffic_sources.php', 'pages.php']);

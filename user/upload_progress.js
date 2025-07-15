@@ -1,3 +1,14 @@
+// Name: Khong Chee Leong
+// Position: Project Leader
+// TP Number: TP075846
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: upload_progress.js
+// Description: Upload progress tracker with interactive UI, real-time progress monitoring,
+//              error handling, and confirmation dialogs for CSV file upload operations.
+// First Written On: 14 April 2025
+// Edited On: 14 July 2025
+
 // Global confirmation function for upload progress tracker
 function confirmDataReplacement() {
     // Use the global variables set by PHP

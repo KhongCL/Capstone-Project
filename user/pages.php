@@ -1,4 +1,16 @@
 <?php
+
+// Name: Justin Yong Cheng Xun
+// Position: Developer
+// TP Number: TP077360
+// Intake: UCDF2308ICT(SE)
+// Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
+// Program Name: pages.php
+// Description: Top pages analysis dashboard displaying most visited pages with interactive charts,
+//              detailed metrics, data quality indicators, and comprehensive export capabilities.
+// First Written On: 14 April 2025
+// Edited On: 7 July 2025
+
 require_once '../auth/flexible_auth.php';
 require_once '../config.php';
 include '../functions.php';
