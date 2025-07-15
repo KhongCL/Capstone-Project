@@ -23,7 +23,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'Admin') {
 }
 
 // Error logging
-error_log("=== SAMPLE UPLOAD START ===");
+error_log("Sample Upload Start");
 error_log("POST data: " . print_r($_POST, true));
 error_log("FILES data: " . print_r($_FILES, true));
 
@@ -332,7 +332,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 error_log("Final response: " . json_encode($response));
-error_log("=== SAMPLE UPLOAD END ===");
+error_log("Sample Upload End");
 
 // Return response
 if ($isAjax) {
@@ -346,7 +346,7 @@ if ($isAjax) {
 
 // Function to save sample data
 function saveSampleData($conn, $data, $fileName, $fileSize, $reportType, $metadata) {
-    error_log("=== SAVE SAMPLE DATA START ===");
+    error_log("Save Sample Data Start");
     error_log("Data count: " . count($data));
     error_log("File name: " . $fileName);
     error_log("Report type: " . $reportType);
@@ -493,14 +493,14 @@ function saveSampleData($conn, $data, $fileName, $fileSize, $reportType, $metada
         
         error_log("Verification: Found " . $dataPointsRow['count'] . " data points for UploadID $uploadId");
         
-        error_log("=== SAVE SAMPLE DATA SUCCESS ===");
+        error_log("Save Sample Data Success");
         return true;
     } catch (Exception $e) {
         // Rollback on error
         $conn->rollback();
         error_log("Error saving sample data: " . $e->getMessage());
         error_log("Stack trace: " . $e->getTraceAsString());
-        error_log("=== SAVE SAMPLE DATA FAILED ===");
+        error_log("Save Sample Data Failed");
         return false;
     }
 }

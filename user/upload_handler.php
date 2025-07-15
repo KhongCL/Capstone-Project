@@ -21,7 +21,7 @@ require_once '../classes/CsvProcessor.php';
 include '../functions.php';
 
 // Add more debugging at the top
-error_log("=== UPLOAD HANDLER START ===");
+error_log("Upload Handler Start");
 error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
 error_log("Files received: " . print_r($_FILES, true));
 error_log("POST data: " . print_r($_POST, true));

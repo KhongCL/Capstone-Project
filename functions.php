@@ -16,7 +16,7 @@ require_once 'classes/CsvProcessor.php';
 
 // Replace the handleCsvUpload function:
 function handleCsvUpload($conn, $file) {
-    error_log("=== HANDLE CSV UPLOAD START ===");
+    error_log("Handle CSV Upload Start");
 
     // Clear any existing validation errors when starting new upload
     if (session_status() === PHP_SESSION_NONE) {
@@ -851,7 +851,7 @@ function getUploadErrorMessage($errorCode) {
 }
 
 function saveTransformedData($conn, $transformedData) {
-    error_log("=== SAVE TRANSFORMED DATA DEBUG ===");
+    error_log("Save Transformed Data Debug");
     error_log("Received " . count($transformedData) . " transformed data rows");
     
     // Check for empty data and return proper error
@@ -1030,7 +1030,7 @@ function saveTransformedData($conn, $transformedData) {
             unset($_SESSION['cached_traffic_sources']);
         }
         
-        error_log("=== END SAVE TRANSFORMED DATA DEBUG ===");
+        error_log("End Save Transformed Data Debug");
         
         return ['type' => 'success', 'message' => 'CSV data successfully imported and processed.'];
         
@@ -1276,7 +1276,7 @@ function deleteUser($conn, $userId) {
 
 /* Get current upload ID (sample-aware) */
 function getCurrentUploadId($conn, $userId) {
-    error_log("=== GET CURRENT UPLOAD ID DEBUG ===");
+    error_log("Get Current Upload ID Debug");
     error_log("User ID: $userId");
     error_log("Session using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
     error_log("Session sample_upload_id: " . ($_SESSION['sample_upload_id'] ?? 'not set'));
@@ -1294,7 +1294,7 @@ function getCurrentUploadId($conn, $userId) {
         
         if ($row = $result->fetch_assoc()) {
             error_log("Sample data verified: " . json_encode($row));
-            error_log("=== END GET CURRENT UPLOAD ID (SAMPLE) ===");
+            error_log("End Get Current Upload ID (Sample)");
             return $sampleUploadId;
         } else {
             error_log("WARNING: Sample upload ID $sampleUploadId not found or not sample data, falling back to user data");
@@ -1313,7 +1313,7 @@ function getCurrentUploadId($conn, $userId) {
     if ($row) {
         error_log("User upload file: " . $row['FileName']);
     }
-    error_log("=== END GET CURRENT UPLOAD ID (USER) ===");
+    error_log("End Get Current Upload ID (User)");
     
     return $uploadId;
 }
@@ -1325,7 +1325,7 @@ function isUsingSampleData() {
 
 /* Get sample data notice for display */
 function getSampleDataNotice() {
-    error_log("=== GET SAMPLE DATA NOTICE DEBUG ===");
+    error_log("Get Sample Data Notice Debug");
     error_log("Session using_sample_data: " . (isset($_SESSION['using_sample_data']) ? ($_SESSION['using_sample_data'] ? 'true' : 'false') : 'not set'));
     
     if (isset($_SESSION['using_sample_data']) && $_SESSION['using_sample_data'] === true) {
@@ -1341,12 +1341,12 @@ function getSampleDataNotice() {
             'action' => '<a href="' . $clearUrl . '" class="notice-content-btn">Switch to Your Data</a>'
         ];
         error_log("Returning sample notice: " . json_encode($notice));
-        error_log("=== END GET SAMPLE DATA NOTICE (SAMPLE) ===");
+        error_log("End Get Sample Data Notice (Sample)");
         return $notice;
     }
     
     error_log("Not using sample data, returning no notice");
-    error_log("=== END GET SAMPLE DATA NOTICE (NO SAMPLE) ===");
+    error_log("End Get Sample Data Notice (No Sample)");
     return ['is_sample' => false];
 }
 

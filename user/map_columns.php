@@ -32,7 +32,7 @@ if (isset($_SESSION['using_sample_data'])) {
 }
 
 // Debugging for form submission
-error_log("=== MAP_COLUMNS.PHP DEBUG ===");
+error_log("map_columns.php Debug");
 error_log("Request method: " . $_SERVER['REQUEST_METHOD']);
 error_log("POST data: " . print_r($_POST, true));
 error_log("Session uploaded_csv: " . ($_SESSION['uploaded_csv'] ?? 'NOT SET'));
@@ -228,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                             unset($_SESSION['uploaded_file_size']);
                             
                             error_log("Redirecting to index.php with validation errors");
-                            error_log("=== ERROR PROCESSING - REDIRECTING TO INDEX.PHP ===");
+                            error_log("Error Processing - Redirecting to index.php");
                             error_log("Found " . count($validationErrors) . " validation errors");
                             error_log("About to redirect to: index.php?mapping_failed=1");
                             header('Location: index.php?mapping_failed=1');
@@ -278,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
                             $_SESSION['upload_just_completed'] = true;
                             
                             // Redirect to index.php with success parameter
-                            error_log("=== SUCCESSFUL PROCESSING - REDIRECTING TO INDEX.PHP ===");
+                            error_log("Successful Processing - Redirecting to index.php");
                             error_log("Transformation completed successfully with " . count($transformedData) . " rows");
                             error_log("About to redirect to: index.php?upload_success=1");
                             header('Location: index.php?upload_success=1');
@@ -315,7 +315,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_mapping'])) {
         }
     }
     
-    error_log("=== END FORM PROCESSING ===");
+    error_log("End Form Processing");
 }
 ?>
 

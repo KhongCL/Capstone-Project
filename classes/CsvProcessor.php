@@ -350,12 +350,12 @@ class CsvProcessor {
                         if (strcasecmp(trim($csvColumn), trim($configCol)) === 0) {
                             $found = true;
                             $matchedConfigCol = $configCol;
-                            error_log("  ✓ MATCHED: '$csvColumn' to config: '$configCol'");
+                            error_log("✓ MATCHED: '$csvColumn' to config: '$configCol'");
                             break;
                         } else {
-                            error_log("  ✗ NO MATCH: '" . trim($csvColumn) . "' vs '" . trim($configCol) . "'");
-                            error_log("    - Lengths: " . strlen(trim($csvColumn)) . " vs " . strlen(trim($configCol)));
-                            error_log("    - ASCII codes: " . implode(',', array_map(function($c) { return ord($c); }, str_split(trim($csvColumn)))) . 
+                            error_log("✗ NO MATCH: '" . trim($csvColumn) . "' vs '" . trim($configCol) . "'");
+                            error_log("- Lengths: " . strlen(trim($csvColumn)) . " vs " . strlen(trim($configCol)));
+                            error_log("- ASCII codes: " . implode(',', array_map(function($c) { return ord($c); }, str_split(trim($csvColumn)))) . 
                                      " vs " . implode(',', array_map(function($c) { return ord($c); }, str_split(trim($configCol)))));
                         }
                     }
@@ -364,7 +364,7 @@ class CsvProcessor {
                             error_log("WARNING: CSV column '$csvColumn' has no mapping in configuration");
                             // Try to find closest match for debugging
                             foreach ($format['column_mappings'] as $configCol => $targetCol) {
-                                error_log("  Compare with: '$configCol' - Length: " . strlen($configCol) . " vs " . strlen($csvColumn));
+                                error_log("Compare with: '$configCol' - Length: " . strlen($configCol) . " vs " . strlen($csvColumn));
                             }
                             $unfoundColumns[] = $csvColumn;
                         } else {
@@ -688,7 +688,7 @@ class CsvProcessor {
     
     /* Transform data based on mapping */
     public function transformData($filePath, $columnMapping, $format = null) {
-        error_log("=== TRANSFORM DATA DEBUG START ===");
+        error_log("Transform Data Debug Start");
         error_log("File path: $filePath");
         error_log("Column mapping: " . json_encode($columnMapping));
         error_log("Format: " . ($format ?? 'null'));
@@ -814,7 +814,7 @@ class CsvProcessor {
                     $totalRowsProcessed++;
                     $rowNumber++;
                     
-                    error_log("=== PROCESSING ROW $rowNumber ===");
+                    error_log("Processing Row $rowNumber");
                     error_log("Raw data: " . json_encode($data));
                     
                     if (count($data) < count($header)) {
@@ -946,7 +946,7 @@ class CsvProcessor {
                         error_log("❌ Row $rowNumber REJECTED");
                     }
                     
-                    error_log("=== END ROW $rowNumber PROCESSING ===");
+                    error_log("End Row $rowNumber Processing");
                 }
 
                 fclose($handle);
@@ -966,7 +966,7 @@ class CsvProcessor {
                     $criticalErrors = 0;
                     $nonCriticalErrors = 0;
                     
-                    error_log("=== PROCESSING STANDARD CSV ROW $rowNumber ===");
+                    error_log("Processing Standard CSV Row $rowNumber");
                     error_log("Raw data: " . json_encode($data));
                     
                     // Try to find traffic source name for error reporting
@@ -1075,13 +1075,13 @@ class CsvProcessor {
                         error_log("❌ Row $rowNumber REJECTED (Critical errors: $criticalErrors, missing required fields)");
                     }
                     
-                    error_log("=== END STANDARD CSV ROW $rowNumber PROCESSING ===");
+                    error_log("End Standard CSV Row $rowNumber Processing");
                 }
                 fclose($handle);
             }
         }
         
-        error_log("=== FINAL TRANSFORMATION RESULTS ===");
+        error_log("Final Transformation Result");
         error_log("Total rows processed: $totalRowsProcessed");
         error_log("Valid rows: $validRows");
         error_log("Skipped rows: $skippedRows");
@@ -1184,11 +1184,11 @@ class CsvProcessor {
                     'message' => "Data imported successfully with " . count($validationErrors) . " validation warnings. " . count($transformed) . " valid rows were processed."
                 ];
                 
-                error_log("=== TRANSFORM DATA DEBUG END ===");
+                error_log("Transform Data Debug End");
                 return $transformed; // Return the valid data
             }
         } else {
-            error_log("=== TRANSFORM DATA DEBUG END ===");
+            error_log("Transform Data Debug End");
             return $transformed;
         }
     }
