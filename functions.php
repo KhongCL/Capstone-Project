@@ -1191,7 +1191,7 @@ function updateUserStatus($conn, $userId, $status) {
 function deleteUser($conn, $userId) {
     try {
         // Start transaction
-        $conn->autocommit(false);
+        $conn->begin_transaction();
         
         // First, check if user has any uploaded data
         $checkStmt = $conn->prepare("SELECT COUNT(*) as upload_count FROM csv_upload WHERE UserID = ?");
@@ -1200,73 +1200,122 @@ function deleteUser($conn, $userId) {
         $result = $checkStmt->get_result();
         $uploadCount = $result->fetch_assoc()['upload_count'];
         
+        error_log("User $userId has $uploadCount uploads to process");
+        
         if ($uploadCount > 0) {
-            // Get upload details for logging
+            // Get all upload IDs for this user
             $uploadStmt = $conn->prepare("SELECT UploadID, FileName FROM csv_upload WHERE UserID = ?");
             $uploadStmt->bind_param("i", $userId);
             $uploadStmt->execute();
             $uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
             
+            error_log("Found " . count($uploads) . " uploads for user $userId");
+            
             // Delete related data in correct order to respect foreign key constraints
             
-            // 1. Delete processed data points
+            // 1. Delete processed data points first (child of csv_upload)
             foreach ($uploads as $upload) {
                 $deleteDataStmt = $conn->prepare("DELETE FROM processed_data_point WHERE UploadID = ?");
                 $deleteDataStmt->bind_param("i", $upload['UploadID']);
                 $deleteDataStmt->execute();
-                error_log("Deleted processed_data_point records for UploadID: " . $upload['UploadID']);
+                $deletedDataPoints = $deleteDataStmt->affected_rows;
+                error_log("Deleted $deletedDataPoints processed_data_point records for UploadID: " . $upload['UploadID']);
             }
             
-            // 2. Delete annotations
+            // 2. Delete comparison file links (child of csv_upload)
             foreach ($uploads as $upload) {
-                $deleteAnnotationsStmt = $conn->prepare("DELETE FROM annotation WHERE UploadID = ?");
-                $deleteAnnotationsStmt->bind_param("i", $upload['UploadID']);
-                $deleteAnnotationsStmt->execute();
-                error_log("Deleted annotations for UploadID: " . $upload['UploadID']);
+                $deleteComparisonStmt = $conn->prepare("DELETE FROM comparison_file_link WHERE UploadID = ?");
+                $deleteComparisonStmt->bind_param("i", $upload['UploadID']);
+                $deleteComparisonStmt->execute();
+                $deletedComparisons = $deleteComparisonStmt->affected_rows;
+                error_log("Deleted $deletedComparisons comparison_file_link records for UploadID: " . $upload['UploadID']);
             }
             
-            // 3. Delete export history
+            // 3. Delete annotations (child of both user and csv_upload)
+            $deleteAnnotationsStmt = $conn->prepare("DELETE FROM annotation WHERE UserID = ?");
+            $deleteAnnotationsStmt->bind_param("i", $userId);
+            $deleteAnnotationsStmt->execute();
+            $deletedAnnotations = $deleteAnnotationsStmt->affected_rows;
+            error_log("Deleted $deletedAnnotations annotations for UserID: $userId");
+            
+            // 4. Delete saved comparisons (child of user)
+            $deleteComparisonsStmt = $conn->prepare("DELETE FROM saved_comparison WHERE UserID = ?");
+            $deleteComparisonsStmt->bind_param("i", $userId);
+            $deleteComparisonsStmt->execute();
+            $deletedSavedComparisons = $deleteComparisonsStmt->affected_rows;
+            error_log("Deleted $deletedSavedComparisons saved_comparison records for UserID: $userId");
+            
+            // 5. Delete export history (child of user)
             $deleteExportStmt = $conn->prepare("DELETE FROM export_history WHERE UserID = ?");
             $deleteExportStmt->bind_param("i", $userId);
             $deleteExportStmt->execute();
+            $deletedExports = $deleteExportStmt->affected_rows;
+            error_log("Deleted $deletedExports export_history records for UserID: $userId");
             
-            // 4. Delete CSV uploads
+            // 6. Delete CSV uploads (parent of processed_data_point, comparison_file_link, annotation)
             $deleteCsvStmt = $conn->prepare("DELETE FROM csv_upload WHERE UserID = ?");
             $deleteCsvStmt->bind_param("i", $userId);
             $deleteCsvStmt->execute();
-            error_log("Deleted csv_upload records for UserID: " . $userId);
+            $deletedUploads = $deleteCsvStmt->affected_rows;
+            error_log("Deleted $deletedUploads csv_upload records for UserID: $userId");
+            
+            // 7. Delete physical files from uploads directory
+            $deletedFiles = 0;
+            foreach ($uploads as $upload) {
+                $filePath = __DIR__ . '/uploads/' . $upload['FileName'];
+                if (file_exists($filePath)) {
+                    if (unlink($filePath)) {
+                        $deletedFiles++;
+                        error_log("Deleted physical file: " . $upload['FileName']);
+                    } else {
+                        error_log("WARNING: Failed to delete physical file: " . $upload['FileName']);
+                    }
+                } else {
+                    error_log("Physical file not found: " . $upload['FileName']);
+                }
+            }
+            
+            error_log("Summary for user $userId: $deletedDataPoints data points, $deletedComparisons comparison links, $deletedAnnotations annotations, $deletedSavedComparisons saved comparisons, $deletedExports export records, $deletedUploads uploads, $deletedFiles physical files deleted");
         }
         
-        // Finally, delete the user
+        // 8. Finally, delete the user account (parent of all user-related data)
         $deleteUserStmt = $conn->prepare("DELETE FROM user WHERE UserID = ?");
         $deleteUserStmt->bind_param("i", $userId);
         $deleteUserResult = $deleteUserStmt->execute();
         
-        if ($deleteUserResult) {
+        if ($deleteUserResult && $deleteUserStmt->affected_rows > 0) {
             // Commit transaction
             $conn->commit();
-            error_log("Successfully deleted user $userId and all related data ($uploadCount uploads)");
+            error_log("Successfully deleted user $userId and all related data");
+            
             return [
                 'success' => true,
-                'message' => "User account and all related data ($uploadCount uploads) have been deleted successfully."
+                'message' => "User account and all associated data have been deleted successfully. Removed: $uploadCount uploads, " . 
+                           ($deletedAnnotations ?? 0) . " annotations, " . 
+                           ($deletedDataPoints ?? 0) . " data points, " . 
+                           ($deletedComparisons ?? 0) . " comparison links, " . 
+                           ($deletedSavedComparisons ?? 0) . " saved comparisons, " . 
+                           ($deletedExports ?? 0) . " export records, and " . 
+                           ($deletedFiles ?? 0) . " physical files."
             ];
         } else {
             // Rollback transaction
             $conn->rollback();
-            error_log("Failed to delete user $userId: " . $conn->error);
+            error_log("Failed to delete user $userId: User not found or no changes made");
             return [
                 'success' => false,
-                'message' => "Failed to delete user account: " . $conn->error
+                'message' => "Failed to delete user account: User not found or account was already deleted."
             ];
         }
         
     } catch (Exception $e) {
         // Rollback transaction on error
         $conn->rollback();
-        error_log("Exception in deleteUser: " . $e->getMessage());
+        error_log("Exception in deleteUser for user $userId: " . $e->getMessage());
+        error_log("Stack trace: " . $e->getTraceAsString());
         return [
             'success' => false,
-            'message' => "Error deleting user: " . $e->getMessage()
+            'message' => "Database error occurred while deleting user: " . $e->getMessage()
         ];
     } finally {
         // Restore autocommit
