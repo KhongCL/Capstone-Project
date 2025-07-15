@@ -1,7 +1,7 @@
 <?php
 
 // Name: Lim Jia Jhen
-// Position/Role: Developer
+// Position: Developer
 // TP Number: TP077404
 // Intake: UCDF2308ICT(SE)
 // Project Name: TrafAnalyz - Complementary Web Analytics Dashboard
