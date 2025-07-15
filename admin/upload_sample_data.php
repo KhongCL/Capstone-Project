@@ -11,7 +11,7 @@
 // First Written On: 20 April 2025
 // Edited On: 13 July 2025
 
-require_once '../auth/admin_auth.php'; // Admin Login Validation
+require_once '../auth/admin_auth.php';
 require_once '../config.php';
 require_once '../classes/CsvProcessor.php';
 
@@ -103,9 +103,7 @@ if ($row = $result->fetch_assoc()) {
     <link rel="stylesheet" href="admin_style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Error Display Styles - matching user/index.php */
-
-
+        /* Error Display Styles */
         .error-container {
             background-color: #f8d7da;
             border: 1px solid #f5c6cb;
@@ -257,7 +255,7 @@ if ($row = $result->fetch_assoc()) {
             color: rgba(255, 255, 255, 0.9);
         }
 
-        /* Sample Data Preview Styles - copied from user/index.php */
+        /* Sample Data Preview Styles */
         .sample-data-preview {
             margin-top: 15px;
             border-top: 1px solid rgba(255, 255, 255, 0.2);
@@ -491,7 +489,7 @@ if ($row = $result->fetch_assoc()) {
                 <h2>Upload Sample CSV Data</h2>
                 
                 <?php 
-                // Only show message if it exists AND this was a post-redirect
+                // Only show message if it exists and this was a post-redirect
                 if (isset($_SESSION['sample_upload_message']) && $isPostRedirect): 
                 ?>
                     <div class="message <?php echo $_SESSION['sample_upload_message']['success'] ? 'success' : 'error'; ?>">
@@ -527,7 +525,7 @@ if ($row = $result->fetch_assoc()) {
                         </div>
                     </div>
                     
-                    <!-- Sample Data Preview Section - similar to user/index.php -->
+                    <!-- Sample Data Preview Section -->
                     <?php if (!empty($sampleDataPreview)): ?>
                     <div class="sample-data-preview">
                         <div class="preview-header" onclick="toggleDataPreview()">
@@ -659,10 +657,10 @@ if ($row = $result->fetch_assoc()) {
     </div>
     
 <script>
-// CRITICAL: Set global variables for confirmation logic
+// Set global variables for confirmation logic
 window.adminHasExistingSampleData = <?php echo $hasExistingSampleData ? 'true' : 'false'; ?>;
 
-// Utility function for file size formatting - MOVED TO TOP
+// Utility function for file size formatting
 function formatFileSize(bytes) {
     console.log('formatFileSize called with:', bytes);
     if (bytes === 0) return '0 Bytes';
@@ -672,7 +670,7 @@ function formatFileSize(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// Form validation function - MOVED TO TOP
+// Form validation function
 function validateSampleFile() {
     console.log('=== VALIDATE SAMPLE FILE START ===');
     
@@ -777,7 +775,7 @@ function validateSampleFile() {
     return true;
 }
 
-// Show validation messages function - MOVED TO TOP
+// Show validation messages function
 function showValidationMessages(errorMessages) {
     console.log('=== SHOW VALIDATION MESSAGES START ===');
     console.log('Error messages to show:', errorMessages);
@@ -934,7 +932,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Upload form found:', uploadForm);
 
     if (uploadForm) {
-        // CRITICAL FIX: Disable HTML5 form validation to let our custom validation handle it
+        // Disable HTML5 form validation to let our custom validation handle it
         uploadForm.setAttribute('novalidate', 'true');
         console.log('Disabled HTML5 validation on form');
         
@@ -942,7 +940,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('=== FORM SUBMIT EVENT ===');
             e.preventDefault();
             
-            // Enhanced validation with user-friendly messages
+            // Validation with user-friendly messages
             console.log('Calling validateSampleFile...');
             if (!validateSampleFile()) {
                 // Validation failed - messages already shown by validateSampleFile()
@@ -951,7 +949,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             console.log('Validation passed, checking confirmation...');
-            // CRITICAL: Show confirmation before upload
+            // Show confirmation before upload
             if (!confirmSampleDataUpload()) {
                 console.log('User cancelled upload via confirmation');
                 return false;
@@ -993,7 +991,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Update global state
                     window.adminHasExistingSampleData = true;
                     
-                    // FIXED: Increased refresh delay from 2 seconds to 4 seconds for better user experience
+                    // Increased refresh delay from 2 seconds to 4 seconds for better user experience
                     setTimeout(() => {
                         window.location.reload();
                     }, 4000); // Changed from 2000 to 4000 milliseconds (4 seconds)
@@ -1045,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Update global state
                         window.adminHasExistingSampleData = false;
                         
-                        // FIXED: Increased refresh delay from 2 seconds to 5 seconds for better user experience
+                        // Increased refresh delay from 2 seconds to 5 seconds for better user experience
                         setTimeout(() => {
                             window.location.reload();
                         }, 5000); // Changed from 2000 to 5000 milliseconds (5 seconds)
@@ -1162,7 +1160,7 @@ function showMappingsRedirectMessage(message) {
     }
 }
 
-// CRITICAL: Toggle data preview function - copied from user/index.php
+// Toggle data preview function - copied from user/index.php
 function toggleDataPreview() {
     const content = document.getElementById('previewContent');
     const toggle = document.getElementById('previewToggle');
@@ -1176,7 +1174,7 @@ function toggleDataPreview() {
     }
 }
 
-// CRITICAL: Upload confirmation function similar to user/index.php
+// Upload confirmation function similar to user/index.php
 function confirmSampleDataUpload() {
     const hasExistingSampleData = window.adminHasExistingSampleData;
     const hasErrorMessages = document.querySelector('.error-container, .validation-help, .message.error') !== null;
@@ -1227,7 +1225,7 @@ function confirmSampleDataUpload() {
     return result;
 }
 
-// CRITICAL: Browser refresh/navigation confirmation for error messages (like user/index.php)
+// Browser refresh/navigation confirmation for error messages (like user/index.php)
 window.addEventListener('beforeunload', function(e) {
     console.log('=== ADMIN BEFOREUNLOAD EVENT TRIGGERED ===');
     

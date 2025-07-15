@@ -11,7 +11,7 @@
 // First Written On: 20 April 2025
 // Edited On: 12 July 2025
 
-require_once '../auth/admin_auth.php'; // Admin Login Validation
+require_once '../auth/admin_auth.php';
 require_once '../config.php';
 require_once '../functions.php';
 
@@ -79,8 +79,7 @@ foreach ($users as $user) {
 					font-size: 1.5rem;
 				}
 
-
-				/* Enhanced non-print section */
+				/* Non-print section */
 				.non-print {
 					background: rgba(255, 255, 255, 0.9);
 					backdrop-filter: blur(10px);
@@ -207,7 +206,7 @@ foreach ($users as $user) {
 					border-radius: 1rem;
 				}
 
-				/* Enhanced export page tables - now inside main container */
+				/* Export page tables styles */
 				body table {
 					width: 100%;
 					border-collapse: collapse;
@@ -245,7 +244,7 @@ foreach ($users as $user) {
 					background: rgba(248, 250, 252, 0.5);
 				}
 
-				/* Enhanced export page badges */
+				/* Export page badges styles */
 				body .badge {
 					display: inline-block;
 					padding: 0.25rem 0.75rem;
@@ -267,7 +266,7 @@ foreach ($users as $user) {
 					border-color: var(--danger-border);
 				}
 
-				/* Enhanced footer for export pages - separate container */
+				/* Footer for export pages - separate container */
 				body .footer {
 					background: rgba(255, 255, 255, 0.9);
 					backdrop-filter: blur(10px);
@@ -306,7 +305,6 @@ foreach ($users as $user) {
 </head>
 <body>
 		<div class="container">
-		
 				<div class="non-print">
 						<h2>User Management Report - Export Dashboard</h2>
 						<p>Generate a comprehensive PDF report with user statistics, detailed tables, key insights, and report information.</p>

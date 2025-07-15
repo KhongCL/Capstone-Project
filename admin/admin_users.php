@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && isset($_POST['user_id'])) {
         $userId = (int)$_POST['user_id'];
         
-        // SECURITY: Prevent admin actions on other admin accounts
+        // Prevent admin actions on other admin accounts
         $checkAdminStmt = $conn->prepare("SELECT Role FROM user WHERE UserID = ?");
         $checkAdminStmt->bind_param("i", $userId);
         $checkAdminStmt->execute();

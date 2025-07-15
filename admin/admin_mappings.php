@@ -33,11 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_mappings'])) {
         // Convert spaces to underscores and remove special characters
         $formatKey = strtolower(preg_replace('/[^a-zA-Z0-9_\s]/', '', $formatName));
         $formatKey = str_replace(' ', '_', $formatKey);
-        $formatKey = preg_replace('/_{2,}/', '_', $formatKey); // Remove multiple underscores
-        $formatKey = trim($formatKey, '_'); // Remove leading/trailing underscores
+        $formatKey = preg_replace('/_{2,}/', '_', $formatKey);
+        $formatKey = trim($formatKey, '_');
         
         if (empty($formatKey)) {
-            continue; // Skip if format key becomes empty after sanitization
+            continue;
         }
         
         $mappings[$formatKey] = [
@@ -315,13 +315,6 @@ function cleanupOrphanedMetricTypes($conn, $mappings) {
     if (!empty($orphanedMetrics)) {
         error_log("Found orphaned metric types: " . implode(", ", $orphanedMetrics));
         
-        // Optional: Remove orphaned metric types (commented out for safety)
-        // foreach ($orphanedMetrics as $metricName) {
-        //     $deleteStmt = $conn->prepare("DELETE FROM metric_type WHERE MetricName = ?");
-        //     $deleteStmt->bind_param("s", $metricName);
-        //     $deleteStmt->execute();
-        //     error_log("Removed orphaned metric type: $metricName");
-        // }
     } else {
         error_log("No orphaned metric types found");
     }
@@ -348,7 +341,7 @@ function validateSystemFieldName($fieldName) {
     return true;
 }
 
-// ENHANCED: Update the main form processing
+// Update the main form processing
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_mappings'])) {
     $mappings = [];
     
@@ -362,8 +355,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_mappings'])) {
         // Convert spaces to underscores and remove special characters
         $formatKey = strtolower(preg_replace('/[^a-zA-Z0-9_\s]/', '', $formatName));
         $formatKey = str_replace(' ', '_', $formatKey);
-        $formatKey = preg_replace('/_{2,}/', '_', $formatKey); // Remove multiple underscores
-        $formatKey = trim($formatKey, '_'); // Remove leading/trailing underscores
+        $formatKey = preg_replace('/_{2,}/', '_', $formatKey);
+        $formatKey = trim($formatKey, '_');
         
         if (empty($formatKey)) {
             continue; // Skip if format key becomes empty after sanitization
@@ -396,7 +389,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_mappings'])) {
                         }
                     }
                     
-                    // Handle custom data types - THIS WAS MISSING!
+                    // Handle custom data types
                     $dataType = 'string'; // default
                     if (!empty($mapping['type'])) {
                         if ($mapping['type'] === '__custom_type__' && !empty($mapping['custom_type'])) {
@@ -415,7 +408,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_mappings'])) {
                     
                     if (!empty($targetField)) {
                         $mappings[$formatKey]['column_mappings'][$sourceColumnName] = $targetField;
-                        $mappings[$formatKey]['data_types'][$sourceColumnName] = $dataType; // Make sure this saves the custom data type
+                        $mappings[$formatKey]['data_types'][$sourceColumnName] = $dataType;
                         error_log("Saved mapping: $sourceColumnName -> $targetField with data type: $dataType");
                     }
                 }
@@ -438,9 +431,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_mappings'])) {
             
             updateMetricTypes($conn, $mappings);
             error_log("Metric types updated successfully");
-            
-            // Optional: Clean up orphaned metric types (uncomment if needed)
-            // cleanupOrphanedMetricTypes($conn, $mappings);
             
         } catch (Exception $e) {
             $error = 'CSV mappings saved but database update failed: ' . $e->getMessage();
@@ -718,7 +708,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
     const systemFields = <?php echo json_encode($systemFields); ?>;
     const dataTypes = <?php echo json_encode($allDataTypes); ?>; // Use allDataTypes instead of just dataTypes
     
-    // DEBUG: Log the data types to console
+    // Log the data types to console
     console.log('All Data Types:', dataTypes);
     console.log('Predefined Data Types:', <?php echo json_encode($dataTypes); ?>);
     console.log('Custom Data Types:', <?php echo json_encode($customDataTypes); ?>);
@@ -826,7 +816,6 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
         });
     }
 
-    // ADD THIS MISSING FUNCTION:
     function toggleFormat(formatId) {
         const formatSection = document.getElementById(`format-${formatId}`);
         const formatContent = document.getElementById(`format-content-${formatId}`);
@@ -985,7 +974,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
         });
     }
 
-    // Enhanced real-time format validation with duplicate target validation
+    // Real-time format validation with duplicate target validation
     function validateFormat(formatElement, isNew = false) {
         const nameInput = formatElement.querySelector('input[name*="[name]"]');
         const detectionInput = formatElement.querySelector('input[name*="[detection]"]');
@@ -1018,7 +1007,7 @@ error_log("DEBUG: allDataTypes = " . print_r($allDataTypes, true));
             if (mappingsSection) {
                 mappingsSection.appendChild(errorDiv);
             }
-            return; // Don't proceed with server validation if there are client-side errors
+            return;
         }
         
         // Proceed with existing server-side validation

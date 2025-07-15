@@ -13,9 +13,7 @@
 
 /* Modern Admin Styles for TrafAnalyz - Inspired by supported_formats.php */
 
-/* =====================================================
-   CSS CUSTOM PROPERTIES (VARIABLES) - UPDATED
-   ===================================================== */
+/* Root Variable for Admin Pages */
 :root {
   --dark-gray: #64748b;
   --gray-50: #f8fafc;
@@ -24,7 +22,7 @@
   --dark: #1e293b;
 }
 
-/* Welcome Banner - Enhanced */
+/* Welcome Banner */
 .welcome-banner {
   background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
   color: white;
@@ -52,7 +50,7 @@
   margin-bottom: 0;
 }
 
-/* Stats Row and Cards - Enhanced */
+/* Stats Row and Cards */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -115,7 +113,7 @@
   color: var(--danger);
 }
 
-/* Admin Section - Enhanced */
+/* Admin Section */
 .admin-section {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
@@ -163,7 +161,7 @@
     color: #92400e;
 }
 
-/* Quick Links - Enhanced */
+/* Quick Links */
 .quick-links {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -216,7 +214,7 @@
   font-size: 0.875rem;
 }
 
-/* Admin Data Tables - Enhanced */
+/* Admin Data Tables */
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -318,7 +316,7 @@
   box-shadow: var(--shadow);
 }
 
-/* Badges - Enhanced */
+/* Badges */
 .badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
@@ -369,7 +367,7 @@
   border-color: var(--danger-border);
 }
 
-/* Sample Upload Area - Enhanced */
+/* Sample Upload Area */
 .sample-upload {
   border: 2px dashed var(--primary-color);
   border-radius: 1rem;
@@ -400,7 +398,7 @@
   color: var(--dark-gray);
 }
 
-/* Report Types - Enhanced */
+/* Report Types */
 .report-types {
   display: flex;
   flex-wrap: wrap;
@@ -424,9 +422,7 @@
   transform: translateY(-2px);
 }
 
-/* =====================================================
-   FORM ELEMENTS - ENHANCED
-   ===================================================== */
+/* Form Elements */
 .form-group {
   margin-bottom: 1.5rem;
   position: relative;
@@ -480,9 +476,7 @@
   margin-bottom: 1.5rem;
 }
 
-/* =====================================================
-   MESSAGE STYLES - ENHANCED
-   ===================================================== */
+/* Message Styles */
 .message {
     padding: 1rem 1.5rem;
 		border-radius: 0.75rem;
@@ -511,7 +505,7 @@
     font-size: 16px;
 }
 
-/* User Management Styles - Enhanced */
+/* User Management Styles */
 .user-management-container {
   margin: 1.5rem 0;
 }
@@ -612,7 +606,7 @@
   border: 2px dashed var(--gray-200);
 }
 
-/* Search and Filter Controls - Enhanced */
+/* Search and Filter Controls */
 .search-controls {
   margin-bottom: 1.5rem;
   display: flex;
@@ -655,7 +649,7 @@
   background: var(--light-blue);
 }
 
-/* Debug Information - Enhanced */
+/* Debug Information */
 .info-box {
   background: rgba(232, 244, 253, 0.8);
   backdrop-filter: blur(10px);
@@ -678,7 +672,7 @@
   box-shadow: var(--shadow);
 }
 
-/* PDF Report Styling - Enhanced */
+/* PDF Report */
 .form-actions {
   display: flex;
   gap: 0.75rem;
@@ -687,9 +681,7 @@
   border-top: 1px solid var(--gray-200);
 }
 
-/* =====================================================
-   FILE INPUT STYLING - MATCHING USER/INDEX.PHP
-   ===================================================== */
+/* File Input Styles */
 .file-input-container {
     position: relative;
     display: flex;
@@ -798,7 +790,6 @@
     font-weight: 600;
 }
 
-/* Animation for file info display */
 @keyframes slideDown {
     from {
         opacity: 0;
@@ -826,7 +817,6 @@
     gap: 6px;
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
     .file-input-container {
         flex-direction: column;
@@ -881,7 +871,7 @@
   justify-content: center;
 }
 
-/* Actions Bar - Enhanced */
+/* Actions Bar */
 .actions-bar {
   display: flex;
   justify-content: space-between;
@@ -889,7 +879,7 @@
   margin-bottom: 1.5rem;
 }
 
-/* CSV Mappings Page Styles - Enhanced */
+/* CSV Mappings Page Styles */
 .format-section {
   margin-bottom: 1.5rem;
   border: 1px solid rgba(226, 232, 240, 0.6);
@@ -1031,7 +1021,7 @@
   background: white;
 }
 
-/* Validation error styling - Enhanced */
+/* Validation error styling */
 .validation-error {
   background: rgba(254, 226, 226, 0.8);
   backdrop-filter: blur(10px);
@@ -1050,13 +1040,11 @@ select option:disabled {
   background-color: #f5f5f5 !important;
 }
 
-/* Highlight duplicate selections */
 .duplicate-selection {
   border: 2px solid var(--danger) !important;
   background: rgba(254, 226, 226, 0.5) !important;
 }
 
-/* Success state for unique selections */
 .unique-selection {
   border: 2px solid var(--success) !important;
   background: rgba(220, 252, 231, 0.5) !important;
@@ -1092,10 +1080,6 @@ select option[value="__custom_type__"] {
   border-top: 1px solid var(--gray-200);
 }
 
-
-/* =====================================================
-   RESPONSIVE DESIGN - ENHANCED
-   ===================================================== */
 @media (max-width: 768px) {
 
   /* Stats Row and Two Column Grid */
@@ -1152,7 +1136,6 @@ select option[value="__custom_type__"] {
     padding: 0.5rem;
   }
 
-  /* Adjust column widths for mobile */
   .data-table th:nth-child(1),
   .data-table td:nth-child(1) {
     width: 40%;
@@ -1180,7 +1163,6 @@ select option[value="__custom_type__"] {
 }
 
 @media (max-width: 480px) {
-  /* Data Table for Very Small Screens */
   .data-table {
     font-size: 0.75rem;
   }
@@ -1190,14 +1172,12 @@ select option[value="__custom_type__"] {
     padding: 0.375rem;
   }
 
-  /* More aggressive filename truncation on very small screens */
   .data-table th:nth-child(1),
   .data-table td:nth-child(1) {
     max-width: 120px;
   }
 }
 
-/* Add some floating icons in corners */
 .admin-floating-elements {
   position: fixed;
   top: 0;

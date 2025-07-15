@@ -11,7 +11,7 @@
 // First Written On:  April 2025
 // Edited On: 14 July 2025
 
-require_once '../auth/admin_auth.php'; // Admin Login Validation
+require_once '../auth/admin_auth.php';
 require_once '../config.php';
 require_once '../functions.php';
 

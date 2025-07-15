@@ -19,7 +19,7 @@ header('Content-Type: application/json');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $formatName = $_POST['format_name'] ?? '';
     $detectionColumns = $_POST['detection_columns'] ?? '';
-    $targetFields = $_POST['target_fields'] ?? ''; // Add this parameter
+    $targetFields = $_POST['target_fields'] ?? '';
     $isNew = $_POST['is_new'] ?? 'false';
     
     $response = ['valid' => true, 'errors' => []];

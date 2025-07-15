@@ -118,12 +118,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     }
                                 }
                                 
-                                // If we have good suggestions, use them automatically
+                                // If have good suggestions, use them automatically
                                 if (count($mapping) >= 3) { // Need at least 3 good mappings
                                     error_log("Using suggested mapping with high confidence: " . json_encode($mapping));
                                     $transformedData = $processor->transformData($filePath, $mapping);
                                 } else {
-                                    // Not enough confident mappings - this is where we redirect to mappings page
+                                    // Not enough confident mappings - this is where redirect to mappings page
                                     $response['success'] = false;
                                     $response['message'] = "CSV format not recognized and automatic mapping failed. " .
                                                         "As an administrator, please visit the CSV Mappings page to add support for this format before uploading sample data.";
@@ -148,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             
                             error_log("Transformed data count: " . count($transformedData));
                             
-                            // CRITICAL FIX: Check for validation errors in session after transform
+                            // Check for validation errors in session after transform
                             if (session_status() == PHP_SESSION_NONE) {
                                 session_start();
                             }
@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             if (isset($_SESSION['validation_errors']) && !empty($_SESSION['validation_errors'])) {
                                 error_log("Found validation errors after transform: " . count($_SESSION['validation_errors']));
                                 
-                                // If NO data was transformed, treat it as a complete failure
+                                // If no data was transformed, treat it as a complete failure
                                 if (empty($transformedData)) {
                                     // Format detailed validation errors for response
                                     $response['errors'] = [];
@@ -253,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log("Exception during processing: " . $e->getMessage());
                 error_log("Stack trace: " . $e->getTraceAsString());
                 
-                // CRITICAL FIX: Check session for validation errors first
+                // Check session for validation errors first
                 if (session_status() == PHP_SESSION_NONE) {
                     session_start();
                 }
@@ -344,7 +344,7 @@ if ($isAjax) {
     exit;
 }
 
-// CORRECTED Function to save sample data
+// Function to save sample data
 function saveSampleData($conn, $data, $fileName, $fileSize, $reportType, $metadata) {
     error_log("=== SAVE SAMPLE DATA START ===");
     error_log("Data count: " . count($data));
