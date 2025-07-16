@@ -42,8 +42,9 @@ TrafAnalyz offers role-specific functionalities for both end-users and administr
 To run the TrafAnalyz web application locally, you will need to have **XAMPP** (or a similar local web server environment with PHP and MySQL) installed and running on your computer.
 
 1.  **Extract Project Files:**
-    * Extract the contents of the provided zip file.
-    * Inside, you will find a folder named `TrafAnalyz` and a database dump file named `trafanalyz.sql`.
+    * Extract the contents of the provided zip file. OR
+    * Use `git clone` to clone our repository.
+    * Inside, you will find a folder named `trafAnalyz` and a database dump file named `trafanalyz.sql`.
 
 2.  **Import Database:**
     * Start **Apache** and **MySQL** services from your XAMPP Control Panel.
