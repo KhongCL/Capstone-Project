@@ -1,3 +1,5 @@
+<img width="1910" height="2002" alt="Overview - Web Traffic Analysis Dashboard" src="https://github.com/user-attachments/assets/ed53fb49-5df5-4487-b017-8d45fe1a128d" />
+
 # **TrafAnalyz: Complementary Web Analytics Dashboard**
 
 TrafAnalyz is a user-friendly, web-based analytics dashboard designed to simplify web traffic analysis, particularly for Malaysian consumers. It serves as a complementary tool to existing analytics platforms like Google Analytics, addressing common challenges such as steep learning curves, limited flexibility, and low accessibility for non-technical users.
