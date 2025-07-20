@@ -1,5 +1,10 @@
 <img width="1910" height="2002" alt="Overview - Web Traffic Analysis Dashboard" src="https://github.com/user-attachments/assets/ed53fb49-5df5-4487-b017-8d45fe1a128d" />
 
+<img width="1910" height="5450" alt="Compare Metrics - Web Traffic Analysis Dashboard" src="https://github.com/user-attachments/assets/b29bb264-1044-4b74-acda-d3838433e9af" />
+
+<img width="1920" height="3320" alt="Firefox_Screenshot_2025-07-20T16-33-41 991Z" src="https://github.com/user-attachments/assets/ea8fb30f-309a-4e55-b393-facfc5017615" />
+
+
 # **TrafAnalyz: Complementary Web Analytics Dashboard**
 
 TrafAnalyz is a user-friendly, web-based analytics dashboard designed to simplify web traffic analysis, particularly for Malaysian consumers. It serves as a complementary tool to existing analytics platforms like Google Analytics, addressing common challenges such as steep learning curves, limited flexibility, and low accessibility for non-technical users.
