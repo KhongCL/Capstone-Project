@@ -38,7 +38,7 @@ TrafAnalyz offers role-specific functionalities for both end-users and administr
 <img alt="Compare Metrics - Web Traffic Analysis Dashboard" src="https://github.com/user-attachments/assets/b29bb264-1044-4b74-acda-d3838433e9af" />
 
 #### **Admin CSV Format Management**
-<img alt="Firefox_Screenshot_2025-07-20T16-33-41 991Z" src="https://github.com/user-attachments/assets/ea8fb30f-309a-4e55-b393-facfc5016c15" />
+<img width="1920" height="3320" alt="Firefox_Screenshot_2025-07-20T16-33-41 991Z" src="https://github.com/user-attachments/assets/12592a74-ef3d-4a95-b89d-a9610fc12954" />
 
 ---
 
